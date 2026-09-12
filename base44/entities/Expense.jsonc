@@ -1,0 +1,74 @@
+{
+  "name": "Expense",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "عنوان هزینه"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "تاریخ"
+    },
+    "amount": {
+      "type": "number",
+      "title": "مبلغ"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["عمومی", "آب/برق/گاز", "اینترنت", "پذیرایی", "تجهیزات", "تبلیغات", "حقوق", "سایر"],
+      "default": "عمومی",
+      "title": "دسته‌بندی"
+    },
+    "month": {
+      "type": "string",
+      "title": "ماه"
+    },
+    "project_id": {
+      "type": "string",
+      "title": "پروژه مرتبط"
+    },
+    "project_name": {
+      "type": "string",
+      "title": "نام پروژه"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "approved", "rejected"],
+      "default": "approved",
+      "title": "وضعیت"
+    },
+    "receipt_url": {
+      "type": "string",
+      "title": "تصویر رسید"
+    },
+    "recurring_config": {
+      "type": "object",
+      "properties": {
+        "frequency": { "type": "string", "enum": ["monthly", "quarterly"] },
+        "day_of_month": { "type": "number" }
+      },
+      "title": "تکرار دوره‌ای"
+    },
+    "submitted_by": {
+      "type": "string",
+      "title": "ثبت‌کننده"
+    },
+    "approved_by": {
+      "type": "string",
+      "title": "تاییدکننده"
+    },
+    "rejection_reason": {
+      "type": "string",
+      "title": "دلیل رد"
+    }
+  },
+  "required": ["title", "amount"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

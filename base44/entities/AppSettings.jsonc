@@ -1,0 +1,45 @@
+{
+  "name": "AppSettings",
+  "type": "object",
+  "properties": {
+    "company_name": {
+      "type": "string",
+      "title": "نام شرکت"
+    },
+    "company_logo": {
+      "type": "string",
+      "title": "لوگوی شرکت"
+    },
+    "timezone": {
+      "type": "string",
+      "default": "Asia/Tehran",
+      "title": "منطقه زمانی"
+    },
+    "working_hours_start": {
+      "type": "string",
+      "default": "09:00",
+      "title": "ساعت شروع کار"
+    },
+    "working_hours_end": {
+      "type": "string",
+      "default": "17:00",
+      "title": "ساعت پایان کار"
+    },
+    "fiscal_year_start": {
+      "type": "number",
+      "default": 1,
+      "title": "ماه شروع سال مالی"
+    },
+    "currency": {
+      "type": "string",
+      "default": "تومان",
+      "title": "واحد پول"
+    }
+  },
+  "rls": {
+    "create": { "user_condition": { "role": "superadmin" } },
+    "read": null,
+    "update": { "user_condition": { "role": "superadmin" } },
+    "delete": { "user_condition": { "role": "superadmin" } }
+  }
+}

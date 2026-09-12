@@ -1,0 +1,56 @@
+{
+  "name": "LeaveRequest",
+  "type": "object",
+  "properties": {
+    "user_name": {
+      "type": "string",
+      "title": "نام درخواست‌کننده"
+    },
+    "user_email": {
+      "type": "string",
+      "title": "ایمیل"
+    },
+    "leave_type": {
+      "type": "string",
+      "enum": ["vacation", "sick", "personal", "other"],
+      "default": "vacation",
+      "title": "نوع مرخصی"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date",
+      "title": "تاریخ شروع"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date",
+      "title": "تاریخ پایان"
+    },
+    "reason": {
+      "type": "string",
+      "title": "دلیل"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "approved", "rejected"],
+      "default": "pending",
+      "title": "وضعیت"
+    },
+    "reviewer_notes": {
+      "type": "string",
+      "title": "یادداشت بررسی"
+    }
+  },
+  "required": ["user_name", "start_date", "end_date"],
+  "rls": {
+    "create": null,
+    "read": {
+      "$or": [
+        { "created_by_id": "{{user.id}}" },
+        { "user_condition": { "role": "admin" } }
+      ]
+    },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

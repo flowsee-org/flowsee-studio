@@ -1,0 +1,64 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "description": "The role of the user in the app",
+      "enum": ["superadmin", "admin", "user"],
+      "default": "user"
+    },
+    "full_name": {
+      "type": "string",
+      "title": "نام کامل"
+    },
+    "phone": {
+      "type": "string",
+      "title": "شماره تماس"
+    },
+    "profile_image": {
+      "type": "string",
+      "title": "تصویر پروفایل"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "title": "فعال"
+    },
+    "department": {
+      "type": "string",
+      "title": "دپارتمان"
+    },
+    "position": {
+      "type": "string",
+      "title": "سمت شغلی"
+    },
+    "hire_date": {
+      "type": "string",
+      "format": "date",
+      "title": "تاریخ استخدام"
+    },
+    "skills": {
+      "type": "array",
+      "items": { "type": "string" },
+      "title": "مهارت‌ها"
+    },
+    "bio": {
+      "type": "string",
+      "title": "درباره من"
+    },
+    "availability_status": {
+      "type": "string",
+      "enum": ["available", "in_meeting", "on_leave", "remote"],
+      "default": "available",
+      "title": "وضعیت حضور"
+    },
+    "onboarding_progress": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "title": "مراحل گذرانده آنبوردینگ"
+    }
+  },
+  "required": ["role"]
+}

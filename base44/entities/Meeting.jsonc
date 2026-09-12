@@ -1,0 +1,108 @@
+{
+  "name": "Meeting",
+  "type": "object",
+  "properties": {
+    "colleague": {
+      "type": "string",
+      "title": "با چه کسی"
+    },
+    "colleague_email": {
+      "type": "string",
+      "title": "ایمیل همکار"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "تاریخ"
+    },
+    "time": {
+      "type": "string",
+      "title": "ساعت"
+    },
+    "end_time": {
+      "type": "string",
+      "title": "ساعت پایان"
+    },
+    "proposed_date": {
+      "type": "string",
+      "title": "تاریخ پیشنهادی"
+    },
+    "proposed_time": {
+      "type": "string",
+      "title": "ساعت پیشنهادی"
+    },
+    "topics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "title": "موضوعات"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "confirmed", "rescheduled", "done", "cancelled"],
+      "default": "pending",
+      "title": "وضعیت"
+    },
+    "urgent": {
+      "type": "boolean",
+      "default": false,
+      "title": "فوری"
+    },
+    "notes": {
+      "type": "string",
+      "title": "یادداشت"
+    },
+    "participants": {
+      "type": "array",
+      "items": { "type": "string" },
+      "title": "شرکت‌کنندگان"
+    },
+    "summary_creator": {
+      "type": "string",
+      "title": "خلاصه ایجاد‌کننده"
+    },
+    "summary_colleague": {
+      "type": "string",
+      "title": "خلاصه همکار"
+    },
+    "feedback": {
+      "type": "object",
+      "properties": {
+        "rating": { "type": "number" },
+        "comment": { "type": "string" }
+      },
+      "title": "بازخورد"
+    },
+    "recurring_config": {
+      "type": "object",
+      "properties": {
+        "frequency": { "type": "string", "enum": ["weekly", "biweekly", "monthly"] },
+        "day_of_week": { "type": "number" }
+      },
+      "title": "تکرار دوره‌ای"
+    }
+  },
+  "required": ["colleague", "date"],
+  "rls": {
+    "create": null,
+    "read": {
+      "$or": [
+        { "created_by_id": "{{user.id}}" },
+        { "data.colleague_email": "{{user.email}}" },
+        { "user_condition": { "role": "admin" } }
+      ]
+    },
+    "update": {
+      "$or": [
+        { "created_by_id": "{{user.id}}" },
+        { "data.colleague_email": "{{user.email}}" },
+        { "user_condition": { "role": "admin" } }
+      ]
+    },
+    "delete": {
+      "$or": [
+        { "created_by_id": "{{user.id}}" },
+        { "user_condition": { "role": "admin" } }
+      ]
+    }
+  }
+}

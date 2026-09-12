@@ -1,0 +1,60 @@
+{
+  "name": "Salary",
+  "type": "object",
+  "properties": {
+    "employee_name": {
+      "type": "string",
+      "title": "نام کارمند"
+    },
+    "amount": {
+      "type": "number",
+      "title": "مبلغ حقوق"
+    },
+    "month": {
+      "type": "string",
+      "title": "ماه"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "تاریخ پرداخت"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["paid", "pending"],
+      "default": "pending",
+      "title": "وضعیت"
+    },
+    "base_pay": {
+      "type": "number",
+      "default": 0,
+      "title": "حقوق پایه"
+    },
+    "overtime": {
+      "type": "number",
+      "default": 0,
+      "title": "اضافه‌کاری"
+    },
+    "deductions": {
+      "type": "number",
+      "default": 0,
+      "title": "کسورات"
+    },
+    "benefits": {
+      "type": "number",
+      "default": 0,
+      "title": "مزایا"
+    },
+    "notes": {
+      "type": "string",
+      "title": "یادداشت"
+    }
+  },
+  "required": ["employee_name", "amount", "month"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}
