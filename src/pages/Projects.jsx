@@ -64,8 +64,7 @@ export default function Projects() {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    await base44.entities.Project.delete(deleteTarget.id);
-    load();
+    deleteWithUndo(deleteTarget, { title: deleteTarget.name });
     setDeleteTarget(null);
   };
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { X, Plus, Flame, AlertCircle, Users, Clock, MessageSquare, Star } from "lucide-react";
+import { X, Plus, Flame, AlertCircle, Clock } from "lucide-react";
 import PersianDatePicker, { getPersianDate } from "@/components/PersianDatePicker";
 import { loadTeamMembers } from "@/lib/teamMembers";
 import { toast } from "@/components/ui/use-toast";

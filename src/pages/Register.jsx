@@ -51,11 +51,13 @@ export default function Register() {
     setError("");
     setLoading(true);
     try {
-      const result = await base44.auth.verifyOtp({ email, otpCode });
-      if (result?.access_token) {
-        base44.auth.setToken(result.access_token);
+      await base44.auth.verifyOtp({ email, otpCode });
+      // After OTP verification, log in to get the access token
+      const { access_token } = await base44.auth.loginViaEmailPassword(email, password);
+      if (access_token) {
+        // loginViaEmailPassword already calls setToken internally
+        window.location.href = safeReturnTo();
       }
-      window.location.href = safeReturnTo();
     } catch (err) {
       setError(err.message || "کد تایید نامعتبر است");
     } finally {

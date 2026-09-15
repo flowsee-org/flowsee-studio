@@ -285,7 +285,6 @@ export default function WorkReports() {
         <ReportForm
           tasks={tasks}
           userName={userName}
-          isAdmin={isAdmin}
           editReport={editReport}
           onClose={() => { setShowForm(false); setEditReport(null); }}
           onSaved={load}

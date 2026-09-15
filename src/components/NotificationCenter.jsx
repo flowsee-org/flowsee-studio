@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Bell, X, Check, MessageSquare, Calendar, AlertTriangle, ClipboardList, DollarSign, User, FileText, ExternalLink } from 'lucide-react';
+import { Bell, Check, MessageSquare, Calendar, ClipboardList, DollarSign, User, FileText } from 'lucide-react';
 import { useNotifications } from '@/lib/NotificationContext';
-import { useAuth } from '@/lib/AuthContext';
 
 const typeIcons = {
   task_assigned: { icon: ClipboardList, color: 'text-blue-500', bg: 'bg-blue-100' },
@@ -27,7 +26,6 @@ const typeLabels = {
 
 export default function NotificationCenter() {
   const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications();
-  const { user } = useAuth();
   const [open, setOpen] = useState(false);
 
   if (loading) return <div className="w-10 h-10" />;

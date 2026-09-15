@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { Plus, Trash2, X, BarChart3, PieChart as PieChartIcon, Download, Upload, Lock, AlertCircle, FileText, Filter, Calendar, ChevronLeft, ChevronRight, Eye, AlertTriangle, CheckCircle, Trash2 as TrashIcon } from "lucide-react";
+import { Plus, Trash2, X, BarChart3, PieChart as PieChartIcon, Upload, Lock, FileText, Filter } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import SalarySlip from "@/components/SalarySlip";
@@ -8,7 +8,6 @@ import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
 function ExpenseRow({ expense, isLocked, onDelete, onEdit }) {
-  const [showDetail, setShowDetail] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ status: expense.status, category: expense.category });
 
@@ -201,10 +200,6 @@ export default function Accounting() {
     setDeleteTarget(null);
   };
 
-  const exportCSV = (entityName) => {
-    window.open(`/api/apps/${base44.appId}/export/${entityName}`, '_blank');
-  };
-
   const handleLockPeriod = async () => {
     if (!lockMonth) return;
     await base44.entities.AppSettings.create({ locked_month: lockMonth, locked_at: new Date().toISOString() });
@@ -266,9 +261,6 @@ export default function Accounting() {
     });
   }, [filteredExpenses, budgets]);
 
-  const totalExpense = filteredExpenses.reduce((s, e) => s + (e.amount || 0), 0);
-  const totalIncome = filteredIncomes.reduce((s, i) => s + (i.amount || 0), 0);
-  const netProfit = totalIncome - totalExpense;
   const colors = ["hsl(252 63% 58%)", "hsl(173 58% 39%)", "hsl(197 70% 50%)", "hsl(43 74% 66%)", "hsl(27 87% 67%)", "hsl(0 84% 60%)"];
 
   if (loading)

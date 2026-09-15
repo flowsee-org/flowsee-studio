@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { Download, X, FileText, AlertTriangle, CheckCircle, Trash2 } from "lucide-react";
+import { X, FileText, AlertTriangle, CheckCircle } from "lucide-react";
 
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
 

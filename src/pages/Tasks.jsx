@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { Plus, Trash2, Pencil, ArrowDownUp, LayoutTemplate, Filter, X, Send, CheckCircle, Clock, Search, Archive, Download, Eye, Copy } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowDownUp, LayoutTemplate, Filter, X, Send, CheckCircle, Clock, Search, Archive, Eye } from "lucide-react";
 import TaskForm from "@/components/TaskForm";
 import TemplatePicker from "@/components/TemplatePicker";
 import TaskRequestModal from "@/components/TaskRequestModal";
@@ -74,7 +74,6 @@ function AssigneeAvatars({ task }) {
 export default function Tasks() {
   const { user, isAdmin } = useAuth();
   const userName = user?.full_name || user?.email || "";
-  const userEmail = user?.email || "";
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +87,7 @@ export default function Tasks() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [creatorNames, setCreatorNames] = useState({});
+  const [creatorNames] = useState({});
   const [viewMode, setViewMode] = useState("assigned");
   const [showArchived, setShowArchived] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState(new Set());
@@ -96,7 +95,6 @@ export default function Tasks() {
 
   // ConfirmDialog states
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [archiveTarget, setArchiveTarget] = useState(null);
 
   useEffect(() => {
     load();
@@ -295,21 +293,6 @@ export default function Tasks() {
     });
   };
 
-  const toggleSelectAll = () => {
-    if (selectedTasks.size === filteredTasks.length) {
-      setSelectedTasks(new Set());
-    } else {
-      setSelectedTasks(new Set(filteredTasks.map(t => t.id)));
-    }
-  };
-
-  if (loading)
-    return (
-      <div className="flex justify-center p-20">
-        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
-
   // Sort tasks within each column
   const columnTasks = useMemo(() => {
     const result = {};
@@ -318,6 +301,13 @@ export default function Tasks() {
     });
     return result;
   }, [filteredTasks, sortBy]);
+
+  if (loading)
+    return (
+      <div className="flex justify-center p-20">
+        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
 
   return (
     <div className="space-y-4">
@@ -520,7 +510,7 @@ export default function Tasks() {
                   <Archive className="w-3.5 h-3.5" /> بایگانی
                 </button>
                 <button
-                  onClick={() => setDeleteTarget(Array.from(selectedTasks)[0])}
+                  onClick={handleBulkDelete}
                   className="bg-red-500 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-red-600 flex items-center gap-1"
                 >
                   <Trash2 className="w-3.5 h-3.5" /> حذف
@@ -644,7 +634,6 @@ export default function Tasks() {
         <TaskForm
           projects={projects}
           userName={userName}
-          isAdmin={isAdmin}
           editTask={editTask}
           onClose={() => { setShowForm(false); setEditTask(null); }}
           onSaved={load}
@@ -672,7 +661,6 @@ export default function Tasks() {
           onClose={() => setDetailTask(null)}
           onSaved={load}
           projects={projects}
-          isAdmin={isAdmin}
         />
       )}
 

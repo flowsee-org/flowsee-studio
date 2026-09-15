@@ -19,7 +19,6 @@ export default function Admin() {
   const [inviting, setInviting] = useState(false);
   const [inviteMsg, setInviteMsg] = useState("");
   const [showSessions, setShowSessions] = useState(false);
-  const [sessions, setSessions] = useState([]);
   const [restoring, setRestoring] = useState(false);
   const [restoreMsg, setRestoreMsg] = useState("");
   const [sendingDigest, setSendingDigest] = useState(false);
@@ -167,10 +166,6 @@ export default function Admin() {
         <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
       </div>
     );
-
-  const superadminUsers = users.filter(u => u.role === "superadmin");
-  const adminUsers = users.filter(u => u.role === "admin");
-  const staffUsers = users.filter(u => u.role === "user");
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">

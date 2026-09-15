@@ -28,7 +28,6 @@ export default function Meetings() {
   const [feedbackComment, setFeedbackComment] = useState("");
   const [creatorNames, setCreatorNames] = useState({});
   const [memberMap, setMemberMap] = useState({});
-  const [showHistory, setShowHistory] = useState(true);
 
   // Filters for history section
   const [dateFrom, setDateFrom] = useState("");

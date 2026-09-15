@@ -1,16 +1,12 @@
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useAuth } from "@/lib/AuthContext";
-import { X, Paperclip, Upload, RotateCcw } from "lucide-react";
+import { X, Paperclip } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import { loadTeamMembers } from "@/lib/teamMembers";
 import SubtaskList from "./SubtaskList";
 import { toast } from "@/components/ui/use-toast";
 
-const priorityLabels = { low: "کم", medium: "متوسط", high: "زیاد" };
-const priorityColors = { low: "bg-slate-100 text-slate-600", medium: "bg-amber-100 text-amber-700", high: "bg-red-100 text-red-700" };
-
-export default function TaskForm({ projects, userName, isAdmin, editTask, onClose, onSaved }) {
+export default function TaskForm({ projects, userName, editTask, onClose, onSaved }) {
   const [employees, setEmployees] = useState([]);
   const [form, setForm] = useState(
     editTask || {
@@ -32,7 +28,6 @@ export default function TaskForm({ projects, userName, isAdmin, editTask, onClos
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showRecurring, setShowRecurring] = useState(false);
-  const [newAttachment, setNewAttachment] = useState(null);
 
   useEffect(() => {
     loadTeamMembers().then(setEmployees);
@@ -223,7 +218,7 @@ export default function TaskForm({ projects, userName, isAdmin, editTask, onClos
             <div className="space-y-2">
               <label className="flex items-center gap-2 border border-dashed border-input rounded-xl p-2.5 text-sm text-muted-foreground cursor-pointer hover:bg-accent/30">
                 <Paperclip className="w-4 h-4" />
-                <span>{uploading ? "در حال آپلود..." : newAttachment ? "فایل انتخاب شده" : "آپلود فایل"}</span>
+                <span>{uploading ? "در حال آپلود..." : "آپلود فایل"}</span>
                 <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
               </label>
               {(form.attachments || []).length > 0 && (

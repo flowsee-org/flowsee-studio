@@ -39,7 +39,7 @@ export default function PersianDatePicker({
   onlyMonthPicker = false,
   onlyYearPicker = false,
   timePicker = false,
-  format,
+  format = undefined,
 }) {
   const ref = useRef();
   const today = getPersianDate(0);

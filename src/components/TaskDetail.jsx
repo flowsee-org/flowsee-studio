@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { X, Paperclip, Clock, User, CheckCircle, Trash2, Download, ArrowUpRight, MessageSquare, FileText, Calendar, AlertCircle } from 'lucide-react';
+import { X, Paperclip, Clock, Download, ArrowUpRight, MessageSquare, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import SubtaskList from './SubtaskList';
 import TaskComments from './TaskComments';
@@ -29,7 +29,7 @@ const getTimeAgo = (dateString) => {
   return date.toLocaleDateString('fa-IR');
 };
 
-export default function TaskDetail({ task, onClose, onSaved, projects, isAdmin }) {
+export default function TaskDetail({ task, onClose, onSaved, projects }) {
   const { user } = useAuth();
   const userName = user?.full_name || user?.email || '';
   const [employees, setEmployees] = useState([]);

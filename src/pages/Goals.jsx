@@ -137,7 +137,7 @@ export default function Goals() {
     setEditGoal(null);
   };
 
-  const confirmDelete = async () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
     await deleteWithUndo(deleteTarget);
     load();

@@ -1,8 +1,7 @@
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 
 export default function ConfirmDialog({
-  children,
+  children = null,
   title = "آیا مطمئن هستید؟",
   description = "این کار قابل بازگشت نیست.",
   onConfirm,

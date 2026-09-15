@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Send, MessageSquare, Clock, UserCircle } from 'lucide-react';
+import { Send, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 
 const getTimeAgo = (dateString) => {

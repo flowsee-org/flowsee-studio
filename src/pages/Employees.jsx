@@ -18,7 +18,7 @@ const roleFilterOptions = [
 ];
 
 export default function Employees() {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { X, UserPlus, UserMinus } from "lucide-react";
+import { X, UserMinus } from "lucide-react";
 import { loadTeamMembers } from "@/lib/teamMembers";
 import PersianDatePicker from "@/components/PersianDatePicker";
 

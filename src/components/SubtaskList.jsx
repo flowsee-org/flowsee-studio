@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CheckSquare, Plus, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
 export default function SubtaskList({ subtasks = [], onChange }) {
   const [newSubtask, setNewSubtask] = useState('');

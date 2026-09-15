@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { Camera, Save, Mail, Phone, User } from "lucide-react";
+import { Camera, Save, Mail, Phone, User, CheckCircle, AlertTriangle, Send, Loader2 } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 export default function Profile() {
   const { user, checkUserAuth } = useAuth();
@@ -11,6 +12,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [sendingVerification, setSendingVerification] = useState(false);
 
   // Refresh user data when it changes
   useEffect(() => {
@@ -47,6 +49,25 @@ export default function Profile() {
     }
   };
 
+  const handleResendVerification = async () => {
+    setSendingVerification(true);
+    try {
+      await base44.auth.resendOtp(user.email);
+      toast({
+        title: "ایمیل تایید ارسال شد",
+        description: "کد تایید به ایمیل شما ارسال شد. ایمیل خود را بررسی کنید.",
+      });
+    } catch (err) {
+      toast({
+        title: "خطا",
+        description: err.message || "ارسال ایمیل تایید ناموفق بود",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingVerification(false);
+    }
+  };
+
   const initial = (fullName || user?.email || "U").charAt(0).toUpperCase();
 
   return (
@@ -64,7 +85,7 @@ export default function Profile() {
                 src={profileImage}
                 alt="پروفایل"
                 className="w-20 h-20 rounded-full object-cover"
-                onError={(e) => { e.target.style.display = 'none'; }}
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             ) : (
               <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary">
@@ -119,6 +140,33 @@ export default function Profile() {
                 disabled
                 className="w-full border border-input rounded-xl pr-10 px-4 py-2.5 text-sm bg-accent/30 text-muted-foreground"
               />
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              {user?.is_verified ? (
+                <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  تایید شده
+                </span>
+              ) : (
+                <>
+                  <span className="inline-flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    تایید نشده
+                  </span>
+                  <button
+                    onClick={handleResendVerification}
+                    disabled={sendingVerification}
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+                  >
+                    {sendingVerification ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Send className="w-3 h-3" />
+                    )}
+                    ارسال ایمیل تایید
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

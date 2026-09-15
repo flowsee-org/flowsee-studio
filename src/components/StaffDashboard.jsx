@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { ListTodo, CheckCircle, Clock, Calendar, ArrowLeft, Video, BookOpen } from "lucide-react";
+import { ListTodo, CheckCircle, Clock, Calendar, ArrowLeft, Video } from "lucide-react";
 import TodayTasks from "@/components/TodayTasks";
 import AnnouncementWidget from "@/components/AnnouncementWidget";
 import MeetingReminders from "@/components/MeetingReminders";

@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { LayoutDashboard, Wallet, BarChart3, Calendar, Users, FolderKanban, ClipboardList, ListTodo, Menu, Shield, LogOut, UserCircle, Sun, Moon, Megaphone, Flag, Target, CalendarDays, Settings } from "lucide-react";
+import { LayoutDashboard, Wallet, BarChart3, Calendar, Users, FolderKanban, ClipboardList, ListTodo, Menu, Shield, LogOut, UserCircle, Sun, Moon, Megaphone, Flag, Target, CalendarDays, Settings, AlertTriangle, X, RefreshCw, Send } from "lucide-react";
 import { roleLabel } from "@/lib/roles";
 import NotificationCenter from "@/components/NotificationCenter";
+import { toast } from "@/components/ui/use-toast";
+import { base44 } from "@/api/base44Client";
 
 const allNavItems = [
   { to: "/", label: "داشبورد", icon: LayoutDashboard, end: true, adminOnly: false },
@@ -32,6 +34,8 @@ export default function Layout() {
     if (stored) return stored === "dark";
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [resendingVerification, setResendingVerification] = useState(false);
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add("dark");
@@ -46,6 +50,25 @@ export default function Layout() {
   // back on the login page (see AuthContext.logout), so no router call here.
   const handleLogout = () => {
     logout(false);
+  };
+
+  const handleResendVerification = async () => {
+    setResendingVerification(true);
+    try {
+      await base44.auth.resendOtp(user.email);
+      toast({
+        title: "ایمیل تایید ارسال شد",
+        description: "کد تایید به ایمیل شما ارسال شد. ایمیل خود را بررسی کنید.",
+      });
+    } catch (err) {
+      toast({
+        title: "خطا",
+        description: err.message || "ارسال ایمیل تایید ناموفق بود",
+        variant: "destructive",
+      });
+    } finally {
+      setResendingVerification(false);
+    }
   };
 
   return (
@@ -149,6 +172,33 @@ export default function Layout() {
             </button>
           </div>
         </header>
+        {user && !user.is_verified && !bannerDismissed && (
+          <div className="bg-orange-50 dark:bg-orange-950/40 border-b border-orange-200 dark:border-orange-900 px-4 py-2.5 flex items-center gap-3">
+            <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />
+            <p className="text-sm text-orange-800 dark:text-orange-300 flex-1">
+              ایمیل شما تایید نشده است. برای دسترسی کامل، لطفاً ایمیل خود را تایید کنید.
+            </p>
+            <button
+              onClick={handleResendVerification}
+              disabled={resendingVerification}
+              className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 dark:text-orange-300 hover:underline disabled:opacity-50 shrink-0"
+            >
+              {resendingVerification ? (
+                <RefreshCw className="w-3 h-3 animate-spin" />
+              ) : (
+                <Send className="w-3 h-3" />
+              )}
+              ارسال مجدد
+            </button>
+            <button
+              onClick={() => setBannerDismissed(true)}
+              className="text-orange-500 hover:text-orange-700 dark:hover:text-orange-200 shrink-0"
+              aria-label="بستن"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
           <Outlet />
         </main>

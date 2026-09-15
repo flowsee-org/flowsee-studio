@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useAuth } from "@/lib/AuthContext";
 import { CheckCircle2, Circle, AlertTriangle, UserPlus, BookOpen, Shield, Calendar, MessageSquare, FileText, Settings } from "lucide-react";
 
 const defaultOnboardingItems = [

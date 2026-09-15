@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { X, Check } from "lucide-react";
+import { X } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
 
-export default function ReportForm({ tasks, userName, isAdmin, editReport, onClose, onSaved }) {
+export default function ReportForm({ tasks, userName, editReport, onClose, onSaved }) {
   const [form, setForm] = useState(
     editReport
       ? {

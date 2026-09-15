@@ -1,20 +1,18 @@
 import { useEffect, useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from "recharts";
-import { BarChart3, Download, Calendar, FileText, ArrowLeft, ArrowRight, TrendingUp, TrendingDown } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { BarChart3, Calendar, FileText, TrendingUp, TrendingDown } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
 
-const monthNames = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
-
 export default function Reports() {
   const [expenses, setExpenses] = useState([]);
   const [incomes, setIncomes] = useState([]);
   const [projects, setProjects] = useState([]);
-  const [period, setPeriod] = useState("monthly");
+  const [period] = useState("monthly");
   const [compareMode, setCompareMode] = useState(false);
   const [comparePeriod, setComparePeriod] = useState("previous");
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
@@ -52,7 +50,7 @@ export default function Reports() {
   }, [incomes, dateRange]);
 
   // Get previous period data for comparison
-  const getPreviousPeriodData = (data, periodType) => {
+  const getPreviousPeriodData = (data) => {
     if (!dateRange.from || !dateRange.to) return [];
     const from = new Date(dateRange.from.replace(/\//g, '-'));
     const to = new Date(dateRange.to.replace(/\//g, '-'));
