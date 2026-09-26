@@ -34,7 +34,7 @@ const quarterLabels = [
   "زمستان",
 ];
 
-const CURRENT_YEAR = 1404; // Iranian calendar year (approx 2025-2026)
+const CURRENT_YEAR = 1405; // Iranian calendar year (approx 2026-2027)
 
 function calcProgress(keyResults) {
   if (!keyResults || keyResults.length === 0) return 0;

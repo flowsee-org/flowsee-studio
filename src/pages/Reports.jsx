@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { BarChart3, Calendar, FileText, TrendingUp, TrendingDown } from "lucide-react";
+import { BarChart3, Calendar, FileText, TrendingUp, TrendingDown, X } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";

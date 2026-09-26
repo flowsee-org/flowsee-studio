@@ -32,6 +32,7 @@ import Goals from '@/pages/Goals';
 import LeaveRequests from '@/pages/LeaveRequests';
 import AppSettings from '@/pages/AppSettings';
 import DailyReportReminder from '@/hooks/useDailyReportReminder.jsx';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -65,38 +66,40 @@ const AuthenticatedApp = () => {
 
   // Render the main app
   return (
-    <>
-      <DailyReportReminder />
-      <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/accounting" element={<Accounting />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/meetings" element={<Meetings />} />
-          <Route path="/tasks" element={<Tasks />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/work-reports" element={<WorkReports />} />
-          <Route path="/employees" element={<Employees />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/projects/:id" element={<ProjectDetail />} />
-          <Route path="/announcements" element={<Announcements />} />
-          <Route path="/sprints" element={<Sprints />} />
-          <Route path="/goals" element={<Goals />} />
-          <Route path="/leave-requests" element={<LeaveRequests />} />
-          <Route path="/settings" element={<AppSettings />} />
-          <Route element={<AdminRoute />}>
-            <Route path="/admin" element={<Admin />} />
+    <ErrorBoundary>
+      <>
+        <DailyReportReminder />
+        <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/accounting" element={<Accounting />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/meetings" element={<Meetings />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/work-reports" element={<WorkReports />} />
+            <Route path="/employees" element={<Employees />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/projects/:id" element={<ProjectDetail />} />
+            <Route path="/announcements" element={<Announcements />} />
+            <Route path="/sprints" element={<Sprints />} />
+            <Route path="/goals" element={<Goals />} />
+            <Route path="/leave-requests" element={<LeaveRequests />} />
+            <Route path="/settings" element={<AppSettings />} />
+            <Route element={<AdminRoute />}>
+              <Route path="/admin" element={<Admin />} />
+            </Route>
           </Route>
         </Route>
-      </Route>
-      <Route path="*" element={<PageNotFound />} />
-    </Routes>
-    </>
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+      </>
+    </ErrorBoundary>
   );
 };
 

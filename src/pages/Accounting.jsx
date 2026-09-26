@@ -157,15 +157,6 @@ export default function Accounting() {
   const [lockMonth, setLockMonth] = useState("");
   const [salarySlip, setSalarySlip] = useState(null);
 
-  // Delete-with-undo hooks (must be at component top level for rules-of-hooks)
-  const { deleteWithUndo: deleteExpense } = useDeleteUndo("Expense", (id) => base44.entities.Expense.delete(id), loadAll);
-  const { deleteWithUndo: deleteIncome } = useDeleteUndo("Income", (id) => base44.entities.Income.delete(id), loadAll);
-  const { deleteWithUndo: deleteSalary } = useDeleteUndo("Salary", (id) => base44.entities.Salary.delete(id), loadAll);
-
-  useEffect(() => {
-    loadAll();
-  }, []);
-
   const loadAll = async () => {
     setLoading(true);
     const [e, i, s] = await Promise.all([
@@ -178,6 +169,17 @@ export default function Accounting() {
     setSalaries(s);
     setLoading(false);
   };
+
+
+  // Delete-with-undo hooks (must be at component top level for rules-of-hooks)
+  const { deleteWithUndo: deleteExpense } = useDeleteUndo("Expense", (id) => base44.entities.Expense.delete(id), loadAll);
+  const { deleteWithUndo: deleteIncome } = useDeleteUndo("Income", (id) => base44.entities.Income.delete(id), loadAll);
+  const { deleteWithUndo: deleteSalary } = useDeleteUndo("Salary", (id) => base44.entities.Salary.delete(id), loadAll);
+
+  useEffect(() => {
+    loadAll();
+  }, []);
+
 
   const tabs = useMemo(() => [
     { id: "expense", label: "هزینه‌ها", count: expenses.length, total: expenses.reduce((s, e) => s + (e.amount || 0), 0) },
