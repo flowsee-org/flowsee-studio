@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { BarChart3, Calendar, FileText, TrendingUp, TrendingDown, X } from "lucide-react";
+import { BarChart3, Calendar, FileText, TrendingUp, TrendingDown, Trash2 } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -256,7 +256,7 @@ export default function Reports() {
           <PersianDatePicker label="از تاریخ" value={dateRange.from} onChange={(v) => setDateRange({...dateRange, from: v})} placeholder="از تاریخ" />
           <PersianDatePicker label="تا تاریخ" value={dateRange.to} onChange={(v) => setDateRange({...dateRange, to: v})} placeholder="تا تاریخ" />
           <button onClick={() => setDateRange({ from: "", to: "" })} className="text-xs text-primary hover:underline flex items-center gap-1">
-            <X className="w-3.5 h-3.5" /> پاک کردن
+            <Trash2 className="w-3.5 h-3.5" /> پاک کردن
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-border">

@@ -171,7 +171,7 @@ export default function Accounting() {
   };
 
 
-  // Delete-with-undo hooks (must be at component top level for rules-of-hooks)
+  // Delete-with-undo hooks — declared at top level before any usage to prevent minifier TDZ errors
   const { deleteWithUndo: deleteExpense } = useDeleteUndo("Expense", (id) => base44.entities.Expense.delete(id), loadAll);
   const { deleteWithUndo: deleteIncome } = useDeleteUndo("Income", (id) => base44.entities.Income.delete(id), loadAll);
   const { deleteWithUndo: deleteSalary } = useDeleteUndo("Salary", (id) => base44.entities.Salary.delete(id), loadAll);
