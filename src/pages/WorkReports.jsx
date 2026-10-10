@@ -296,6 +296,7 @@ export default function WorkReports() {
           title="حذف گزارش کار"
           description={`گزارش کار "${deleteTarget.employee_name}" بلافاصله حذف می‌شود. آیا مطمئن هستید؟`}
           onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
           confirmText="بله، حذف شود"
         />
       )}

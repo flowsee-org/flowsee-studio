@@ -415,6 +415,7 @@ export default function Sprints() {
           title="حذف اسپرینت"
           description={`اسپرینت «${deleteTarget.name}» بلافاصله حذف می‌شود. آیا مطمئن هستید؟`}
           onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
           confirmText="بله، حذف شود"
         />
       )}

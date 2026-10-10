@@ -461,6 +461,7 @@ export default function Accounting() {
           title={`حذف ${deleteTarget.type === "expense" ? "هزینه" : deleteTarget.type === "income" ? "درآمد" : "حقوق"}`}
           description={`مورد «${deleteTarget.item.title || deleteTarget.item.employee_name || ""}» بلافاصله حذف می‌شود. آیا مطمئن هستید؟`}
           onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
           confirmText="بله، حذف شود"
         />
       )}

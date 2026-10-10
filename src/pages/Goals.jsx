@@ -640,6 +640,7 @@ export default function Goals() {
           title="حذف هدف"
           description={`هدف "${deleteTarget.title}" بلافاصله حذف می‌شود. آیا مطمئن هستید؟`}
           onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(null)}
           confirmText="بله، حذف شود"
         />
       )}

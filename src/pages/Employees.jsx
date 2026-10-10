@@ -468,6 +468,7 @@ export default function Employees() {
           title="حذف عضو"
           description={`آیا از حذف "${deleteTarget.name}" مطمئن هستید؟ این کار قابل بازگشت نیست.`}
           onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
           confirmText="بله، حذف شود"
         />
       )}

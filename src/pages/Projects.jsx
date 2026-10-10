@@ -210,6 +210,7 @@ export default function Projects() {
           title="حذف پروژه"
           description={`پروژه "${deleteTarget.name}" بلافاصله حذف می‌شود. آیا مطمئن هستید؟`}
           onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
           confirmText="بله، حذف شود"
         />
       )}

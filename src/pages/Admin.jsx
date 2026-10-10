@@ -397,6 +397,7 @@ export default function Admin() {
                     title="غیرفعال کردن کاربر"
                     description={`${u.full_name || u.email} دیگر نمی‌تواند وارد شود. آیا مطمئن هستید؟`}
                     onConfirm={() => handleDeactivate(u)}
+                    onCancel={() => setDeactivateTarget(null)}
                     confirmText="بله، غیرفعال شود"
                   />
                 )}
@@ -405,6 +406,7 @@ export default function Admin() {
                     title="خروج اجباری"
                     description={`${u.full_name || u.email} بلافاصله خارج می‌شود و باید دوباره وارد شود.`}
                     onConfirm={() => handleForceLogout(u)}
+                    onCancel={() => setForceLogoutTarget(null)}
                     confirmText="بله، خارج شود"
                     variant="destructive"
                   />
@@ -414,6 +416,7 @@ export default function Admin() {
                     title="بازنشانی رمز عبور"
                     description={`لینک بازیابی رمز برای ${u.email} ارسال می‌شود.`}
                     onConfirm={() => handleResetPassword(u)}
+                    onCancel={() => setResetPasswordTarget(null)}
                     confirmText="ارسال لینک"
                     variant="default"
                   />

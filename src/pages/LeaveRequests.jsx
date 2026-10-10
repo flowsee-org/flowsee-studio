@@ -517,6 +517,7 @@ export default function LeaveRequests() {
           title="حذف درخواست مرخصی"
           description={`درخواست مرخصی "${deleteTarget.user_name}" از ${deleteTarget.start_date} تا ${deleteTarget.end_date} بلافاصله حذف می‌شود. آیا مطمئن هستید؟`}
           onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
           confirmText="بله، حذف شود"
         />
       )}

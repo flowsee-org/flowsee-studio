@@ -577,6 +577,7 @@ export default function Meetings() {
           title="حذف جلسه"
           description={`جلسه با "${deleteTarget.colleague}" در تاریخ ${deleteTarget.date} بلافاصله حذف می‌شود. آیا مطمئن هستید؟`}
           onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
           confirmText="بله، حذف شود"
         />
       )}

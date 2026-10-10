@@ -236,6 +236,7 @@ export default function Announcements() {
           title="حذف اعلان"
           description={`اعلان "${deleteTarget.title}" بلافاصله حذف می‌شود. آیا مطمئن هستید؟`}
           onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
           confirmText="بله، حذف شود"
         />
       )}
