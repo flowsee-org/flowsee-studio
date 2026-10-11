@@ -1,34 +1,36 @@
 import { useState, useEffect } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { LayoutDashboard, Wallet, BarChart3, Calendar, Users, FolderKanban, ClipboardList, ListTodo, Menu, Shield, LogOut, UserCircle, Sun, Moon, Megaphone, Flag, Target, CalendarDays, Settings, AlertTriangle, X, RefreshCw, Send, Inbox } from "lucide-react";
+import { LayoutDashboard, Wallet, BarChart3, Calendar, Users, FolderKanban, ClipboardList, ListTodo, Menu, Shield, LogOut, UserCircle, Sun, Moon, Megaphone, Flag, Target, CalendarDays, Settings, AlertTriangle, X, RefreshCw, Send, Inbox, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { roleLabel } from "@/lib/roles";
 import NotificationCenter from "@/components/NotificationCenter";
 import { toast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
+import { canAccessModule } from "@/lib/permissions";
 
 const allNavItems = [
-  { to: "/", label: "داشبورد", icon: LayoutDashboard, end: true, adminOnly: false },
-  { to: "/announcements", label: "اعلانات", icon: Megaphone, adminOnly: false },
-  { to: "/accounting", label: "حسابداری", icon: Wallet, adminOnly: true },
-  { to: "/reports", label: "گزارش‌ها", icon: BarChart3, adminOnly: true },
-  { to: "/meetings", label: "جلسات", icon: Calendar, adminOnly: false },
-  { to: "/tasks", label: "تسک‌ها", icon: ListTodo, adminOnly: false },
-  { to: "/projects", label: "پروژه‌ها", icon: FolderKanban, adminOnly: false },
-  { to: "/work-reports", label: "گزارش کار", icon: ClipboardList, adminOnly: false },
-  { to: "/employees", label: "کارکنان", icon: Users, adminOnly: true },
-  { to: "/sprints", label: "اسپرینتها", icon: Flag, adminOnly: false },
-  { to: "/goals", label: "اهداف", icon: Target, adminOnly: true },
-  { to: "/leave-requests", label: "مرخصیها", icon: CalendarDays, adminOnly: false },
-  { to: "/settings", label: "تنظیمات", icon: Settings, adminOnly: true },
-  { to: "/admin", label: "پنل ادمین", icon: Shield, adminOnly: true },
-  { to: "/website-messages", label: "پیام‌های سایت", icon: Inbox, adminOnly: true },
+  { to: "/", label: "داشبورد", icon: LayoutDashboard, end: true, adminOnly: false, module: "dashboard" },
+  { to: "/announcements", label: "اعلانات", icon: Megaphone, adminOnly: false, module: "announcements" },
+  { to: "/accounting", label: "حسابداری", icon: Wallet, adminOnly: true, module: "accounting" },
+  { to: "/reports", label: "گزارش", icon: BarChart3, adminOnly: true, module: "reports" },
+  { to: "/meetings", label: "جلسه", icon: Calendar, adminOnly: false, module: "meetings" },
+  { to: "/tasks", label: "تسک", icon: ListTodo, adminOnly: false, module: "tasks" },
+  { to: "/projects", label: "پروژه", icon: FolderKanban, adminOnly: false, module: "projects" },
+  { to: "/work-reports", label: "گزارش کار", icon: ClipboardList, adminOnly: false, module: "work-reports" },
+  { to: "/employees", label: "کارکنان", icon: Users, adminOnly: true, module: "employees" },
+  { to: "/sprints", label: "اسپرینت", icon: Flag, adminOnly: false, module: "sprints" },
+  { to: "/goals", label: "اهداف", icon: Target, adminOnly: true, module: "goals" },
+  { to: "/leave-requests", label: "مرخصی", icon: CalendarDays, adminOnly: false, module: "leave-requests" },
+  { to: "/settings", label: "تنظیمات", icon: Settings, adminOnly: true, module: "settings" },
+  { to: "/admin", label: "پنل ادمین", icon: Shield, adminOnly: true, module: "admin" },
+  { to: "/website-messages", label: "پیام‌های سایت", icon: Inbox, adminOnly: true, module: "website-messages" },
 ];
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem("studio-sidebar-hidden") === "true");
   const { user, logout, isAdmin, isSuperadmin } = useAuth();
-  const navItems = allNavItems.filter((item) => !item.adminOnly || isAdmin);
+  const navItems = allNavItems.filter((item) => (!item.adminOnly || isAdmin) && canAccessModule(user, item.module));
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === "undefined") return false;
     const stored = localStorage.getItem("theme");
@@ -75,9 +77,9 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-background flex" dir="rtl">
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-card border-l border-border flex flex-col transition-transform duration-300 shadow-xl lg:shadow-none ${
-          open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
+        className={`fixed lg:static inset-y-0 right-0 z-50 w-72 shrink-0 overflow-hidden bg-card border-l border-border flex flex-col transition-all duration-300 shadow-xl lg:shadow-none ${
+          open ? "translate-x-0" : "translate-x-full lg:translate-x-0"
+        } ${sidebarHidden ? "lg:w-0 lg:opacity-0 lg:border-0" : "lg:w-72"}`}
       >
         <div className="p-6 border-b border-border">
           <div className="flex items-center gap-3">
@@ -167,6 +169,18 @@ export default function Layout() {
         <header className="hidden lg:flex lg:items-center lg:justify-between lg:p-4 lg:bg-card lg:border-b lg:border-border lg:sticky lg:top-0 lg:z-30">
           <span className="font-bold">استودیو فلوسی</span>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSidebarHidden((hidden) => {
+                const next = !hidden;
+                localStorage.setItem("studio-sidebar-hidden", String(next));
+                return next;
+              })}
+              className="p-2 rounded-lg hover:bg-accent"
+              aria-label={sidebarHidden ? "نمایش نوار کناری" : "پنهان کردن نوار کناری"}
+              title={sidebarHidden ? "نمایش نوار کناری" : "پنهان کردن نوار کناری"}
+            >
+              {sidebarHidden ? <PanelRightOpen className="w-5 h-5" /> : <PanelRightClose className="w-5 h-5" />}
+            </button>
             <NotificationCenter />
             <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-lg hover:bg-accent">
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}

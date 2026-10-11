@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 import { Settings, Upload, Image, Clock, Globe, Building, Coins, Lock } from "lucide-react";
+import { imageFileToDataUrl } from "@/lib/image-file";
 
 const DEFAULTS = {
   company_name: "",
@@ -18,6 +19,17 @@ const months = [
   "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
   "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند",
 ];
+
+function FieldRow({ label, icon: Icon, children }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        {Icon && <Icon className="w-4 h-4" />} {label}
+      </label>
+      {children}
+    </div>
+  );
+}
 
 export default function AppSettings() {
   const { isSuperadmin } = useAuth();
@@ -64,12 +76,15 @@ export default function AppSettings() {
     if (!file) return;
     try {
       setUploading(true);
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setSettings((s) => ({ ...s, company_logo: file_url }));
+      const imageData = await imageFileToDataUrl(file);
+      setSettings((s) => ({ ...s, company_logo: imageData }));
+      toast({ title: "لوگو بارگذاری شد", description: "برای ثبت نهایی، تنظیمات شرکت را ذخیره کنید." });
     } catch (err) {
       console.error(err);
+      toast({ title: "بارگذاری لوگو ناموفق بود", description: err.message || "لطفاً تصویر کوچک‌تری انتخاب کنید.", variant: "destructive" });
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -120,15 +135,6 @@ export default function AppSettings() {
       </div>
     );
   }
-
-  const FieldRow = ({ label, icon: Icon, children }) => (
-    <div className="space-y-1.5">
-      <label className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-        {Icon && <Icon className="w-4 h-4" />} {label}
-      </label>
-      {children}
-    </div>
-  );
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

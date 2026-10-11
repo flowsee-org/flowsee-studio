@@ -3,12 +3,14 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { Camera, Save, Mail, Phone, User, CheckCircle, AlertTriangle, Send, Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { imageFileToDataUrl } from "@/lib/image-file";
 
 export default function Profile() {
   const { user, checkUserAuth } = useAuth();
   const [fullName, setFullName] = useState(user?.full_name || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [profileImage, setProfileImage] = useState(user?.profile_image || "");
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -42,10 +44,16 @@ export default function Profile() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setProfileImage(file_url);
+      setUploadingImage(true);
+      const imageData = await imageFileToDataUrl(file, { maxDimension: 800 });
+      setProfileImage(imageData);
+      toast({ title: "تصویر بارگذاری شد", description: "برای ثبت آن، ذخیره تغییرات را بزنید." });
     } catch (err) {
       console.error(err);
+      toast({ title: "آپلود تصویر ناموفق بود", description: err.message || "دوباره تلاش کنید.", variant: "destructive" });
+    } finally {
+      setUploadingImage(false);
+      e.target.value = "";
     }
   };
 
@@ -94,8 +102,9 @@ export default function Profile() {
             )}
             <label className="absolute bottom-0 left-0 bg-primary text-primary-foreground rounded-full p-1.5 cursor-pointer hover:opacity-90 transition-opacity">
               <Camera className="w-4 h-4" />
-              <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+              <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploadingImage} />
             </label>
+            {uploadingImage && <span className="text-xs text-muted-foreground">در حال آپلود تصویر...</span>}
           </div>
           <div className="min-w-0">
             <p className="font-bold text-lg truncate">{fullName || "بدون نام"}</p>

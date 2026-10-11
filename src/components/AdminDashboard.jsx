@@ -12,6 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, A
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
 
 export default function AdminDashboard() {
+  const [showMobileDateFilters, setShowMobileDateFilters] = useState(false);
   const [dateRange, setDateRange] = useState({ from: getPersianDate(-30), to: getPersianDate(0) });
   const [data, setData] = useState({ expenses: [], incomes: [], tasks: [], meetings: [], workReports: [], users: [], leaveRequests: [] });
   const [loading, setLoading] = useState(true);
@@ -165,40 +166,52 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto min-w-0">
       {/* Header with date range picker */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold">داشبورد</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">داشبورد</h1>
           <p className="text-muted-foreground mt-1 text-sm">نمای کلی وضعیت کسب‌وکار</p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
+        <div className="w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setShowMobileDateFilters((value) => !value)}
+            aria-expanded={showMobileDateFilters}
+            className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-accent sm:hidden"
+            aria-label={showMobileDateFilters ? "بستن فیلتر بازهٔ زمانی" : "نمایش فیلتر بازهٔ زمانی"}
+            title="بازهٔ زمانی"
+          >
+            <Filter className="h-4 w-4" />
+          </button>
+          <div className={`${showMobileDateFilters ? "grid" : "hidden"} w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-end sm:gap-3`}>
+          <div className="col-span-2 flex items-center gap-2 sm:col-span-1 sm:pb-2">
             <Filter className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">بازه:</span>
           </div>
-          <PersianDatePicker label="از" value={dateRange.from} onChange={(v) => setDateRange({...dateRange, from: v})} placeholder="از تاریخ" />
-          <PersianDatePicker label="تا" value={dateRange.to} onChange={(v) => setDateRange({...dateRange, to: v})} placeholder="تا تاریخ" />
-          <select value={chartPeriod} onChange={(e) => setChartPeriod(e.target.value)} className="border border-input rounded-xl px-3 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <div className="min-w-0"><PersianDatePicker label="از" value={dateRange.from} onChange={(v) => setDateRange({...dateRange, from: v})} placeholder="از تاریخ" /></div>
+          <div className="min-w-0"><PersianDatePicker label="تا" value={dateRange.to} onChange={(v) => setDateRange({...dateRange, to: v})} placeholder="تا تاریخ" /></div>
+          <select value={chartPeriod} onChange={(e) => setChartPeriod(e.target.value)} className="col-span-2 sm:col-span-1 border border-input rounded-xl px-3 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30">
             <option value="week">هفته</option>
             <option value="month">ماه</option>
             <option value="quarter">فصل</option>
           </select>
+          </div>
         </div>
       </div>
 
       <MeetingReminders />
 
       {/* Stats with trend indicators */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {stats.map((s) => (
-          <div key={s.label} className="bg-card rounded-2xl p-4 sm:p-6 border border-border">
-            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${s.color} flex items-center justify-center mb-3 sm:mb-4`}>
+          <div key={s.label} className="min-w-0 bg-card rounded-2xl p-3 sm:p-6 border border-border">
+            <div className={`w-9 h-9 sm:w-12 sm:h-12 rounded-xl ${s.color} flex items-center justify-center mb-2 sm:mb-4`}>
               <s.icon className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground">{s.label}</p>
             <div className="flex items-end justify-between mt-1">
-              <p className="text-base sm:text-2xl font-bold">{s.value} {s.suffix && <span className="text-xs sm:text-sm font-normal text-muted-foreground">{s.suffix}</span>}</p>
+              <p className="min-w-0 break-words text-sm min-[380px]:text-base sm:text-2xl font-bold leading-tight">{s.value} {s.suffix && <span className="text-[10px] sm:text-sm font-normal text-muted-foreground">{s.suffix}</span>}</p>
               {s.trend !== undefined && (
                 <div className={`flex items-center gap-1 text-xs font-medium ${s.trend > 0 ? "text-green-600" : s.trend < 0 ? "text-red-600" : "text-muted-foreground"}`}>
                   {s.trend > 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : s.trend < 0 ? <ArrowDownRight className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
@@ -210,9 +223,9 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {quickLinks.map((q) => (
-          <Link key={q.to} to={q.to} className={`${q.color} text-white rounded-2xl p-4 sm:p-5 flex items-center justify-between hover:opacity-90 transition-opacity`}>
+          <Link key={q.to} to={q.to} className={`${q.color} min-w-0 text-white rounded-xl sm:rounded-2xl p-3 sm:p-5 flex items-center justify-between gap-2 hover:opacity-90 transition-opacity`}>
             <span className="font-medium text-xs sm:text-sm">{q.label}</span>
             <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </Link>
@@ -446,8 +459,12 @@ function CalendarView({ meetings, tasks, workReports, leaveRequests }) {
           const isToday = dayKey === todayKey;
           return (
             <div key={day} className={`relative aspect-square p-1 rounded-lg ${isToday ? "bg-primary/10 ring-2 ring-primary" : "hover:bg-accent/30"}`}>
-              <span className={`text-sm font-medium ${isToday ? "text-primary" : ""}`}>{toPersianDigit(day)}</span>
-              <div className="space-y-1 mt-1 max-h-20 overflow-y-auto">
+              <span className={`text-xs sm:text-sm font-medium ${isToday ? "text-primary" : ""}`}>{toPersianDigit(day)}</span>
+              <div className="mt-1 flex gap-0.5 sm:hidden" aria-label={`${events.length} رویداد`}>
+                {events.slice(0, 3).map((event, idx) => <span key={idx} className={`h-1.5 w-1.5 rounded-full ${event.type === "meeting" ? "bg-blue-500" : event.type === "task" ? "bg-amber-500" : event.type === "leave" ? "bg-purple-500" : "bg-green-500"}`} />)}
+                {events.length > 3 && <span className="text-[8px] leading-none text-muted-foreground">+{events.length - 3}</span>}
+              </div>
+              <div className="hidden sm:block space-y-1 mt-1 max-h-20 overflow-y-auto">
                 {events.slice(0, 3).map((e, idx) => (
                   <div key={idx} className={`text-[10px] px-1 py-0.5 rounded truncate ${e.type === "meeting" ? "bg-blue-100 text-blue-700" : e.type === "task" ? "bg-amber-100 text-amber-700" : e.type === "leave" ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"}`}>
                     {e.time && <span className="mr-1">{e.time}</span>}

@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { X, User, Calendar, Briefcase, BookOpen, CircleDot } from "lucide-react";
+import { X, User, Calendar, Briefcase, BookOpen, CircleDot, Camera } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import PersianDatePicker from "@/components/PersianDatePicker";
+import { toast } from "@/components/ui/use-toast";
+import { imageFileToDataUrl } from "@/lib/image-file";
 
 const availabilityOptions = [
   { value: "available", label: "حاضر", color: "bg-green-100 text-green-700" },
@@ -14,6 +16,9 @@ export const availabilityColor = (v) => availabilityOptions.find((o) => o.value 
 
 export default function EmployeeProfile({ employee, canEdit, onClose, onSaved }) {
   const [form, setForm] = useState({
+    full_name: employee.name || "",
+    phone: employee.phone || "",
+    profile_image: employee.profile_image || "",
     department: employee.department || "",
     position: employee.position || "",
     hire_date: employee.hire_date || "",
@@ -22,6 +27,7 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
     bio: employee.bio || "",
   });
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState("");
 
   const handleSave = async () => {
@@ -29,6 +35,9 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
     setError("");
     try {
       await base44.entities.User.update(employee.id, {
+        full_name: form.full_name.trim(),
+        phone: form.phone.trim(),
+        profile_image: form.profile_image,
         department: form.department.trim(),
         position: form.position.trim(),
         hire_date: form.hire_date,
@@ -42,6 +51,22 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
       setError(err.message || "ذخیره ناموفق بود");
     }
     setSaving(false);
+  };
+
+  const handleImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingImage(true);
+      const imageData = await imageFileToDataUrl(file, { maxDimension: 800 });
+      setForm((current) => ({ ...current, profile_image: imageData }));
+      toast({ title: "تصویر بارگذاری شد", description: "برای ثبت نهایی، پروفایل را ذخیره کنید." });
+    } catch (err) {
+      toast({ title: "آپلود تصویر ناموفق بود", description: err.message || "دوباره تلاش کنید.", variant: "destructive" });
+    } finally {
+      setUploadingImage(false);
+      event.target.value = "";
+    }
   };
 
   return (
@@ -58,14 +83,18 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
 
         <div className="flex items-center gap-4 mb-5">
           <div className="relative w-16 h-16 rounded-full shrink-0">
-            {employee.profile_image ? (
-              <img src={employee.profile_image} alt={employee.name} className="w-16 h-16 rounded-full object-cover" onError={(ev) => { ev.target.style.display = "none"; }} />
+            {form.profile_image ? (
+              <img src={form.profile_image} alt={employee.name} className="w-16 h-16 rounded-full object-cover" onError={(ev) => { ev.target.style.display = "none"; }} />
             ) : (
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl">
                 {(employee.name || "؟").charAt(0)}
               </div>
             )}
           </div>
+          {canEdit && <label className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs cursor-pointer hover:bg-accent">
+            <Camera className="h-4 w-4" />{uploadingImage ? "در حال آپلود..." : "تغییر تصویر"}
+            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
+          </label>}
           <div className="min-w-0">
             <p className="font-bold text-lg truncate">{employee.name}</p>
             <p className="text-sm text-muted-foreground truncate" dir="ltr">{employee.email}</p>
@@ -76,6 +105,16 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
         </div>
 
         <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium block mb-1.5">نام و نام خانوادگی</label>
+              <input type="text" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} disabled={!canEdit} className="w-full border border-input rounded-xl px-4 py-2.5 text-sm disabled:opacity-60" />
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1.5">شماره تماس</label>
+              <input type="tel" dir="ltr" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} disabled={!canEdit} className="w-full border border-input rounded-xl px-4 py-2.5 text-sm disabled:opacity-60" />
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium block mb-1.5 flex items-center gap-1.5">
