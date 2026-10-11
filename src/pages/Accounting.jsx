@@ -8,6 +8,7 @@ import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
 import { getPersianDate } from "@/components/PersianDatePicker";
 import { toast } from "@/components/ui/use-toast";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { accountingRecordKey, parseAccountingCsv } from "@/lib/accounting-csv";
 
 function ExpenseRow({ expense, isLocked, onDelete, onEdit }) {
   const [editing, setEditing] = useState(false);
@@ -153,14 +154,15 @@ export default function Accounting() {
   const [showForm, setShowForm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [showCharts, setShowCharts] = useState(false);
+  const [showCsvImport, setShowCsvImport] = useState(false);
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
   const [lockedPeriods, setLockedPeriods] = useState([]);
   const [showLockModal, setShowLockModal] = useState(false);
   const [lockMonth, setLockMonth] = useState("");
   const [salarySlip, setSalarySlip] = useState(null);
 
-  const loadAll = async () => {
-    setLoading(true);
+  const loadAll = async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     const [e, i, s] = await Promise.all([
       base44.entities.Expense.list("-created_date"),
       base44.entities.Income.list("-created_date"),
@@ -169,7 +171,7 @@ export default function Accounting() {
     setExpenses(e);
     setIncomes(i);
     setSalaries(s);
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
 
@@ -283,6 +285,12 @@ export default function Accounting() {
           <p className="text-muted-foreground mt-1">ثبت هزینه‌ها، درآمدها، حقوق و بودجه‌بندی</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowCsvImport(true)}
+            className="border border-input rounded-xl px-4 py-2.5 text-sm bg-card hover:border-primary/40 hover:text-primary flex items-center gap-2"
+          >
+            <Upload className="w-4 h-4" /> ورود CSV
+          </button>
           <button
             onClick={() => setShowCharts(!showCharts)}
             className={`border border-input rounded-xl px-4 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 ${showCharts ? "border-primary bg-primary/5" : ""}`}
@@ -458,6 +466,15 @@ export default function Accounting() {
 
       {showForm && <FormModal tab={tab} onClose={() => setShowForm(false)} onSaved={loadAll} />}
 
+      {showCsvImport && (
+        <ImportCsvModal
+          initialType={tab}
+          existingRecords={{ expense: expenses, income: incomes, salary: salaries }}
+          onClose={() => setShowCsvImport(false)}
+          onSaved={() => loadAll({ silent: true })}
+        />
+      )}
+
       {deleteTarget && (
         <ConfirmDialog
           title={`حذف ${deleteTarget.type === "expense" ? "هزینه" : deleteTarget.type === "income" ? "درآمد" : "حقوق"}`}
@@ -508,6 +525,198 @@ export default function Accounting() {
   );
 }
 
+
+function ImportCsvModal({ initialType, existingRecords, onClose, onSaved }) {
+  const [type, setType] = useState(initialType);
+  const [fileName, setFileName] = useState("");
+  const [preview, setPreview] = useState(null);
+  const [summary, setSummary] = useState(null);
+  const [reading, setReading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const typeLabels = { expense: "هزینه‌ها", income: "درآمدها", salary: "حقوق" };
+  const entityNames = { expense: "Expense", income: "Income", salary: "Salary" };
+
+  const handleFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setSummary(null);
+    setPreview(null);
+    setFileName(file.name);
+    if (file.size > 5 * 1024 * 1024) {
+      setPreview({ records: [], errors: ["حجم فایل باید کمتر از ۵ مگابایت باشد."], totalRows: 0, duplicates: 0 });
+      return;
+    }
+
+    setReading(true);
+    try {
+      const parsed = parseAccountingCsv(await readCsvFile(file), type);
+      const knownRecords = new Set((existingRecords[type] || []).map((record) => accountingRecordKey(type, record)));
+      const records = [];
+      let duplicates = 0;
+      parsed.records.forEach((record) => {
+        const key = accountingRecordKey(type, record);
+        if (knownRecords.has(key)) duplicates += 1;
+        else {
+          knownRecords.add(key);
+          records.push(record);
+        }
+      });
+      setPreview({ ...parsed, records, duplicates });
+    } catch {
+      setPreview({ records: [], errors: ["خواندن فایل ناموفق بود. لطفاً فایل CSV سالم انتخاب کنید."], totalRows: 0, duplicates: 0 });
+    } finally {
+      setReading(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!preview?.records?.length || importing) return;
+    setImporting(true);
+    setProgress(0);
+    let created = 0;
+    const failures = [];
+    const batchSize = 8;
+
+    for (let start = 0; start < preview.records.length; start += batchSize) {
+      const batch = preview.records.slice(start, start + batchSize);
+      const results = await Promise.allSettled(
+        batch.map((record) => base44.entities[entityNames[type]].create(record))
+      );
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled") created += 1;
+        else failures.push(`ردیف ${start + index + 2}: ${result.reason?.message || "ثبت ناموفق بود."}`);
+      });
+      setProgress(Math.min(start + batch.length, preview.records.length));
+    }
+
+    try {
+      await onSaved();
+    } catch {
+      // Imported rows stay saved; the next page load will refresh the list.
+    }
+    setSummary({ created, failures, duplicates: preview.duplicates, invalid: preview.errors.length, total: preview.totalRows });
+    setImporting(false);
+  };
+
+  const rows = [
+    { value: "expense", label: "هزینه", headers: "عنوان، مبلغ، تاریخ، دسته‌بندی، وضعیت، پروژه" },
+    { value: "income", label: "درآمد", headers: "عنوان، مبلغ، تاریخ، توضیحات" },
+    { value: "salary", label: "حقوق", headers: "نام کارمند، مبلغ، ماه، تاریخ، وضعیت، حقوق پایه، اضافه‌کاری، کسورات، مزایا، یادداشت" },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={importing ? undefined : onClose}>
+      <div dir="rtl" className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-2xl bg-card p-5 shadow-xl sm:p-6" onClick={(event) => event.stopPropagation()}>
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-lg font-bold"><Upload className="h-5 w-5 text-primary" /> ورود فایل حسابداری</h2>
+            <p className="mt-1 text-xs text-muted-foreground">CSV با ستون‌های فارسی یا انگلیسی؛ حداکثر ۵۰۰ ردیف</p>
+          </div>
+          <button onClick={onClose} disabled={importing} className="rounded-lg p-2 hover:bg-accent disabled:opacity-50" aria-label="بستن">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {!summary && (
+          <>
+            <label className="mb-1.5 block text-sm font-medium">نوع اطلاعات فایل</label>
+            <select
+              value={type}
+              disabled={reading || importing}
+              onChange={(event) => { setType(event.target.value); setPreview(null); setFileName(""); }}
+              className="mb-4 w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm"
+            >
+              {rows.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+
+            <div className="mb-4 rounded-xl bg-accent/40 p-3 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">ستون‌های پیشنهادی برای {rows.find((row) => row.value === type)?.label}:</p>
+              <p className="mt-1 leading-6">{rows.find((row) => row.value === type)?.headers}</p>
+              <p className="mt-1">مبلغ‌ها به تومان و تاریخ‌ها به شمسی وارد شوند؛ تاریخ میلادی هم به شمسی تبدیل می‌شود.</p>
+            </div>
+
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-input px-4 py-5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:bg-accent/30">
+              <Upload className="h-4 w-4" />
+              {reading ? "در حال خواندن فایل..." : fileName || "انتخاب فایل CSV"}
+              <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleFile} disabled={reading || importing} />
+            </label>
+
+            {preview && (
+              <div className="mt-4 space-y-3">
+                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="rounded-lg bg-green-50 p-2 text-green-700">قابل ورود: {faNum(preview.records.length)}</div>
+                  <div className="rounded-lg bg-amber-50 p-2 text-amber-700">تکراری: {faNum(preview.duplicates)}</div>
+                  <div className="rounded-lg bg-red-50 p-2 text-red-700">خطا: {faNum(preview.errors.length)}</div>
+                </div>
+                {preview.records.length > 0 && (
+                  <div className="max-h-36 overflow-y-auto rounded-xl border border-border text-xs">
+                    {preview.records.slice(0, 5).map((record, index) => (
+                      <div key={`${accountingRecordKey(type, record)}-${index}`} className="flex items-center justify-between gap-3 border-b border-border p-2 last:border-0">
+                        <span className="truncate">{record.title || record.employee_name}</span>
+                        <span className="shrink-0">{faNum(record.amount)} تومان</span>
+                      </div>
+                    ))}
+                    {preview.records.length > 5 && <p className="p-2 text-center text-muted-foreground">و {faNum(preview.records.length - 5)} ردیف دیگر</p>}
+                  </div>
+                )}
+                {preview.errors.length > 0 && (
+                  <div className="max-h-28 overflow-y-auto rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700" role="alert">
+                    {preview.errors.slice(0, 6).map((error, index) => <p key={index}>{error}</p>)}
+                    {preview.errors.length > 6 && <p className="mt-1">و {faNum(preview.errors.length - 6)} خطای دیگر</p>}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {importing && (
+              <p className="mt-3 text-center text-xs text-muted-foreground">در حال ورود {faNum(progress)} از {faNum(preview?.records.length || 0)} ردیف…</p>
+            )}
+            <div className="mt-5 flex gap-2">
+              <button onClick={handleImport} disabled={!preview?.records?.length || reading || importing} className="flex-1 rounded-xl bg-primary px-4 py-3 font-medium text-primary-foreground disabled:opacity-50">
+                {importing ? "در حال ورود..." : `ورود ${faNum(preview?.records?.length || 0)} ردیف`}
+              </button>
+              <button onClick={onClose} disabled={importing} className="rounded-xl border border-border px-4 py-3 text-sm text-muted-foreground disabled:opacity-50">انصراف</button>
+            </div>
+          </>
+        )}
+
+        {summary && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border p-4">
+              <h3 className="font-semibold">ورود {typeLabels[type]} تمام شد</h3>
+              <p className="mt-2 text-sm text-green-700">ثبت‌شده: {faNum(summary.created)} ردیف</p>
+              {summary.duplicates > 0 && <p className="mt-1 text-sm text-amber-700">تکراری و ردشده: {faNum(summary.duplicates)} ردیف</p>}
+              {summary.invalid > 0 && <p className="mt-1 text-sm text-amber-700">نامعتبر و ردشده: {faNum(summary.invalid)} ردیف</p>}
+              {summary.failures.length > 0 && (
+                <div className="mt-3 max-h-32 overflow-y-auto rounded-lg bg-red-50 p-3 text-xs text-red-700" role="alert">
+                  {summary.failures.slice(0, 10).map((failure) => <p key={failure}>{failure}</p>)}
+                  {summary.failures.length > 10 && <p>و {faNum(summary.failures.length - 10)} خطای دیگر</p>}
+                </div>
+              )}
+            </div>
+            <button onClick={onClose} className="w-full rounded-xl bg-primary px-4 py-3 font-medium text-primary-foreground">بستن</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+async function readCsvFile(file) {
+  const bytes = await file.arrayBuffer();
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    try {
+      return new TextDecoder("windows-1256").decode(bytes);
+    } catch {
+      return new TextDecoder().decode(bytes);
+    }
+  }
+}
 
 function Row({ title, sub, amount, category, positive, onDelete }) {
   return (
