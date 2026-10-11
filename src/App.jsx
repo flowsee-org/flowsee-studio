@@ -16,6 +16,7 @@ import ResetPassword from '@/pages/ResetPassword';
 import Layout from '@/components/Layout';
 import AdminRoute from '@/components/AdminRoute';
 import Admin from '@/pages/Admin';
+import WebsiteMessages from '@/pages/WebsiteMessages';
 import Dashboard from '@/pages/Dashboard';
 import Accounting from '@/pages/Accounting';
 import Reports from '@/pages/Reports';
@@ -93,6 +94,7 @@ const AuthenticatedApp = () => {
             <Route path="/settings" element={<AppSettings />} />
             <Route element={<AdminRoute />}>
               <Route path="/admin" element={<Admin />} />
+              <Route path="/website-messages" element={<WebsiteMessages />} />
             </Route>
           </Route>
         </Route>
