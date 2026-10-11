@@ -6,13 +6,15 @@ import TodayTasks from "@/components/TodayTasks";
 import AnnouncementWidget from "@/components/AnnouncementWidget";
 import MeetingReminders from "@/components/MeetingReminders";
 import PersianDatePicker, { getPersianDate } from "@/components/PersianDatePicker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { addDaysToKey, persianWeekday, isJalaliLeap } from "@/lib/jalali";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, LineChart, Line } from "recharts";
 
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
 
 export default function AdminDashboard() {
-  const [showMobileDateFilters, setShowMobileDateFilters] = useState(false);
+  const [showDateRange, setShowDateRange] = useState(false);
+  const [showPeriodPicker, setShowPeriodPicker] = useState(false);
   const [dateRange, setDateRange] = useState({ from: getPersianDate(-30), to: getPersianDate(0) });
   const [data, setData] = useState({ expenses: [], incomes: [], tasks: [], meetings: [], workReports: [], users: [], leaveRequests: [] });
   const [loading, setLoading] = useState(true);
@@ -173,30 +175,56 @@ export default function AdminDashboard() {
           <h1 className="text-xl sm:text-2xl font-bold">داشبورد</h1>
           <p className="text-muted-foreground mt-1 text-sm">نمای کلی وضعیت کسب‌وکار</p>
         </div>
-        <div className="w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={() => setShowMobileDateFilters((value) => !value)}
-            aria-expanded={showMobileDateFilters}
-            className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-accent sm:hidden"
-            aria-label={showMobileDateFilters ? "بستن فیلتر بازهٔ زمانی" : "نمایش فیلتر بازهٔ زمانی"}
-            title="بازهٔ زمانی"
-          >
-            <Filter className="h-4 w-4" />
-          </button>
-          <div className={`${showMobileDateFilters ? "grid" : "hidden"} w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-end sm:gap-3`}>
-          <div className="col-span-2 flex items-center gap-2 sm:col-span-1 sm:pb-2">
-            <Filter className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">بازه:</span>
-          </div>
-          <div className="min-w-0"><PersianDatePicker label="از" value={dateRange.from} onChange={(v) => setDateRange({...dateRange, from: v})} placeholder="از تاریخ" /></div>
-          <div className="min-w-0"><PersianDatePicker label="تا" value={dateRange.to} onChange={(v) => setDateRange({...dateRange, to: v})} placeholder="تا تاریخ" /></div>
-          <select value={chartPeriod} onChange={(e) => setChartPeriod(e.target.value)} className="col-span-2 sm:col-span-1 border border-input rounded-xl px-3 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30">
-            <option value="week">هفته</option>
-            <option value="month">ماه</option>
-            <option value="quarter">فصل</option>
-          </select>
-          </div>
+        <div className="flex items-center gap-2">
+          <Popover open={showPeriodPicker} onOpenChange={setShowPeriodPicker}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={`بازهٔ نمودار: ${chartPeriod === "week" ? "هفته" : chartPeriod === "month" ? "ماه" : "فصل"}`}
+                title={`بازهٔ نمودار: ${chartPeriod === "week" ? "هفته" : chartPeriod === "month" ? "ماه" : "فصل"}`}
+                aria-expanded={showPeriodPicker}
+                className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border transition-colors ${showPeriodPicker ? "border-primary/40 bg-primary/5 text-primary" : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+              >
+                <CalendarDays className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 p-2">
+              <p className="px-2 pb-2 text-xs font-medium text-muted-foreground">بازهٔ نمودار</p>
+              <div className="grid grid-cols-3 gap-1">
+                {[ ["week", "هفته"], ["month", "ماه"], ["quarter", "فصل"] ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => { setChartPeriod(value); setShowPeriodPicker(false); }}
+                    aria-pressed={chartPeriod === value}
+                    className={`rounded-lg px-2 py-2 text-sm transition-colors ${chartPeriod === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Popover open={showDateRange} onOpenChange={setShowDateRange}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="تنظیم بازهٔ تاریخ داشبورد"
+                title="بازهٔ تاریخ"
+                aria-expanded={showDateRange}
+                className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border transition-colors ${showDateRange ? "border-primary/40 bg-primary/5 text-primary" : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+              >
+                <Filter className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-[min(26rem,calc(100vw-1.5rem))] p-4">
+              <p className="mb-3 text-sm font-semibold">بازهٔ تاریخ</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="min-w-0"><PersianDatePicker label="از" value={dateRange.from} onChange={(v) => setDateRange({...dateRange, from: v})} placeholder="از تاریخ" /></div>
+                <div className="min-w-0"><PersianDatePicker label="تا" value={dateRange.to} onChange={(v) => setDateRange({...dateRange, to: v})} placeholder="تا تاریخ" /></div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
