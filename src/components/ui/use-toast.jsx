@@ -1,7 +1,7 @@
 // Inspired by react-hot-toast library
 import { useState, useEffect } from "react";
 
-const TOAST_LIMIT = 4;
+const TOAST_LIMIT = 20;
 const TOAST_REMOVE_DELAY = 1000;
 
 const actionTypes = {
@@ -49,7 +49,8 @@ export const reducer = (state, action) => {
     case actionTypes.ADD_TOAST:
       return {
         ...state,
-        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+        // Keep the oldest toast at the front so new alerts wait behind it.
+        toasts: [...state.toasts, action.toast].slice(0, TOAST_LIMIT),
       };
 
     case actionTypes.UPDATE_TOAST:
