@@ -11,6 +11,9 @@ export async function inviteUser({ userEmail, role = "user", full_name = "", pho
     const res = await base44Invite(body);
     return res;
   } catch (err) {
+    // The SDK fallback only sends an invitation and cannot set this password.
+    // Do not report a created account with credentials that were never applied.
+    if (initial_password) throw err;
     // Fall back to the SDK call for user/admin roles (works against both the
     // local backend and hosted Base44).
     const { base44 } = await import("@/api/base44Client");

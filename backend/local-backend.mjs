@@ -586,6 +586,8 @@ async function handleRequest(req, res) {
       const email = String(body.user_email || "").trim().toLowerCase();
       const role = ["user", "admin", "superadmin"].includes(body.role) ? body.role : "user";
       if (!email) return error(res, 400, "Email is required");
+      if (role === "superadmin" && u.role !== "superadmin")
+        return error(res, 403, "Only a superadmin can create another superadmin");
       if (findUserByEmail(email)) return error(res, 409, "An account with this email already exists");
       const now = new Date().toISOString();
       // Dev backend: no email to deliver, so the user is created already
@@ -865,6 +867,12 @@ async function handleRequest(req, res) {
         const i = store.findIndex((r) => r.id === recordId);
         if (i === -1) return error(res, 404, `${entityName} not found`);
         const deleted = store[i];
+        if (isUserEntity) {
+          if (deleted.id === u.id) return error(res, 400, "Cannot delete your own account");
+          if (deleted.role === "superadmin") return error(res, 403, "Cannot delete a superadmin");
+          if (deleted.role === "admin" && u.role !== "superadmin")
+            return error(res, 403, "Only a superadmin can delete an admin");
+        }
         // Soft delete: keep the record and mark it so the UI can offer undo
         // (5-second window) before it is physically purged.
         const nowIso = new Date().toISOString();

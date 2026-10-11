@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { Shield, UserPlus, Mail, Users, TrendingUp, TrendingDown, LogOut, RotateCcw, Key, Activity, ShieldCheck, UserX, Upload } from "lucide-react";
+import { Shield, UserPlus, Mail, Users, TrendingUp, TrendingDown, LogOut, RotateCcw, Key, Activity, ShieldCheck, UserX, Upload, Plus, Trash2 } from "lucide-react";
 import { roleLabel, roleColor } from "@/lib/roles";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { appId } from "@/api/base44Client";
+import EmployeeForm from "@/components/EmployeeForm";
+import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
 
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
 
@@ -23,6 +25,8 @@ export default function Admin() {
   const [restoreMsg, setRestoreMsg] = useState("");
   const [sendingDigest, setSendingDigest] = useState(false);
   const [digestMsg, setDigestMsg] = useState("");
+  const [showUserForm, setShowUserForm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   // ConfirmDialog states
   const [deactivateTarget, setDeactivateTarget] = useState(null);
@@ -31,8 +35,8 @@ export default function Admin() {
 
   useEffect(() => { load(); }, []);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     const [u, e, i] = await Promise.all([
       base44.entities.User.list(),
       base44.entities.Expense.list(),
@@ -41,7 +45,20 @@ export default function Admin() {
     setUsers(u);
     setExpenses(e);
     setIncomes(i);
-    setLoading(false);
+    if (!silent) setLoading(false);
+  };
+
+  const { deleteWithUndo } = useDeleteUndo(
+    "User",
+    (id) => base44.entities.User.delete(id),
+    load
+  );
+
+  const handleDeleteUser = async () => {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    await deleteWithUndo({ id: target.id, name: target.full_name || target.email });
   };
 
   const handleInvite = async () => {
@@ -169,11 +186,16 @@ export default function Admin() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Shield className="w-6 h-6 text-primary" /> پنل ادمین
-        </h1>
-        <p className="text-muted-foreground mt-1">مدیریت حساب، کاربران و تنظیمات</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Shield className="w-6 h-6 text-primary" /> پنل ادمین
+          </h1>
+          <p className="text-muted-foreground mt-1">مدیریت حساب، کاربران و تنظیمات</p>
+        </div>
+        <button onClick={() => setShowUserForm(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+          <Plus className="h-4 w-4" /> ساخت کاربر
+        </button>
       </div>
 
       {/* Profile */}
@@ -311,13 +333,17 @@ export default function Admin() {
       {/* User list */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         <div className="p-6 pb-4">
-          <h2 className="font-bold text-lg">لیست کاربران</h2>
+          <div>
+            <h2 className="font-bold text-lg">کاربران</h2>
+            <p className="mt-1 text-xs text-muted-foreground">ساخت حساب، تغییر نقش و مدیریت دسترسی ورود کاربران</p>
+          </div>
         </div>
         <div className="divide-y divide-border">
           {users.map((u) => {
             const isSelf = u.id === user?.id;
             const isSuper = u.role === "superadmin";
             const canDeactivate = !isSelf && !isSuper && (u.is_active !== false);
+            const canDelete = !isSelf && !isSuper && (u.role !== "admin" || isSuperadmin);
             const isDeactivated = u.is_active === false;
 
             return (
@@ -342,7 +368,7 @@ export default function Admin() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
                   {/* Role dropdown - only for non-superadmin, non-self */}
                   {!isSelf && !isSuper && (
                     <select
@@ -367,6 +393,16 @@ export default function Admin() {
                       className="text-xs text-red-500 hover:underline flex items-center gap-1"
                     >
                       <UserX className="w-3.5 h-3.5" /> غیرفعال
+                    </button>
+                  )}
+
+                  {canDelete && (
+                    <button
+                      onClick={() => setDeleteTarget(u)}
+                      className="text-xs text-red-600 hover:underline flex items-center gap-1"
+                      title="حذف کاربر"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> حذف
                     </button>
                   )}
 
@@ -401,6 +437,15 @@ export default function Admin() {
                     confirmText="بله، غیرفعال شود"
                   />
                 )}
+                {deleteTarget?.id === u.id && (
+                  <ConfirmDialog
+                    title="حذف کاربر"
+                    description={`حساب ${u.full_name || u.email} حذف و امکان ورودش مسدود می‌شود. اطلاعات به‌صورت موقت نگه داشته می‌شود و تا ۵ ثانیه امکان بازگردانی دارید.`}
+                    onConfirm={handleDeleteUser}
+                    onCancel={() => setDeleteTarget(null)}
+                    confirmText="حذف کاربر"
+                  />
+                )}
                 {forceLogoutTarget?.id === u.id && (
                   <ConfirmDialog
                     title="خروج اجباری"
@@ -427,6 +472,14 @@ export default function Admin() {
           {users.length === 0 && <p className="text-center text-muted-foreground py-8">کاربری یافت نشد</p>}
         </div>
       </div>
+
+      {showUserForm && (
+        <EmployeeForm
+          isSuperadmin={isSuperadmin}
+          onClose={() => setShowUserForm(false)}
+          onSaved={() => load({ silent: true })}
+        />
+      )}
 
       {/* Backup/Restore */}
       <div className="bg-card rounded-2xl border border-border p-6">
