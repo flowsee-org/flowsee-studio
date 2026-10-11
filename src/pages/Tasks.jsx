@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { Plus, Trash2, Pencil, ArrowDownUp, LayoutTemplate, Filter, X, Send, CheckCircle, Clock, Search, Archive, Eye, RotateCcw, Table2, Columns3, GanttChart } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowDownUp, LayoutTemplate, Filter, X, Send, CheckCircle, Clock, Search, Archive, Eye, RotateCcw, Table2, Columns3, GanttChart, UserRound, SquarePen, UsersRound } from "lucide-react";
 import TaskForm from "@/components/TaskForm";
 import TemplatePicker from "@/components/TemplatePicker";
 import TaskRequestModal from "@/components/TaskRequestModal";
@@ -31,9 +31,9 @@ const sortOptions = [
 ];
 
 const viewModes = [
-  { id: "assigned", label: "اختصاص داده شده به من" },
-  { id: "created", label: "ساخته شده توسط من" },
-  { id: "all", label: "همه تسک‌ها", adminOnly: true },
+  { id: "assigned", label: "اختصاص داده شده به من", shortLabel: "اختصاصی من", Icon: UserRound },
+  { id: "created", label: "ساخته شده توسط من", shortLabel: "توسط من", Icon: SquarePen },
+  { id: "all", label: "همه تسک‌ها", shortLabel: "همه", Icon: UsersRound, adminOnly: true },
 ];
 
 const layoutModes = [
@@ -106,6 +106,9 @@ export default function Tasks() {
   const [viewMode, setViewMode] = useState("assigned");
   const [showArchived, setShowArchived] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [mobileBoardColumn, setMobileBoardColumn] = useState("todo");
+  const [isMobileBoard, setIsMobileBoard] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches);
   const [selectedTasks, setSelectedTasks] = useState(new Set());
   const [detailTask, setDetailTask] = useState(null);
 
@@ -114,6 +117,14 @@ export default function Tasks() {
 
   useEffect(() => {
     load();
+  }, []);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const updateMobileBoard = (event) => setIsMobileBoard(event.matches);
+    setIsMobileBoard(mediaQuery.matches);
+    mediaQuery.addEventListener("change", updateMobileBoard);
+    return () => mediaQuery.removeEventListener("change", updateMobileBoard);
   }, []);
 
   const load = async () => {
@@ -346,6 +357,7 @@ export default function Tasks() {
   }, [filteredTasks, columnSort]);
 
   const sortedTableTasks = useMemo(() => sortTasks(filteredTasks, tableSort), [filteredTasks, tableSort]);
+  const boardColumns = isMobileBoard ? columns.filter((column) => column.id === mobileBoardColumn) : columns;
 
   if (loading)
     return (
@@ -357,13 +369,13 @@ export default function Tasks() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{isAdmin ? "تسک‌ها" : "تسک‌های من"}</h1>
           <p className="text-muted-foreground mt-1 text-sm">مدیریت تسک‌ها به‌سبک ترلو</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative">
+        <div className="grid grid-cols-6 gap-2 w-full sm:w-auto sm:flex sm:items-center sm:flex-wrap">
+          <div className="relative hidden sm:block">
             <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <input
               type="text"
@@ -373,62 +385,101 @@ export default function Tasks() {
               className="border border-input rounded-xl pr-9 pl-3 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 appearance-none w-[220px]"
             />
           </div>
-          <div className="flex border border-border rounded-xl bg-card p-1" role="group" aria-label="نمایش تسک‌ها">
+          <button
+            onClick={() => setShowSearch((value) => !value)}
+            aria-label="جستجوی تسک‌ها"
+            aria-expanded={showSearch}
+            title="جستجوی تسک‌ها"
+            className={`relative col-start-1 row-start-1 h-10 w-10 justify-self-center rounded-xl border inline-flex items-center justify-center transition-colors sm:hidden ${showSearch || searchQuery ? "border-primary/40 bg-primary/5 text-primary" : "border-border text-muted-foreground hover:bg-accent"}`}
+          >
+            <Search className="h-4 w-4" />
+            {searchQuery && <span className="absolute -top-1 -left-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background" />}
+          </button>
+          <div className="col-span-6 sm:hidden" hidden={!showSearch}>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <input
+                type="search"
+                autoFocus={showSearch}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="جستجوی عنوان، توضیحات، شماره..."
+                aria-label="جستجوی تسک‌ها"
+                className="w-full border border-input rounded-xl pr-9 pl-3 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          </div>
+          <div className="flex border border-border rounded-xl bg-card p-1 col-span-3 col-start-1 row-start-2 justify-self-start sm:justify-self-auto" role="group" aria-label="نمایش تسک‌ها">
             {layoutModes.map(({ id, label, Icon }) => (
               <button key={id} onClick={() => setLayoutMode(id)} aria-pressed={layoutMode === id}
-                className={`px-2.5 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${layoutMode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                <Icon className="w-4 h-4" />{label}
+                title={label}
+                aria-label={label}
+                className={`h-8 min-w-8 px-2 sm:px-2.5 py-1.5 rounded-lg text-sm flex items-center justify-center gap-1.5 ${layoutMode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                <Icon className="w-4 h-4 shrink-0" /><span className="hidden sm:inline">{label}</span>
               </button>
             ))}
           </div>
           {/* View Mode Tabs */}
-          <div className="flex border border-border rounded-xl bg-card p-1">
+          <div className="flex border border-border rounded-xl bg-card p-1 col-span-3 col-start-2 row-start-1 justify-self-end sm:justify-self-auto" role="group" aria-label="نوع تسک">
             {viewModes.filter(v => !v.adminOnly || isAdmin).map((v) => (
               <button
                 key={v.id}
                 onClick={() => setViewMode(v.id)}
+                title={v.label}
+                aria-label={v.label}
+                aria-pressed={viewMode === v.id}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   viewMode === v.id
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {v.label}
+                <span className="inline-flex items-center gap-1.5"><v.Icon className="h-4 w-4" /><span className="hidden sm:inline">{v.label}</span><span className="sr-only sm:hidden">{v.shortLabel}</span></span>
               </button>
             ))}
           </div>
           <button
             onClick={() => setShowFilters((v) => !v)}
             aria-expanded={showFilters}
-            className={`border px-3 py-2 rounded-xl font-medium flex items-center gap-2 text-sm ${showFilters || hasTaskFilters ? "border-primary/40 text-primary bg-primary/5" : "border-border text-muted-foreground hover:text-foreground"}`}
+            aria-label="فیلتر تسک‌ها"
+            title="فیلتر تسک‌ها"
+            className={`relative col-start-5 row-start-1 h-10 w-10 justify-self-center border rounded-xl font-medium inline-flex items-center justify-center transition-colors ${showFilters || hasTaskFilters ? "border-primary/40 text-primary bg-primary/5" : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"}`}
           >
-            <Filter className="w-4 h-4" /> فیلترها{hasTaskFilters ? " (فعال)" : ""}
+            <Filter className="w-4 h-4" />
+            {hasTaskFilters && <span className="absolute -top-1 -left-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background" aria-label="فیلتر فعال" />}
           </button>
           <button
             onClick={() => { setShowArchived((v) => !v); setSelectedTasks(new Set()); }}
             aria-pressed={showArchived}
-            className={`border px-3 py-2 rounded-xl font-medium flex items-center gap-2 text-sm ${showArchived ? "border-amber-400 text-amber-700 bg-amber-50" : "border-border text-muted-foreground hover:text-foreground"}`}
+            aria-label={showArchived ? "بازگشت به تسک‌های فعال" : "مشاهده بایگانی"}
+            title={showArchived ? "بازگشت به تسک‌های فعال" : "مشاهده بایگانی"}
+            className={`relative col-start-6 row-start-1 h-10 w-10 justify-self-center rounded-xl border inline-flex items-center justify-center transition-colors ${showArchived ? "border-amber-400 text-amber-700 bg-amber-50" : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"}`}
           >
             {showArchived ? <RotateCcw className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
-            {showArchived ? "خروج از بایگانی" : "بایگانی"}
           </button>
           <button
             onClick={() => setShowRequestModal(true)}
-            className="border border-purple-300 text-purple-600 px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 hover:bg-purple-50 transition-colors text-sm whitespace-nowrap"
+            aria-label="درخواست تسک"
+            title="درخواست تسک"
+            className="col-start-4 row-start-2 h-10 w-10 justify-self-center rounded-xl border border-purple-300 text-purple-600 inline-flex items-center justify-center hover:bg-purple-50 transition-colors sm:h-auto sm:w-auto sm:px-4 sm:py-2.5 sm:gap-2 sm:text-sm sm:whitespace-nowrap"
           >
-            <Send className="w-5 h-5" /> درخواست تسک
+            <Send className="w-4 h-4 sm:w-5 sm:h-5" /><span className="hidden sm:inline">درخواست تسک</span>
           </button>
           <button
             onClick={() => setShowTemplates(true)}
-            className="border border-primary/30 text-primary px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 hover:bg-primary/5 transition-colors text-sm whitespace-nowrap"
+            aria-label="قالب‌های تسک"
+            title="قالب‌های تسک"
+            className="col-start-5 row-start-2 h-10 w-10 justify-self-center rounded-xl border border-primary/30 text-primary inline-flex items-center justify-center hover:bg-primary/5 transition-colors sm:h-auto sm:w-auto sm:px-4 sm:py-2.5 sm:gap-2 sm:text-sm sm:whitespace-nowrap"
           >
-            <LayoutTemplate className="w-5 h-5" /> قالب‌ها
+            <LayoutTemplate className="w-4 h-4 sm:w-5 sm:h-5" /><span className="hidden sm:inline">قالب‌ها</span>
           </button>
           <button
             onClick={() => { setEditTask(null); setShowForm(true); }}
-            className="bg-primary text-primary-foreground px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 hover:opacity-90 transition-opacity text-sm whitespace-nowrap"
+            aria-label="ساخت تسک جدید"
+            title="ساخت تسک جدید"
+            className="col-start-6 row-start-2 h-10 w-10 justify-self-center rounded-xl bg-primary text-primary-foreground inline-flex items-center justify-center hover:opacity-90 transition-opacity sm:h-auto sm:w-auto sm:px-4 sm:py-2.5 sm:gap-2 sm:text-sm sm:whitespace-nowrap"
           >
-            <Plus className="w-5 h-5" /> تسک جدید
+            <Plus className="w-5 h-5" /><span className="hidden sm:inline">تسک جدید</span>
           </button>
         </div>
       </div>
@@ -440,14 +491,14 @@ export default function Tasks() {
       ) : (
         <div className="space-y-3">
           {/* Filters */}
-          {showFilters && <div className="flex flex-wrap items-center gap-3 bg-card border border-border rounded-xl p-3 sm:p-4 animate-in fade-in slide-in-from-top-1">
-            <span className="flex items-center gap-1.5 text-sm text-muted-foreground font-medium">
+          {showFilters && <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2 sm:gap-3 bg-card border border-border rounded-xl p-3 sm:p-4 animate-in fade-in slide-in-from-top-1">
+            <span className="hidden sm:flex items-center gap-1.5 text-sm text-muted-foreground font-medium">
               <Filter className="w-4 h-4" /> فیلترها:
             </span>
             <SelectControl
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
-              className="border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[180px]"
+              className="col-span-2 w-full sm:col-span-1 sm:w-auto border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 sm:min-w-[180px]"
             >
               <option value="">همه پروژه‌ها</option>
               {projects.map((p) => (
@@ -458,7 +509,7 @@ export default function Tasks() {
               <SelectControl
                 value={employeeFilter}
                 onChange={(e) => setEmployeeFilter(e.target.value)}
-                className="border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[180px]"
+                className="col-span-2 w-full sm:col-span-1 sm:w-auto border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 sm:min-w-[180px]"
               >
                 <option value="">همه کارمندان</option>
                 {Array.from(new Set(baseVisibleTasks.flatMap(t => t.assignees || (t.assignee ? [t.assignee] : [])))).map((name) => (
@@ -572,9 +623,16 @@ export default function Tasks() {
             </div>
           )}
 
-          {layoutMode === "board" ? <DragDropContext onDragEnd={onDragEnd}>
-            <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-thin">
+          {layoutMode === "board" ? <>
+            <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-border bg-card p-1 md:hidden" role="group" aria-label="انتخاب ستون تسک">
               {columns.map((col) => {
+                const ColumnIcon = col.id === "todo" ? Clock : col.id === "in_progress" ? RotateCcw : CheckCircle;
+                return <button key={col.id} onClick={() => setMobileBoardColumn(col.id)} aria-pressed={mobileBoardColumn === col.id} aria-label={`${col.title}، ${columnTasks[col.id].length} تسک`} title={col.title} className={`flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-1.5 py-2 text-xs font-medium transition-colors ${mobileBoardColumn === col.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}><ColumnIcon className="h-4 w-4 shrink-0" /><span className="truncate">{col.title.replace("در ", "")}</span><span className={`rounded-full px-1.5 ${mobileBoardColumn === col.id ? "bg-white/20" : "bg-accent"}`}>{columnTasks[col.id].length}</span></button>;
+              })}
+            </div>
+            <DragDropContext onDragEnd={onDragEnd}>
+            <div className="flex flex-col gap-3 pb-3 md:flex-row md:overflow-x-auto md:scrollbar-thin">
+              {boardColumns.map((col) => {
                 const colTasks = columnTasks[col.id];
                 return (
                 <Droppable droppableId={col.id} key={col.id}>
@@ -582,7 +640,7 @@ export default function Tasks() {
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`snap-start flex-shrink-0 w-64 max-w-[82vw] rounded-2xl p-3 min-h-[600px] flex flex-col ${
+                      className={`snap-start w-full min-w-0 rounded-2xl p-3 min-h-[320px] flex flex-col md:flex-shrink-0 md:w-64 md:max-w-[82vw] md:min-h-[600px] ${
                         snapshot.isDraggingOver ? "bg-primary/5" : "bg-card border border-border"
                       }`}
                     >
@@ -681,7 +739,8 @@ export default function Tasks() {
                 );
               })}
             </div>
-          </DragDropContext> : layoutMode === "table" ? (
+          </DragDropContext>
+          </> : layoutMode === "table" ? (
             <div className="overflow-x-auto rounded-2xl border border-border bg-card">
               <table className="w-full text-sm text-right">
                 <thead className="bg-accent/40 text-muted-foreground">
