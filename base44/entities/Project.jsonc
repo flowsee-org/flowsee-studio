@@ -21,6 +21,17 @@
       "default": "active",
       "title": "وضعیت"
     },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "medium", "high"],
+      "default": "medium",
+      "title": "اولویت"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false,
+      "title": "بایگانی شده"
+    },
     "manager": {
       "type": "string",
       "title": "مدیر پروژه"

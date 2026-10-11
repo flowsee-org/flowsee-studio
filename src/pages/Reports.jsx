@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { BarChart3, Calendar, FileText, TrendingUp, TrendingDown, Trash2 } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
+import { buildWeeklyFinancialData } from "@/lib/reportData";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -62,7 +63,9 @@ export default function Reports() {
     prevTo.setDate(prevTo.getDate() - 1);
 
     return data.filter((item) => {
-      const itemDate = new Date(item.date.replace(/\//g, '-'));
+      if (!item?.date) return false;
+      const itemDate = new Date(String(item.date).replace(/\//g, '-'));
+      if (Number.isNaN(itemDate.getTime())) return false;
       return itemDate >= prevFrom && itemDate <= prevTo;
     });
   };
@@ -95,20 +98,10 @@ export default function Reports() {
     return Object.values(map).sort((a, b) => a.name.localeCompare(b.name));
   }, [filteredExpenses, filteredIncomes, compareMode, prevExpenses, prevIncomes]);
 
-  const weeklyData = useMemo(() => {
-    const weeks = [{ name: "هفته ۱", هزینه: 0, درآمد: 0 }, { name: "هفته ۲", هزینه: 0, درآمد: 0 }, { name: "هفته ۳", هزینه: 0, درآمد: 0 }, { name: "هفته ۴", هزینه: 0, درآمد: 0 }];
-    filteredExpenses.forEach((e) => {
-      const d = parseInt(String(e.date || "").split("/")[2] || "0");
-      const w = Math.min(3, Math.floor((d - 1) / 7));
-      weeks[w].هزینه += e.amount || 0;
-    });
-    filteredIncomes.forEach((i) => {
-      const d = parseInt(String(i.date || "").split("/")[2] || "0");
-      const w = Math.min(3, Math.floor((d - 1) / 7));
-      weeks[w].درآمد += i.amount || 0;
-    });
-    return weeks;
-  }, [filteredExpenses, filteredIncomes]);
+  const weeklyData = useMemo(
+    () => buildWeeklyFinancialData(filteredExpenses, filteredIncomes),
+    [filteredExpenses, filteredIncomes]
+  );
 
   const categoryData = useMemo(() => {
     const map = {};

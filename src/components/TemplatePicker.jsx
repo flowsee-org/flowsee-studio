@@ -5,6 +5,13 @@ import TaskTemplateModal from "@/components/TaskTemplateModal";
 
 const priorityLabels = { low: "کم", medium: "متوسط", high: "زیاد" };
 const priorityColors = { low: "bg-slate-100 text-slate-600", medium: "bg-amber-100 text-amber-700", high: "bg-red-100 text-red-700" };
+const defaultTemplates = [
+  { id: "builtin:client-kickoff", title: "شروع همکاری با مشتری", description: "اطلاعات و اهداف اولیه پروژه را با مشتری نهایی کنید.", priority: "high", checklist: ["ثبت نیازمندی‌ها و محدوده کار", "تعیین مخاطب و پیام اصلی", "ثبت زمان‌بندی و نقاط تحویل", "تعیین مسئولان و کانال ارتباطی"] },
+  { id: "builtin:design-review", title: "بازبینی طرح پیش از تحویل", description: "کنترل کیفی فایل‌ها و خروجی طراحی قبل از ارسال.", priority: "high", checklist: ["بررسی ابعاد و نسخه نهایی", "کنترل متن، رنگ و لوگو", "بررسی فایل‌های قابل ویرایش و خروجی‌ها", "ثبت بازخورد و تأیید مدیر پروژه"] },
+  { id: "builtin:weekly-content", title: "برنامه‌ریزی محتوای هفتگی", description: "تقویم محتوایی هفته آینده را آماده و تأیید کنید.", priority: "medium", checklist: ["انتخاب موضوع‌ها و مناسبت‌ها", "نوشتن کپشن و سناریو", "آماده‌سازی طرح‌ها و ویدیوها", "زمان‌بندی انتشار و تأیید نهایی"] },
+  { id: "builtin:client-followup", title: "پیگیری بازخورد مشتری", description: "بازخوردهای باز را جمع‌بندی و برای هر مورد مسئول تعیین کنید.", priority: "medium", checklist: ["مرور پیام‌ها و فایل‌های بازخورد", "تفکیک اصلاحات ضروری و پیشنهادی", "ثبت مسئول و موعد هر اصلاح", "ارسال جمع‌بندی برای تأیید"] },
+  { id: "builtin:weekly-report", title: "گزارش هفتگی پروژه", description: "وضعیت پیشرفت، موانع و برنامه هفته بعد را ثبت کنید.", priority: "low", checklist: ["به‌روزرسانی وضعیت تسک‌ها", "ثبت ساعات و خروجی‌های هفته", "ثبت موانع و تصمیم‌های لازم", "تعیین اولویت‌های هفته آینده"] },
+];
 
 export default function TemplatePicker({ onClose, onUse }) {
   const [templates, setTemplates] = useState([]);
@@ -16,7 +23,7 @@ export default function TemplatePicker({ onClose, onUse }) {
 
   const load = async () => {
     const data = await base44.entities.TaskTemplate.list("-created_date");
-    setTemplates(data);
+    setTemplates([...defaultTemplates, ...data]);
     setLoading(false);
   };
 
@@ -70,12 +77,14 @@ export default function TemplatePicker({ onClose, onUse }) {
                       {t.project_name && <p className="text-xs text-primary mt-0.5">{t.project_name}</p>}
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <button onClick={() => handleEdit(t)} className="p-1.5 text-muted-foreground hover:text-primary rounded-lg hover:bg-accent">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDelete(t.id)} className="p-1.5 text-muted-foreground hover:text-red-500 rounded-lg hover:bg-destructive/10">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {t.id?.startsWith("builtin:") ? <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] text-primary">پیش‌فرض</span> : <>
+                        <button onClick={() => handleEdit(t)} className="p-1.5 text-muted-foreground hover:text-primary rounded-lg hover:bg-accent" aria-label="ویرایش قالب">
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(t.id)} className="p-1.5 text-muted-foreground hover:text-red-500 rounded-lg hover:bg-destructive/10" aria-label="حذف قالب">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>}
                     </div>
                   </div>
                   {t.description && <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{t.description}</p>}

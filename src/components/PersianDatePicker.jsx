@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
@@ -42,6 +42,16 @@ export default function PersianDatePicker({
   format = undefined,
 }) {
   const ref = useRef();
+  const wrapperRef = useRef(null);
+  useEffect(() => {
+    const closeOnOutsidePointer = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        ref.current?.closeCalendar?.();
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePointer);
+  }, []);
   const today = getPersianDate(0);
   const tomorrow = getPersianDate(1);
   const dayAfter = getPersianDate(2);
@@ -91,7 +101,7 @@ export default function PersianDatePicker({
   };
 
   return (
-    <div>
+    <div ref={wrapperRef}>
       {label && (
         <label className="text-sm font-medium block mb-1.5">
           {label} {required && <span className="text-[#D35400]">*</span>}
@@ -110,6 +120,7 @@ export default function PersianDatePicker({
           onlyYearPicker={onlyYearPicker}
           mapDays={mapDays}
           calendarPosition="bottom-right"
+          weekDays={["ش", "ی", "د", "س", "چ", "پ", "ج"]}
           placeholder={placeholder}
           style={{ width: "100%" }}
           inputClass="rmdp-persian-input"

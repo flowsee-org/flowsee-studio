@@ -1,13 +1,13 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { TrendingUp, TrendingDown, Wallet, ListTodo, FileText, ArrowUpRight, ArrowDownRight, Minus, Filter, ChevronLeft, ChevronRight, Users, CalendarDays } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, ListTodo, FileText, ArrowUpRight, ArrowDownRight, ArrowLeft, Minus, Filter, ChevronLeft, ChevronRight, Users, CalendarDays } from "lucide-react";
 import TodayTasks from "@/components/TodayTasks";
 import AnnouncementWidget from "@/components/AnnouncementWidget";
 import MeetingReminders from "@/components/MeetingReminders";
 import PersianDatePicker, { getPersianDate } from "@/components/PersianDatePicker";
 import { addDaysToKey, persianWeekday, isJalaliLeap } from "@/lib/jalali";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, LineChart, Line } from "recharts";
 
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
 

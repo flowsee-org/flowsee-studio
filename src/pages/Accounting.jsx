@@ -5,6 +5,8 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import SalarySlip from "@/components/SalarySlip";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
+import { getPersianDate } from "@/components/PersianDatePicker";
+import { toast } from "@/components/ui/use-toast";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
 function ExpenseRow({ expense, isLocked, onDelete, onEdit }) {
@@ -196,9 +198,9 @@ export default function Accounting() {
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     const entityName = deleteTarget.type === "expense" ? "Expense" : deleteTarget.type === "income" ? "Income" : "Salary";
-    if (entityName === "Expense") await deleteExpense(deleteTarget);
-    else if (entityName === "Income") await deleteIncome(deleteTarget);
-    else await deleteSalary(deleteTarget);
+    if (entityName === "Expense") await deleteExpense(deleteTarget.item);
+    else if (entityName === "Income") await deleteIncome(deleteTarget.item);
+    else await deleteSalary(deleteTarget.item);
     setDeleteTarget(null);
   };
 
@@ -530,15 +532,18 @@ function Row({ title, sub, amount, category, positive, onDelete }) {
 }
 
 function FormModal({ tab, onClose, onSaved }) {
-  const [form, setForm] = useState({});
+  const [form, setForm] = useState(() =>
+    tab === "expense" || tab === "income" ? { date: getPersianDate(0) } : {}
+  );
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const fields = {
     expense: [
       { name: "title", label: "عنوان هزینه", type: "text", required: true },
       { name: "amount", label: "مبلغ (تومان)", type: "number", required: true },
-      { name: "date", label: "تاریخ", type: "text", placeholder: "1405/06/12" },
+      { name: "date", label: "تاریخ", type: "text", required: true, placeholder: "1405/06/12" },
       { name: "category", label: "دسته‌بندی", type: "select", options: categories },
       { name: "project_id", label: "پروژه (اختیاری)", type: "text", placeholder: "شناسه پروژه" },
       { name: "status", label: "وضعیت", type: "select", options: ["pending", "approved", "rejected"], labels: ["در انتظار", "تایید", "رد"] },
@@ -547,7 +552,7 @@ function FormModal({ tab, onClose, onSaved }) {
       { name: "title", label: "عنوان درآمد", type: "text", required: true },
       { name: "amount", label: "مبلغ (تومان)", type: "number", required: true },
       { name: "description", label: "توضیحات", type: "text" },
-      { name: "date", label: "تاریخ", type: "text", placeholder: "1405/06/12" },
+      { name: "date", label: "تاریخ", type: "text", required: true, placeholder: "1405/06/12" },
     ],
     salary: [
       { name: "employee_name", label: "نام کارمند", type: "text", required: true },
@@ -565,11 +570,26 @@ function FormModal({ tab, onClose, onSaved }) {
   const titles = { expense: "ثبت هزینه", income: "ثبت درآمد", salary: "ثبت حقوق" };
 
   const handleSave = async () => {
+    const missingRequiredField = fields[tab].find(
+      (field) => field.required && !String(form[field.name] ?? "").trim()
+    );
+    if (missingRequiredField) {
+      setSaveError(`لطفاً فیلد «${missingRequiredField.label}» را تکمیل کنید.`);
+      return;
+    }
     setSaving(true);
-    await base44.entities[entityName].create(form);
-    setSaving(false);
-    onSaved();
-    onClose();
+    setSaveError("");
+    try {
+      await base44.entities[entityName].create(form);
+      await onSaved();
+      toast({ title: "اطلاعات ثبت شد" });
+      onClose();
+    } catch (err) {
+      console.error(`Failed to create ${entityName}:`, err);
+      setSaveError(err?.message || "ثبت اطلاعات ناموفق بود. دوباره تلاش کنید.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleFileUpload = async (e) => {
@@ -614,6 +634,7 @@ function FormModal({ tab, onClose, onSaved }) {
               ) : (
                 <input
                   type={f.type}
+                  required={f.required}
                   value={form[f.name] || ""}
                   onChange={(e) => setForm({ ...form, [f.name]: f.type === "number" ? Number(e.target.value) : e.target.value })}
                   placeholder={f.placeholder}
@@ -622,6 +643,9 @@ function FormModal({ tab, onClose, onSaved }) {
               )}
             </div>
           ))}
+          {saveError && (
+            <p role="alert" className="text-sm text-destructive">{saveError}</p>
+          )}
           {tab === "expense" && (
             <div>
               <label className="text-sm font-medium block mb-1.5">رسید (اختیاری)</label>

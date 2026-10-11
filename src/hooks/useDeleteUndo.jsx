@@ -22,7 +22,18 @@ export function useDeleteUndo(entityName, deleteFn, loadFn) {
     async (records, opts = {}) => {
       const list = toList(records);
       if (list.length === 0) return;
-      for (const r of list) await deleteFn(r.id);
+      try {
+        for (const r of list) await deleteFn(r.id);
+        await loadFn?.();
+      } catch (err) {
+        console.error(`Failed to delete ${entityName}:`, err);
+        toast({
+          title: "حذف انجام نشد",
+          description: err?.message || "لطفاً دوباره تلاش کنید.",
+          variant: "destructive",
+        });
+        return 0;
+      }
 
       const count = opts.count ?? list.length;
       const title = opts.title || (count === 1 ? recordLabel(list[0]) : "گزینه");
@@ -46,7 +57,7 @@ export function useDeleteUndo(entityName, deleteFn, loadFn) {
                   );
                   if (!res.ok) throw new Error("restore failed");
                 }
-                loadFn();
+                await loadFn?.();
                 toast({ title: count === 1 ? "بازگردانی شد" : `${count} مورد بازگردانی شد` });
               } catch {
                 console.error("Undo failed");

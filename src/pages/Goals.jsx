@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { loadTeamMembers } from "@/lib/teamMembers";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
+import { toast } from "@/components/ui/use-toast";
 import { Plus, Target, Pencil, Trash2, TrendingUp, AlertTriangle, CheckCircle2, Minus } from "lucide-react";
 
 const statusLabels = {
@@ -121,26 +122,37 @@ export default function Goals() {
   const handleSave = async () => {
     if (!form.title.trim()) return;
     setSaving(true);
-    const data = {
-      ...form,
-      key_results: (form.key_results || []).filter(
-        (kr) => kr.title.trim() !== "" || Number(kr.target) > 0
-      ),
-    };
-    if (editGoal) {
-      await base44.entities.Goal.update(editGoal.id, data);
-    } else {
-      await base44.entities.Goal.create(data);
+    try {
+      const data = {
+        ...form,
+        key_results: (form.key_results || []).filter(
+          (kr) => kr.title.trim() !== "" || Number(kr.target) > 0
+        ),
+      };
+      if (editGoal) {
+        await base44.entities.Goal.update(editGoal.id, data);
+      } else {
+        await base44.entities.Goal.create(data);
+      }
+      await load();
+      toast({ title: editGoal ? "هدف ویرایش شد" : "هدف ثبت شد" });
+      setShowModal(false);
+      setEditGoal(null);
+    } catch (err) {
+      console.error("Failed to save goal:", err);
+      toast({
+        title: "خطا در ذخیره هدف",
+        description: err?.message || "لطفاً دوباره تلاش کنید.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setShowModal(false);
-    setEditGoal(null);
   };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
     await deleteWithUndo(deleteTarget);
-    load();
     setDeleteTarget(null);
   };
 

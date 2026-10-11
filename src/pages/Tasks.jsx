@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { Plus, Trash2, Pencil, ArrowDownUp, LayoutTemplate, Filter, X, Send, CheckCircle, Clock, Search, Archive, Eye, RotateCcw } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowDownUp, LayoutTemplate, Filter, X, Send, CheckCircle, Clock, Search, Archive, Eye, RotateCcw, Table2, Columns3, GanttChart } from "lucide-react";
 import TaskForm from "@/components/TaskForm";
 import TemplatePicker from "@/components/TemplatePicker";
 import TaskRequestModal from "@/components/TaskRequestModal";
@@ -10,6 +10,7 @@ import TaskDetail from "@/components/TaskDetail";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { toast } from "@/components/ui/use-toast";
+import SelectControl from "@/components/ui/SelectControl";
 
 const columns = [
   { id: "todo", title: "در انتظار", color: "bg-slate-100" },
@@ -22,9 +23,10 @@ const priorityColors = { low: "bg-slate-100 text-slate-600", medium: "bg-amber-1
 const priorityOrder = { high: 3, medium: 2, low: 1 };
 
 const sortOptions = [
+  { id: "priority_created", label: "اولویت، سپس جدیدترین" },
+  { id: "priority", label: "اولویت" },
   { id: "created_desc", label: "جدیدترین" },
   { id: "created_asc", label: "قدیمی‌ترین" },
-  { id: "priority", label: "اولویت" },
   { id: "deadline", label: "ددلاین" },
 ];
 
@@ -32,6 +34,12 @@ const viewModes = [
   { id: "assigned", label: "اختصاص داده شده به من" },
   { id: "created", label: "ساخته شده توسط من" },
   { id: "all", label: "همه تسک‌ها", adminOnly: true },
+];
+
+const layoutModes = [
+  { id: "board", label: "برد", Icon: Columns3 },
+  { id: "table", label: "جدول", Icon: Table2 },
+  { id: "timeline", label: "تایم‌لاین", Icon: GanttChart },
 ];
 
 function sortTasks(tasks, sortBy) {
@@ -43,6 +51,11 @@ function sortTasks(tasks, sortBy) {
       return sorted.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
     case "priority":
       return sorted.sort((a, b) => (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0));
+    case "priority_created":
+      return sorted.sort((a, b) =>
+        ((priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0)) ||
+        (new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime())
+      );
     case "deadline":
       return sorted.sort((a, b) => (a.due_date || "9999").localeCompare(b.due_date || "9999"));
     default:
@@ -79,7 +92,9 @@ export default function Tasks() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editTask, setEditTask] = useState(null);
-  const [sortBy, setSortBy] = useState("created_desc");
+  const [columnSort, setColumnSort] = useState({ todo: "priority_created", in_progress: "priority_created", done: "priority_created" });
+  const [tableSort, setTableSort] = useState("priority_created");
+  const [layoutMode, setLayoutMode] = useState("board");
   const [showTemplates, setShowTemplates] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [projectFilter, setProjectFilter] = useState("");
@@ -90,6 +105,7 @@ export default function Tasks() {
   const [creatorNames] = useState({});
   const [viewMode, setViewMode] = useState("assigned");
   const [showArchived, setShowArchived] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState(new Set());
   const [detailTask, setDetailTask] = useState(null);
 
@@ -211,13 +227,35 @@ export default function Tasks() {
   };
 
   const handleDelete = async (id) => {
-    await base44.entities.Task.delete(id);
-    setSelectedTasks(prev => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-    load();
+    try {
+      await base44.entities.Task.delete(id);
+      setSelectedTasks(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      await load();
+      toast({ title: "تسک حذف شد" });
+    } catch (err) {
+      console.error("Failed to delete task:", err);
+      toast({
+        title: "حذف تسک انجام نشد",
+        description: err?.message || "لطفاً دوباره تلاش کنید.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
+  const toggleArchiveTask = async (task) => {
+    try {
+      await base44.entities.Task.update(task.id, { archived: !task.archived });
+      await load();
+      toast({ title: task.archived ? "تسک از بایگانی خارج شد" : "تسک بایگانی شد" });
+    } catch (err) {
+      toast({ title: "تغییر بایگانی انجام نشد", description: err?.message || "دوباره تلاش کنید.", variant: "destructive" });
+    }
   };
 
   const handleBulkDelete = async () => {
@@ -230,12 +268,17 @@ export default function Tasks() {
   };
 
   const handleBulkArchive = async () => {
-    for (const id of selectedTasks) {
-      await base44.entities.Task.update(id, { archived: true });
+    const count = selectedTasks.size;
+    try {
+      for (const id of selectedTasks) {
+        await base44.entities.Task.update(id, { archived: !showArchived });
+      }
+      setSelectedTasks(new Set());
+      await load();
+      toast({ title: `${count} تسک ${showArchived ? "از بایگانی خارج شد" : "بایگانی شد"}` });
+    } catch (err) {
+      toast({ title: "عملیات بایگانی کامل نشد", description: err?.message || "دوباره تلاش کنید.", variant: "destructive" });
     }
-    setSelectedTasks(new Set());
-    load();
-    toast({ title: `${selectedTasks.size} تسک بایگانی شد` });
   };
 
   const handleBulkStatusChange = async (status) => {
@@ -297,10 +340,12 @@ export default function Tasks() {
   const columnTasks = useMemo(() => {
     const result = {};
     columns.forEach(col => {
-      result[col.id] = sortTasks(filteredTasks.filter(t => t.status === col.id), sortBy);
+      result[col.id] = sortTasks(filteredTasks.filter(t => t.status === col.id), columnSort[col.id]);
     });
     return result;
-  }, [filteredTasks, sortBy]);
+  }, [filteredTasks, columnSort]);
+
+  const sortedTableTasks = useMemo(() => sortTasks(filteredTasks, tableSort), [filteredTasks, tableSort]);
 
   if (loading)
     return (
@@ -328,17 +373,13 @@ export default function Tasks() {
               className="border border-input rounded-xl pr-9 pl-3 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 appearance-none w-[220px]"
             />
           </div>
-          <div className="relative">
-            <ArrowDownUp className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="border border-input rounded-xl pr-9 pl-3 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 appearance-none"
-            >
-              {sortOptions.map((o) => (
-                <option key={o.id} value={o.id}>{o.label}</option>
-              ))}
-            </select>
+          <div className="flex border border-border rounded-xl bg-card p-1" role="group" aria-label="نمایش تسک‌ها">
+            {layoutModes.map(({ id, label, Icon }) => (
+              <button key={id} onClick={() => setLayoutMode(id)} aria-pressed={layoutMode === id}
+                className={`px-2.5 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${layoutMode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                <Icon className="w-4 h-4" />{label}
+              </button>
+            ))}
           </div>
           {/* View Mode Tabs */}
           <div className="flex border border-border rounded-xl bg-card p-1">
@@ -356,6 +397,21 @@ export default function Tasks() {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => setShowFilters((v) => !v)}
+            aria-expanded={showFilters}
+            className={`border px-3 py-2 rounded-xl font-medium flex items-center gap-2 text-sm ${showFilters || hasTaskFilters ? "border-primary/40 text-primary bg-primary/5" : "border-border text-muted-foreground hover:text-foreground"}`}
+          >
+            <Filter className="w-4 h-4" /> فیلترها{hasTaskFilters ? " (فعال)" : ""}
+          </button>
+          <button
+            onClick={() => { setShowArchived((v) => !v); setSelectedTasks(new Set()); }}
+            aria-pressed={showArchived}
+            className={`border px-3 py-2 rounded-xl font-medium flex items-center gap-2 text-sm ${showArchived ? "border-amber-400 text-amber-700 bg-amber-50" : "border-border text-muted-foreground hover:text-foreground"}`}
+          >
+            {showArchived ? <RotateCcw className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+            {showArchived ? "خروج از بایگانی" : "بایگانی"}
+          </button>
           <button
             onClick={() => setShowRequestModal(true)}
             className="border border-purple-300 text-purple-600 px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 hover:bg-purple-50 transition-colors text-sm whitespace-nowrap"
@@ -384,11 +440,11 @@ export default function Tasks() {
       ) : (
         <div className="space-y-3">
           {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3 bg-card border border-border rounded-xl p-3 sm:p-4">
+          {showFilters && <div className="flex flex-wrap items-center gap-3 bg-card border border-border rounded-xl p-3 sm:p-4 animate-in fade-in slide-in-from-top-1">
             <span className="flex items-center gap-1.5 text-sm text-muted-foreground font-medium">
               <Filter className="w-4 h-4" /> فیلترها:
             </span>
-            <select
+            <SelectControl
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
               className="border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[180px]"
@@ -397,9 +453,9 @@ export default function Tasks() {
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
-            </select>
+            </SelectControl>
             {isAdmin && (
-              <select
+              <SelectControl
                 value={employeeFilter}
                 onChange={(e) => setEmployeeFilter(e.target.value)}
                 className="border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[180px]"
@@ -408,19 +464,10 @@ export default function Tasks() {
                 {Array.from(new Set(baseVisibleTasks.flatMap(t => t.assignees || (t.assignee ? [t.assignee] : [])))).map((name) => (
                   <option key={name} value={name}>{name}</option>
                 ))}
-              </select>
+              </SelectControl>
             )}
             <PersianDatePicker label="از تاریخ" value={dateFrom} onChange={setDateFrom} placeholder="از ددلاین" />
             <PersianDatePicker label="تا تاریخ" value={dateTo} onChange={setDateTo} placeholder="تا ددلاین" />
-            <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground">
-              <input
-                type="checkbox"
-                checked={showArchived}
-                onChange={(e) => setShowArchived(e.target.checked)}
-                className="w-4 h-4 accent-primary"
-              />
-              بایگانی‌ها
-            </label>
             {hasTaskFilters && (
               <button
                 onClick={clearTaskFilters}
@@ -429,7 +476,7 @@ export default function Tasks() {
                 <X className="w-3.5 h-3.5" /> پاک کردن فیلترها
               </button>
             )}
-          </div>
+          </div>}
 
           {/* Incoming task requests */}
           {incomingRequests.length > 0 && (
@@ -485,7 +532,7 @@ export default function Tasks() {
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3">
               <span className="font-medium text-primary">{selectedTasks.size} تسک انتخاب شده</span>
               <div className="flex flex-wrap gap-2">
-                <select
+                <SelectControl
                   onChange={(e) => { handleBulkStatusChange(e.target.value); e.target.value = ""; }}
                   className="border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
                 >
@@ -493,8 +540,8 @@ export default function Tasks() {
                   <option value="todo">در انتظار</option>
                   <option value="in_progress">در حال انجام</option>
                   <option value="done">انجام شده</option>
-                </select>
-                <select
+                </SelectControl>
+                <SelectControl
                   onChange={(e) => { handleBulkAssign(e.target.value); e.target.value = ""; }}
                   className="border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[150px]"
                 >
@@ -502,12 +549,12 @@ export default function Tasks() {
                   {Array.from(new Set(baseVisibleTasks.flatMap(t => t.assignees || (t.assignee ? [t.assignee] : [])))).map((name) => (
                     <option key={name} value={name}>{name}</option>
                   ))}
-                </select>
+                </SelectControl>
                 <button
                   onClick={handleBulkArchive}
                   className="bg-amber-500 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-amber-600 flex items-center gap-1"
                 >
-                  <Archive className="w-3.5 h-3.5" /> بایگانی
+                  <Archive className="w-3.5 h-3.5" /> {showArchived ? "خروج از بایگانی" : "بایگانی"}
                 </button>
                 <button
                   onClick={handleBulkDelete}
@@ -525,7 +572,7 @@ export default function Tasks() {
             </div>
           )}
 
-          <DragDropContext onDragEnd={onDragEnd}>
+          {layoutMode === "board" ? <DragDropContext onDragEnd={onDragEnd}>
             <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-thin">
               {columns.map((col) => {
                 const colTasks = columnTasks[col.id];
@@ -541,7 +588,12 @@ export default function Tasks() {
                     >
                       <div className="flex items-center justify-between mb-3 px-1">
                         <h3 className="font-bold text-sm">{col.title}</h3>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${col.color}`}>{colTasks.length}</span>
+                        <div className="flex items-center gap-2">
+                          <SelectControl aria-label={`مرتب‌سازی ستون ${col.title}`} value={columnSort[col.id]} onChange={(e) => setColumnSort((prev) => ({ ...prev, [col.id]: e.target.value }))} className="h-8 max-w-[150px] text-xs">
+                            {sortOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                          </SelectControl>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${col.color}`}>{colTasks.length}</span>
+                        </div>
                       </div>
                       <div className="space-y-2 flex-1">
                         {colTasks.map((t, i) => (
@@ -575,6 +627,9 @@ export default function Tasks() {
                                     </button>
                                     <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(t); }} className="p-1 text-muted-foreground hover:text-red-500 rounded" title="حذف">
                                       <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); toggleArchiveTask(t); }} className="p-1 text-muted-foreground hover:text-amber-600 rounded" title={t.archived ? "خروج از بایگانی" : "بایگانی"}>
+                                      {t.archived ? <RotateCcw className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
                                     </button>
                                     <button onClick={(e) => { e.stopPropagation(); handleViewDetail(t); }} className="p-1 text-muted-foreground hover:text-primary rounded" title="مشاهده جزئیات">
                                       <Eye className="w-3.5 h-3.5" />
@@ -626,7 +681,46 @@ export default function Tasks() {
                 );
               })}
             </div>
-          </DragDropContext>
+          </DragDropContext> : layoutMode === "table" ? (
+            <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+              <table className="w-full text-sm text-right">
+                <thead className="bg-accent/40 text-muted-foreground">
+                  <tr>
+                    <th className="p-3 font-medium">تسک</th>
+                    <th className="p-3 font-medium">وضعیت</th>
+                    <th className="p-3 font-medium"><button onClick={() => setTableSort((v) => v === "priority" ? "priority_created" : "priority")} className="inline-flex items-center gap-1">اولویت <ArrowDownUp className="w-3.5 h-3.5" /></button></th>
+                    <th className="p-3 font-medium">مسئول</th>
+                    <th className="p-3 font-medium"><button onClick={() => setTableSort("deadline")} className="inline-flex items-center gap-1">ددلاین <ArrowDownUp className="w-3.5 h-3.5" /></button></th>
+                    <th className="p-3 font-medium"><button onClick={() => setTableSort((v) => v === "created_asc" ? "created_desc" : "created_asc")} className="inline-flex items-center gap-1">تاریخ ایجاد <ArrowDownUp className="w-3.5 h-3.5" /></button></th>
+                    <th className="p-3 font-medium">عملیات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {sortedTableTasks.map((task) => <tr key={task.id} className="hover:bg-accent/20">
+                    <td className="p-3"><button onClick={() => handleViewDetail(task)} className="text-right font-medium hover:text-primary">{task.title}</button>{task.task_number && <div className="text-xs text-muted-foreground mt-1">{task.task_number}</div>}</td>
+                    <td className="p-3"><SelectControl aria-label={`وضعیت ${task.title}`} value={task.status} onChange={async (e) => { await base44.entities.Task.update(task.id, { status: e.target.value }); await load(); }} className="h-8">{columns.map((column) => <option key={column.id} value={column.id}>{column.title}</option>)}</SelectControl></td>
+                    <td className="p-3"><span className={`rounded-full px-2 py-1 text-xs ${priorityColors[task.priority]}`}>{priorityLabels[task.priority]}</span></td>
+                    <td className="p-3">{(task.assignees || (task.assignee ? [task.assignee] : [])).join("، ") || "—"}</td>
+                    <td className="p-3">{task.due_date || "—"}</td>
+                    <td className="p-3">{task.created_date ? new Date(task.created_date).toLocaleDateString("fa-IR") : "—"}</td>
+                    <td className="p-3"><div className="flex gap-1"><button aria-label="ویرایش تسک" onClick={() => handleEdit(task)} className="rounded-lg p-1.5 hover:bg-primary/10"><Pencil className="h-4 w-4" /></button><button aria-label={task.archived ? "خروج از بایگانی" : "بایگانی"} onClick={() => toggleArchiveTask(task)} className="rounded-lg p-1.5 hover:bg-amber-100"><Archive className="h-4 w-4" /></button><button aria-label="حذف تسک" onClick={() => setDeleteTarget(task)} className="rounded-lg p-1.5 hover:bg-red-100 text-red-600"><Trash2 className="h-4 w-4" /></button></div></td>
+                  </tr>)}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="max-w-3xl mx-auto">
+              <div className="relative space-y-3 before:absolute before:bottom-4 before:right-4 before:top-4 before:w-px before:bg-border">
+                {[...sortedTableTasks].sort((a, b) => (a.due_date || "9999").localeCompare(b.due_date || "9999")).map((task) => <div key={task.id} className="relative pr-10">
+                  <span className={`absolute right-[11px] top-4 h-2.5 w-2.5 rounded-full ring-4 ring-background ${task.status === "done" ? "bg-green-500" : task.status === "in_progress" ? "bg-blue-500" : "bg-amber-500"}`} />
+                  <button onClick={() => handleViewDetail(task)} className="w-full rounded-xl border border-border bg-card p-4 text-right hover:border-primary/40 hover:shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-semibold">{task.title}</span><span className="text-xs text-muted-foreground">{task.due_date ? `سررسید ${task.due_date}` : "بدون ددلاین"}</span></div>
+                    <div className="mt-2 flex flex-wrap gap-2"><span className={`rounded-full px-2 py-0.5 text-xs ${priorityColors[task.priority]}`}>{priorityLabels[task.priority]}</span><span className="text-xs text-muted-foreground">{columns.find((column) => column.id === task.status)?.title}</span></div>
+                  </button>
+                </div>)}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

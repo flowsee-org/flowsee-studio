@@ -5,6 +5,7 @@ import PersianDatePicker from "@/components/PersianDatePicker";
 import { loadTeamMembers } from "@/lib/teamMembers";
 import SubtaskList from "./SubtaskList";
 import { toast } from "@/components/ui/use-toast";
+import SelectControl from "@/components/ui/SelectControl";
 
 export default function TaskForm({ projects, userName, editTask, onClose, onSaved }) {
   const [employees, setEmployees] = useState([]);
@@ -27,7 +28,7 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
   );
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [showRecurring, setShowRecurring] = useState(false);
+  const showRecurring = !!form.recurring_config;
 
   useEffect(() => {
     loadTeamMembers().then(setEmployees);
@@ -66,6 +67,15 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
 
   const handleRecurringChange = (config) => {
     setForm({ ...form, recurring_config: config });
+  };
+
+  const toggleRecurring = (enabled) => {
+    setForm((current) => ({
+      ...current,
+      recurring_config: enabled
+        ? (current.recurring_config || { frequency: "weekly", day_of_week: 0 })
+        : null,
+    }));
   };
 
   const handleSave = async () => {
@@ -115,41 +125,41 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
           </div>
           <div>
             <label className="text-sm font-medium block mb-1.5">پروژه</label>
-            <select
+            <SelectControl
               value={form.project_id}
               onChange={(e) => setForm({ ...form, project_id: e.target.value })}
-              className="w-full border border-input rounded-xl px-4 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full"
             >
               <option value="">بدون پروژه</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
-            </select>
+            </SelectControl>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium block mb-1.5">اولویت</label>
-              <select
+              <SelectControl
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                className="w-full border border-input rounded-xl px-4 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full"
               >
                 <option value="low">کم</option>
                 <option value="medium">متوسط</option>
                 <option value="high">زیاد</option>
-              </select>
+              </SelectControl>
             </div>
             <div>
               <label className="text-sm font-medium block mb-1.5">وضعیت</label>
-              <select
+              <SelectControl
                 value={form.status}
                 onChange={(e) => setForm({ ...form, status: e.target.value })}
-                className="w-full border border-input rounded-xl px-4 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full"
               >
                 <option value="todo">در انتظار</option>
                 <option value="in_progress">در حال انجام</option>
                 <option value="done">انجام شده</option>
-              </select>
+              </SelectControl>
             </div>
           </div>
 
@@ -242,7 +252,7 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
               <input
                 type="checkbox"
                 checked={!!form.recurring_config}
-                onChange={(e) => setShowRecurring(e.target.checked)}
+                onChange={(e) => toggleRecurring(e.target.checked)}
                 className="w-4 h-4 accent-primary"
               />
               <span className="text-sm">تسک تکراری</span>
@@ -251,23 +261,23 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
               <div className="mt-2 p-3 bg-primary/5 rounded-xl border border-primary/20 space-y-2">
                 <div>
                   <label className="text-sm font-medium block mb-1.5">تکرار</label>
-                  <select
+                  <SelectControl
                     value={form.recurring_config?.frequency || "weekly"}
                     onChange={(e) => handleRecurringChange({ ...form.recurring_config, frequency: e.target.value })}
-                    className="w-full border border-input rounded-xl px-4 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full"
                   >
                     <option value="daily">روزانه</option>
                     <option value="weekly">هفتگی</option>
                     <option value="monthly">ماهانه</option>
-                  </select>
+                  </SelectControl>
                 </div>
                 {form.recurring_config?.frequency === "weekly" && (
                   <div>
                     <label className="text-sm font-medium block mb-1.5">روز هفته</label>
-                    <select
+                    <SelectControl
                       value={form.recurring_config?.day_of_week || 0}
                       onChange={(e) => handleRecurringChange({ ...form.recurring_config, day_of_week: Number(e.target.value) })}
-                      className="w-full border border-input rounded-xl px-4 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      className="w-full"
                     >
                       <option value={0}>یکشنبه</option>
                       <option value={1}>دوشنبه</option>
@@ -276,19 +286,19 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
                       <option value={4}>پنج‌شنبه</option>
                       <option value={5}>جمعه</option>
                       <option value={6}>شنبه</option>
-                    </select>
+                    </SelectControl>
                   </div>
                 )}
                 {form.recurring_config?.frequency === "monthly" && (
                   <div>
                     <label className="text-sm font-medium block mb-1.5">روز ماه</label>
-                    <select
+                    <SelectControl
                       value={form.recurring_config?.day_of_month || 1}
                       onChange={(e) => handleRecurringChange({ ...form.recurring_config, day_of_month: Number(e.target.value) })}
-                      className="w-full border border-input rounded-xl px-4 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      className="w-full"
                     >
                       {[...Array(31)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
-                    </select>
+                    </SelectControl>
                   </div>
                 )}
               </div>

@@ -3,10 +3,12 @@ import { base44 } from "@/api/base44Client";
 import { X, UserMinus } from "lucide-react";
 import { loadTeamMembers } from "@/lib/teamMembers";
 import PersianDatePicker from "@/components/PersianDatePicker";
+import SelectControl from "@/components/ui/SelectControl";
+import { toast } from "@/components/ui/use-toast";
 
 export default function ProjectForm({ editProject, onClose, onSaved }) {
   const [form, setForm] = useState(
-    editProject || { name: "", description: "", color: "#FE5400", status: "active", manager: "", start_date: "", end_date: "", members: [] }
+    editProject || { name: "", description: "", color: "#FE5400", status: "active", priority: "medium", archived: false, manager: "", start_date: "", end_date: "", members: [] }
   );
   const [members, setMembers] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -27,14 +29,19 @@ export default function ProjectForm({ editProject, onClose, onSaved }) {
   const handleSave = async () => {
     if (!form.name) return;
     setSaving(true);
-    if (editProject) {
-      await base44.entities.Project.update(editProject.id, form);
-    } else {
-      await base44.entities.Project.create(form);
+    try {
+      if (editProject) {
+        await base44.entities.Project.update(editProject.id, form);
+      } else {
+        await base44.entities.Project.create(form);
+      }
+      await onSaved();
+      onClose();
+    } catch (error) {
+      toast({ title: "ذخیره پروژه انجام نشد", description: error?.message || "دوباره تلاش کنید.", variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    onSaved();
-    onClose();
   };
 
   const selectedMembers = form.members || [];
@@ -62,16 +69,16 @@ export default function ProjectForm({ editProject, onClose, onSaved }) {
           </div>
           <div>
             <label className="text-sm font-medium block mb-1.5">مدیر پروژه</label>
-            <select
+            <SelectControl
               value={form.manager || ""}
               onChange={(e) => setForm({ ...form, manager: e.target.value })}
-              className="w-full border border-input rounded-xl px-4 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full"
             >
               <option value="">انتخاب مدیر پروژه</option>
               {members.map((m) => (
                 <option key={m.id} value={m.name}>{m.name}</option>
               ))}
-            </select>
+            </SelectControl>
           </div>
           <div>
             <label className="text-sm font-medium block mb-1.5">اعضای پروژه</label>
@@ -143,15 +150,27 @@ export default function ProjectForm({ editProject, onClose, onSaved }) {
           </div>
           <div>
             <label className="text-sm font-medium block mb-1.5">وضعیت</label>
-            <select
+            <SelectControl
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value })}
-              className="w-full border border-input rounded-xl px-4 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full"
             >
               <option value="active">فعال</option>
               <option value="completed">تکمیل شده</option>
               <option value="paused">متوقف شده</option>
-            </select>
+            </SelectControl>
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1.5">اولویت پروژه</label>
+            <SelectControl
+              value={form.priority || "medium"}
+              onChange={(e) => setForm({ ...form, priority: e.target.value })}
+              className="w-full"
+            >
+              <option value="low">کم</option>
+              <option value="medium">متوسط</option>
+              <option value="high">زیاد</option>
+            </SelectControl>
           </div>
         </div>
         <button

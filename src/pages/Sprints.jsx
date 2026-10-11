@@ -204,7 +204,6 @@ export default function Sprints() {
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     await deleteWithUndo(deleteTarget);
-    load();
     setDeleteTarget(null);
   };
 
