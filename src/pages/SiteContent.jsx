@@ -10,6 +10,9 @@ const SITE = "https://flowsee.ir";
 function mediaUrl(path) {
   if (!path) return "";
   if (/^https?:\/\//i.test(path)) return path;
+  if (String(path).replace(/^\//, "").startsWith("assets/") || /^\d+\.jpg$/i.test(String(path).replace(/^\//, ""))) {
+    return `${SITE}/${String(path).replace(/^\//, "")}`;
+  }
   return `${SITE}/storage/${String(path).replace(/^\//, "")}`;
 }
 
