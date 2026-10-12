@@ -30,11 +30,12 @@ ln -s "$APP/node_modules" "$BUILD/source/node_modules"
 )
 [[ -s "$BUILD/dist/index.html" ]] || { echo 'Build output is incomplete.' >&2; exit 1; }
 grep -R -q -F '/website-messages' "$BUILD/dist/assets" || { echo 'The built app does not contain the website messages route.' >&2; exit 1; }
+grep -R -q -F '/site-content' "$BUILD/dist/assets" || { echo 'The built app does not contain the site content route.' >&2; exit 1; }
 RELEASES="$STATE/releases"
 RELEASE="$RELEASES/$SHA"
 install -d -m 755 "$RELEASES"
 if [[ -e "$RELEASE" ]]; then
- [[ -s "$RELEASE/index.html" ]] && grep -R -q -F '/website-messages' "$RELEASE/assets" || { echo 'Existing release failed validation.' >&2; exit 1; }
+ [[ -s "$RELEASE/index.html" ]] && grep -R -q -F '/website-messages' "$RELEASE/assets" && grep -R -q -F '/site-content' "$RELEASE/assets" || { echo 'Existing release failed validation.' >&2; exit 1; }
 else mv "$BUILD/dist" "$RELEASE"; fi
 if [[ -L "$STATE/dist" ]]; then OLD_TARGET=$(readlink -f "$STATE/dist"); else OLD_TARGET="$STATE/dist.rollback.$(date +%Y%m%d%H%M%S)"; mv "$STATE/dist" "$OLD_TARGET"; fi
 ln -s "$RELEASE" "$STATE/dist.next"
