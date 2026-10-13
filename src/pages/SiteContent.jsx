@@ -75,9 +75,17 @@ function RichTextField({ label, value, onChange }) {
       if (!active) return;
       editor = new window.RichTextEditor(`#${id}`, {
         toolbar: "custom",
-        toolbar_custom: "{bold,italic,underline,strikethrough}|{insertorderedlist,insertunorderedlist}|{insertlink}|{undo,redo}",
-        height: "220px",
+        toolbar_custom: "{paragraphs,fontname,fontsize}|{bold,italic,underline,strike,superscript,subscript}|{forecolor,backcolor,removeformat}/{justifymenu,insertorderedlist,insertunorderedlist,insertblockquote,indent,outdent}|{insertlink,unlink,insertimage,insertvideo,inserttable}|{undo,redo,find,cleancode,code,preview,fullscreen}",
+        toolbarMobile: "mobile",
+        maxWidthForMobile: 720,
+        height: "340px",
         contentCssUrl: `${RTE_CDN}/runtime/richtexteditor_content.css`,
+        contentCssText: "body{direction:rtl;text-align:right;font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:1.8;padding:12px;color:#222} img,video{max-width:100%;height:auto}",
+        editorBodyCssText: "direction:rtl;text-align:right;font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:1.8;padding:12px;",
+        linkDefaultProtocol: "https://",
+        showStatistics: true,
+        showTagList: true,
+        pasteMarkdown: true,
       });
       editor.setHTMLCode(value || "");
       editor.attachEvent("change", () => changeRef.current(editor.getHTMLCode()));
