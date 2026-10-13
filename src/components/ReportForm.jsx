@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { X } from "lucide-react";
-import PersianDatePicker from "@/components/PersianDatePicker";
+import PersianDatePicker, { getPersianDate } from "@/components/PersianDatePicker";
+import { toast } from "@/components/ui/use-toast";
 
 export default function ReportForm({ tasks, userName, editReport, onClose, onSaved }) {
   const [form, setForm] = useState(
@@ -12,7 +13,7 @@ export default function ReportForm({ tasks, userName, editReport, onClose, onSav
           description: editReport.description || "",
           date: editReport.date || "",
         }
-      : { task_ids: [], hours: 0, description: "", date: "" }
+      : { task_ids: [], hours: 0, description: "", date: getPersianDate() }
   );
   const [saving, setSaving] = useState(false);
 
@@ -26,6 +27,11 @@ export default function ReportForm({ tasks, userName, editReport, onClose, onSav
 
   const handleSave = async () => {
     if (!form.description || !form.date) return;
+    if (!editReport && form.date !== getPersianDate()) {
+      toast({ title: "تاریخ گزارش معتبر نیست", description: "گزارش کار فقط برای امروز قابل ثبت است.", variant: "destructive" });
+      setForm((current) => ({ ...current, date: getPersianDate() }));
+      return;
+    }
     setSaving(true);
     const selectedTasks = tasks.filter((t) => form.task_ids.includes(t.id));
     const taskTitles = selectedTasks.map((t) => t.title);
@@ -101,6 +107,8 @@ export default function ReportForm({ tasks, userName, editReport, onClose, onSav
               value={form.date}
               onChange={(val) => setForm({ ...form, date: val })}
               placeholder="1405/06/12"
+              restrictToToday={!editReport}
+              disabled={Boolean(editReport)}
             />
           </div>
           <div>

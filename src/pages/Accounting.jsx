@@ -128,6 +128,17 @@ function SalaryRow({ salary, isLocked, onDelete, onEdit }) {
 }
 
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
+const sortAccountingRecords = (records, sortOrder) => [...records].sort((a, b) => {
+  if (sortOrder.startsWith("amount")) {
+    const difference = Number(a.amount || 0) - Number(b.amount || 0);
+    return sortOrder === "amount-asc" ? difference : -difference;
+  }
+  if (sortOrder === "title-asc") return String(a.title || a.employee_name || "").localeCompare(String(b.title || b.employee_name || ""), "fa");
+  const dateA = String(a.date || a.month || a.created_date || "");
+  const dateB = String(b.date || b.month || b.created_date || "");
+  const difference = dateA.localeCompare(dateB);
+  return sortOrder === "date-asc" ? difference : -difference;
+});
 const categories = ["عمومی", "آب/برق/گاز", "اینترنت", "پذیرایی", "تجهیزات", "تبلیغات", "حقوق", "سایر"];
 const months = [
   { value: "01", label: "فروردین" },
@@ -156,6 +167,8 @@ export default function Accounting() {
   const [showCharts, setShowCharts] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [sortOrder, setSortOrder] = useState("date-desc");
   const [lockedPeriods, setLockedPeriods] = useState([]);
   const [showLockModal, setShowLockModal] = useState(false);
   const [lockMonth, setLockMonth] = useState("");
@@ -221,20 +234,32 @@ export default function Accounting() {
   };
 
   const filteredExpenses = useMemo(() => {
-    return expenses.filter((e) => {
+    const filtered = expenses.filter((e) => {
       if (dateRange.from && e.date && e.date < dateRange.from) return false;
       if (dateRange.to && e.date && e.date > dateRange.to) return false;
+      if (categoryFilter && e.category !== categoryFilter) return false;
       return true;
     });
-  }, [expenses, dateRange]);
+    return sortAccountingRecords(filtered, sortOrder);
+  }, [expenses, dateRange, categoryFilter, sortOrder]);
 
   const filteredIncomes = useMemo(() => {
-    return incomes.filter((i) => {
+    const filtered = incomes.filter((i) => {
       if (dateRange.from && i.date && i.date < dateRange.from) return false;
       if (dateRange.to && i.date && i.date > dateRange.to) return false;
+      if (categoryFilter && i.category !== categoryFilter) return false;
       return true;
     });
-  }, [incomes, dateRange]);
+    return sortAccountingRecords(filtered, sortOrder);
+  }, [incomes, dateRange, categoryFilter, sortOrder]);
+
+  const filteredSalaries = useMemo(() => sortAccountingRecords(salaries.filter((salary) => {
+    if (dateRange.from && salary.date && salary.date < dateRange.from) return false;
+    if (dateRange.to && salary.date && salary.date > dateRange.to) return false;
+    return true;
+  }), sortOrder), [salaries, dateRange, sortOrder]);
+
+  const availableCategories = useMemo(() => [...new Set([...categories, ...expenses, ...incomes].map((item) => item.category).filter(Boolean))], [expenses, incomes]);
 
   // Monthly data for charts
   const monthlyData = useMemo(() => {
@@ -442,6 +467,21 @@ export default function Accounting() {
 
       {/* Main List */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/20 p-3 sm:p-4">
+          <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground"><Filter className="w-4 h-4" /> دسته‌بندی و مرتب‌سازی</span>
+          {(tab === "expense" || tab === "income") && <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="فیلتر دسته‌بندی" className="min-w-36 rounded-xl border border-input bg-card px-3 py-2 text-sm">
+            <option value="">همه دسته‌بندی‌ها</option>
+            {availableCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+          </select>}
+          <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} aria-label="مرتب‌سازی فهرست" className="min-w-44 rounded-xl border border-input bg-card px-3 py-2 text-sm">
+            <option value="date-desc">تاریخ: جدید به قدیم</option>
+            <option value="date-asc">تاریخ: قدیم به جدید</option>
+            <option value="amount-desc">مبلغ: بیشترین</option>
+            <option value="amount-asc">مبلغ: کمترین</option>
+            <option value="title-asc">عنوان: الفبایی</option>
+          </select>
+          {categoryFilter && <button type="button" onClick={() => setCategoryFilter("")} className="text-xs text-primary hover:underline">پاک‌کردن دسته‌بندی</button>}
+        </div>
         {loading ? (
           <div className="flex justify-center p-12">
             <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -454,10 +494,10 @@ export default function Accounting() {
             {tab === "income" && filteredIncomes.map((i) => (
               <Row key={i.id} title={i.title} sub={i.date || i.description} amount={i.amount} positive onDelete={() => handleDelete("income", i.id)} />
             ))}
-            {tab === "salary" && salaries.map((s) => (
+            {tab === "salary" && filteredSalaries.map((s) => (
               <SalaryRow key={s.id} salary={s} isLocked={isLocked(s.date)} onDelete={() => handleDelete("salary", s.id)} onEdit={(data) => base44.entities.Salary.update(s.id, data).then(loadAll)} onViewSlip={(slip) => setSalarySlip(slip)} />
             ))}
-            {((tab === "expense" && filteredExpenses.length === 0) || (tab === "income" && filteredIncomes.length === 0) || (tab === "salary" && salaries.length === 0)) && (
+            {((tab === "expense" && filteredExpenses.length === 0) || (tab === "income" && filteredIncomes.length === 0) || (tab === "salary" && filteredSalaries.length === 0)) && (
               <p className="text-center text-muted-foreground py-12">موردی ثبت نشده است</p>
             )}
           </div>

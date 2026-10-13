@@ -40,6 +40,8 @@ export default function PersianDatePicker({
   onlyYearPicker = false,
   timePicker = false,
   format = undefined,
+  restrictToToday = false,
+  disabled = false,
 }) {
   const ref = useRef();
   const wrapperRef = useRef(null);
@@ -63,6 +65,9 @@ export default function PersianDatePicker({
   ];
 
   const dateFormat = format || (timePicker ? "YYYY/MM/DD HH:mm" : "YYYY/MM/DD");
+  const todayDateObject = restrictToToday
+    ? new DateObject({ date: today, calendar: persian, locale: persian_fa, format: "YYYY/MM/DD" })
+    : undefined;
 
   const handleChange = (dateObject) => {
     if (!dateObject) {
@@ -74,7 +79,9 @@ export default function PersianDatePicker({
       onChange(formatted);
       return;
     }
-    onChange(toLatinDigits(dateObject.format(dateFormat)));
+    const nextValue = toLatinDigits(dateObject.format(dateFormat));
+    if (restrictToToday && nextValue.slice(0, 10) !== today) return;
+    onChange(nextValue);
   };
 
   let datePickerValue;
@@ -119,6 +126,10 @@ export default function PersianDatePicker({
           onlyMonthPicker={onlyMonthPicker}
           onlyYearPicker={onlyYearPicker}
           mapDays={mapDays}
+          minDate={todayDateObject}
+          maxDate={todayDateObject}
+          editable={!restrictToToday}
+          disabled={disabled}
           calendarPosition="bottom-right"
           weekDays={["ش", "ی", "د", "س", "چ", "پ", "ج"]}
           placeholder={placeholder}
@@ -130,7 +141,7 @@ export default function PersianDatePicker({
           onClick={() => ref.current?.openCalendar()}
         />
       </div>
-      {!range && !onlyMonthPicker && !onlyYearPicker && !timePicker && (
+      {!range && !onlyMonthPicker && !onlyYearPicker && !timePicker && !restrictToToday && !disabled && (
         <div className="flex gap-1.5 mt-1.5 flex-wrap">
           {quickButtons.map((btn) => (
             <button
