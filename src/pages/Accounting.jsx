@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { Plus, Trash2, X, BarChart3, PieChart as PieChartIcon, Upload, Lock, FileText, Filter } from "lucide-react";
+import { Plus, Trash2, X, BarChart3, PieChart as PieChartIcon, Upload, Lock, FileText, Filter, Pencil, ChevronDown } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import SalarySlip from "@/components/SalarySlip";
@@ -11,52 +11,22 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 import { accountingRecordKey, parseAccountingCsv } from "@/lib/accounting-csv";
 
 function ExpenseRow({ expense, isLocked, onDelete, onEdit }) {
-  const [editing, setEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ status: expense.status, category: expense.category });
-
-  const handleSave = () => {
-    onEdit(editForm);
-    setEditing(false);
-  };
-
   return (
-    <div className={`flex items-center justify-between p-4 hover:bg-accent/30 transition-colors ${isLocked ? "opacity-50 bg-muted/30" : ""}`}>
+    <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 hover:bg-accent/30 transition-colors ${isLocked ? "opacity-60 bg-muted/30" : ""}`}>
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${expense.status === "approved" ? "bg-green-100" : expense.status === "rejected" ? "bg-red-100" : "bg-amber-100"}`}>
-          <span className={`text-lg font-bold ${expense.status === "approved" ? "text-green-600" : expense.status === "rejected" ? "text-red-600" : "text-amber-600"}`}>
-            {expense.status === "approved" ? "✓" : expense.status === "rejected" ? "✗" : "⟳"}
-          </span>
-        </div>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <p className="font-medium text-sm truncate">{expense.title}</p>
-            {expense.status === "pending" && <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">در انتظار</span>}
-            {expense.status === "approved" && <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">تایید شده</span>}
-            {expense.status === "rejected" && <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">رد شده</span>}
             {isLocked && <span className="text-xs bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-full flex items-center gap-1"><Lock className="w-3 h-3" /> قفل</span>}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">{expense.date}{expense.category ? ` • ${expense.category}` : ""}{expense.project_name ? ` • ${expense.project_name}` : ""}</p>
         </div>
       </div>
-      <div className="flex items-center gap-3">
-        <p className={`font-bold text-sm ${expense.status === "rejected" ? "text-red-600" : "text-red-600"}`}>−{faNum(expense.amount)}</p>
+      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
+        <p className="font-bold text-sm text-red-600">−{faNum(expense.amount)}</p>
         {!isLocked && (
           <>
-            {editing ? (
-              <div className="flex items-center gap-1">
-                <select value={editForm.status} onChange={(e) => setEditForm({...editForm, status: e.target.value})} className="text-xs border border-input rounded px-2 py-1 bg-card">
-                  <option value="pending">در انتظار</option>
-                  <option value="approved">تایید</option>
-                  <option value="rejected">رد</option>
-                </select>
-                <button onClick={handleSave} className="text-xs bg-primary text-white px-2 py-1 rounded">ذخیره</button>
-                <button onClick={() => setEditing(false)} className="text-xs text-muted-foreground hover:text-foreground">انصراف</button>
-              </div>
-            ) : (
-              <button onClick={() => setEditing(true)} className="p-1.5 text-muted-foreground hover:text-primary rounded-lg hover:bg-accent" title="ویرایش وضعیت">
-                <FileText className="w-3.5 h-3.5" />
-              </button>
-            )}
+            <button onClick={onEdit} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-primary border border-primary/20 rounded-lg hover:bg-primary/5" title="ویرایش هزینه"><Pencil className="w-4 h-4" /><span>ویرایش</span></button>
             <button onClick={onDelete} className="p-2 text-muted-foreground hover:text-red-500 hover:bg-destructive/10 rounded-lg transition-colors" title="حذف">
               <Trash2 className="w-4 h-4" />
             </button>
@@ -140,6 +110,7 @@ const sortAccountingRecords = (records, sortOrder) => [...records].sort((a, b) =
   return sortOrder === "date-asc" ? difference : -difference;
 });
 const categories = ["عمومی", "آب/برق/گاز", "اینترنت", "پذیرایی", "تجهیزات", "تبلیغات", "حقوق", "سایر"];
+const categoryLabels = { عمومی: "هزینه جاری", "آب/برق/گاز": "آب، برق و گاز", اینترنت: "اینترنت و سرور", پذیرایی: "پذیرایی", تجهیزات: "تجهیزات", تبلیغات: "تبلیغات", حقوق: "حقوق و دستمزد", سایر: "سایر" };
 const months = [
   { value: "01", label: "فروردین" },
   { value: "02", label: "اردیبهشت" },
@@ -160,11 +131,12 @@ export default function Accounting() {
   const [expenses, setExpenses] = useState([]);
   const [incomes, setIncomes] = useState([]);
   const [salaries, setSalaries] = useState([]);
-  const [budgets, setBudgets] = useState({});
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [showCharts, setShowCharts] = useState(false);
+  const [showDateFilters, setShowDateFilters] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -173,17 +145,20 @@ export default function Accounting() {
   const [showLockModal, setShowLockModal] = useState(false);
   const [lockMonth, setLockMonth] = useState("");
   const [salarySlip, setSalarySlip] = useState(null);
+  const [expandedMonths, setExpandedMonths] = useState({});
 
   const loadAll = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
-    const [e, i, s] = await Promise.all([
+    const [e, i, s, periodLocks] = await Promise.all([
       base44.entities.Expense.list("-created_date"),
       base44.entities.Income.list("-created_date"),
       base44.entities.Salary.list("-created_date"),
+      base44.entities.AccountingPeriodLock.list(),
     ]);
     setExpenses(e);
     setIncomes(i);
     setSalaries(s);
+    setLockedPeriods((periodLocks || []).map((period) => period.period_key));
     if (!silent) setLoading(false);
   };
 
@@ -221,16 +196,17 @@ export default function Accounting() {
 
   const handleLockPeriod = async () => {
     if (!lockMonth) return;
-    await base44.entities.AppSettings.create({ locked_month: lockMonth, locked_at: new Date().toISOString() });
-    setLockedPeriods([...lockedPeriods, lockMonth]);
+    const period = `${getPersianDate(0).split("/")[0]}/${lockMonth}`;
+    if (!lockedPeriods.includes(period)) await base44.entities.AccountingPeriodLock.create({ period_key: period, locked_at: new Date().toISOString() });
+    setLockedPeriods((current) => [...new Set([...current, period])]);
     setShowLockModal(false);
     setLockMonth("");
   };
 
   const isLocked = (date) => {
     if (!date) return false;
-    const month = String(date).split("/")[1];
-    return lockedPeriods.includes(month);
+    const [year, month] = String(date).split("/");
+    return lockedPeriods.includes(`${year}/${month}`);
   };
 
   const filteredExpenses = useMemo(() => {
@@ -283,14 +259,32 @@ export default function Accounting() {
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [filteredExpenses]);
 
-  // Budget tracking
-  const budgetData = useMemo(() => {
-    return categories.map(cat => {
-      const spent = filteredExpenses.filter(e => e.category === cat).reduce((s, e) => s + (e.amount || 0), 0);
-      const budget = budgets[cat] || 0;
-      return { category: cat, spent, budget, remaining: budget - spent, percent: budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0 };
-    });
-  }, [filteredExpenses, budgets]);
+  const expenseCategories = useMemo(() => {
+    const totals = categoryData.map((item) => ({ ...item, percent: filteredExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0) ? Math.round(item.value * 100 / filteredExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)) : 0 }));
+    return totals.sort((a, b) => b.value - a.value);
+  }, [categoryData, filteredExpenses]);
+
+  const openEdit = (type, item) => setEditingRecord({ type, item });
+  const saveRecord = async (type, id, data) => {
+    const entityName = type === "expense" ? "Expense" : type === "income" ? "Income" : "Salary";
+    await base44.entities[entityName].update(id, data);
+    setEditingRecord(null);
+    await loadAll();
+    toast({ title: "تغییرات ذخیره شد" });
+  };
+
+  const groupedRecords = (records) => {
+    const groups = records.reduce((acc, item) => {
+      const [year, month] = String(item.date || "").split("/");
+      const key = year && month ? `${year}/${month}` : "بدون تاریخ";
+      (acc[key] ||= []).push(item);
+      return acc;
+    }, {});
+    return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a)).map(([key, items]) => ({
+      key, items, total: items.reduce((sum, item) => sum + (item.amount || 0), 0),
+      label: key === "بدون تاریخ" ? key : `${months.find((month) => month.value === key.split("/")[1])?.label || key} ${key.split("/")[0]}`,
+    }));
+  };
 
   const colors = ["hsl(252 63% 58%)", "hsl(173 58% 39%)", "hsl(197 70% 50%)", "hsl(43 74% 66%)", "hsl(27 87% 67%)", "hsl(0 84% 60%)"];
 
@@ -307,7 +301,7 @@ export default function Accounting() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold">حسابداری</h1>
-          <p className="text-muted-foreground mt-1">ثبت هزینه‌ها، درآمدها، حقوق و بودجه‌بندی</p>
+          <p className="text-muted-foreground mt-1">ثبت و مدیریت درآمدها، هزینه‌ها و حقوق؛ تحلیل‌ها در بخش گزارش‌ها</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -318,9 +312,11 @@ export default function Accounting() {
           </button>
           <button
             onClick={() => setShowCharts(!showCharts)}
-            className={`border border-input rounded-xl px-4 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 ${showCharts ? "border-primary bg-primary/5" : ""}`}
+            aria-label={showCharts ? "مخفی کردن نمودار" : "نمایش نمودار"}
+            title={showCharts ? "مخفی کردن نمودار" : "نمایش نمودار"}
+            className={`inline-flex items-center justify-center gap-2 border border-input rounded-xl p-2.5 sm:px-4 text-sm bg-card hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary/30 ${showCharts ? "border-primary bg-primary/5" : ""}`}
           >
-            <BarChart3 className="w-5 h-5 ml-2" /> {showCharts ? "مخفی نمودار" : "نمایش نمودار"}
+            <BarChart3 className="w-5 h-5" /><span className="hidden sm:inline">{showCharts ? "مخفی نمودار" : "نمایش نمودار"}</span>
           </button>
           <button
             onClick={() => setShowForm(true)}
@@ -333,6 +329,10 @@ export default function Accounting() {
 
       {/* Date Range & Lock Period */}
       <div className="bg-card border border-border rounded-xl p-3 sm:p-4 space-y-3">
+        <button type="button" onClick={() => setShowDateFilters((shown) => !shown)} aria-expanded={showDateFilters} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm hover:bg-accent">
+          <Filter className="w-4 h-4" /> بازه زمانی <ChevronDown className={`w-4 h-4 transition-transform ${showDateFilters ? "rotate-180" : ""}`} />
+        </button>
+        {showDateFilters && <>
         <div className="flex flex-wrap items-center gap-3">
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground font-medium">
             <Filter className="w-4 h-4" /> بازه زمانی:
@@ -348,13 +348,13 @@ export default function Accounting() {
         </div>
         <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-border">
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground font-medium">
-            <Lock className="w-4 h-4" /> قفل دوره محاسبی:
+            <Lock className="w-4 h-4" /> قفل دورهٔ حسابداری:
           </span>
           {lockedPeriods.length > 0 && (
             <span className="flex flex-wrap gap-1">
               {lockedPeriods.map((m) => (
                 <span key={m} className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded-full flex items-center gap-1">
-                  <Lock className="w-3 h-3" /> ماه {m}
+                  <Lock className="w-3 h-3" /> {periodLabel(m)}
                 </span>
               ))}
             </span>
@@ -363,6 +363,7 @@ export default function Accounting() {
             <Lock className="w-4 h-4" /> قفل ماه
           </button>
         </div>
+        </>}
       </div>
 
       {/* Summary Cards */}
@@ -374,8 +375,8 @@ export default function Accounting() {
             className={`text-right p-5 rounded-2xl border transition-all ${tab === t.id ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/30"}`}
           >
             <p className="text-sm text-muted-foreground">{t.label}</p>
-            <p className="text-2xl font-bold mt-1">{faNum(t.total)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{faNum(t.count)} مورد</p>
+            <p className="text-2xl font-bold mt-1">{faNum(t.id === "expense" ? filteredExpenses.reduce((s, e) => s + (e.amount || 0), 0) : t.id === "income" ? filteredIncomes.reduce((s, i) => s + (i.amount || 0), 0) : t.total)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{faNum(t.id === "expense" ? filteredExpenses.length : t.id === "income" ? filteredIncomes.length : t.count)} مورد</p>
           </button>
         ))}
       </div>
@@ -416,52 +417,23 @@ export default function Accounting() {
         </div>
       )}
 
-      {/* Budget Tracker */}
+      {/* Expense category totals */}
       <div className="bg-card rounded-2xl border border-border p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-bold text-lg flex items-center gap-2">
-            <PieChartIcon className="w-5 h-5 text-primary" /> بودجه‌بندی دسته‌بندی‌ها
+            <PieChartIcon className="w-5 h-5 text-primary" /> دسته‌بندی کلی هزینه‌ها
           </h2>
-          <button
-            onClick={() => {
-              const newBudgets = { ...budgets };
-              categories.forEach(c => { if (!newBudgets[c]) newBudgets[c] = 0; });
-              setBudgets(newBudgets);
-            }}
-            className="text-sm text-primary hover:underline"
-          >
-            تنظیم بودجه برای همه دسته‌ها
-          </button>
+          <span className="text-xs sm:text-sm text-muted-foreground">مجموع: {faNum(filteredExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0))} تومان</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          {budgetData.map((b) => (
-            <div key={b.category} className={`p-4 rounded-xl ${b.budget > 0 && b.percent >= 100 ? "bg-red-50 border border-red-200" : b.budget > 0 && b.percent >= 80 ? "bg-amber-50 border border-amber-200" : "bg-card border border-border"}`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-muted-foreground">{b.category}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${b.percent >= 100 ? "bg-red-100 text-red-600" : b.percent >= 80 ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"}`}>
-                  {b.percent}%
-                </span>
-              </div>
-              <div className="h-2 bg-accent rounded-full overflow-hidden mb-2">
-                <div className="h-full rounded-full transition-all" style={{ width: `${b.percent}%`, backgroundColor: b.percent >= 100 ? "hsl(0 84% 60%)" : b.percent >= 80 ? "hsl(38 92% 50%)" : "hsl(142 76% 36%)" }} />
-              </div>
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>خرج شده: {faNum(b.spent)}</span>
-                <span>بودجه: {faNum(b.budget)}</span>
-              </div>
-              {b.budget > 0 && (
-                <button
-                  onClick={() => {
-                    const newBudget = prompt(`بودجه ماهانه برای ${b.category} (تومان):`, b.budget);
-                    if (newBudget !== null) setBudgets({ ...budgets, [b.category]: Number(newBudget) || 0 });
-                  }}
-                  className="text-xs text-primary hover:underline mt-2 w-full"
-                >
-                  ویرایش بودجه
-                </button>
-              )}
+          {expenseCategories.length ? expenseCategories.map((category) => (
+            <div key={category.name} className="p-4 rounded-xl border border-border bg-card min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-2"><span className="text-sm font-medium truncate">{categoryLabels[category.name] || category.name}</span><span className="text-xs text-muted-foreground">{faNum(category.percent)}٪</span></div>
+              <div className="h-2 bg-accent rounded-full overflow-hidden mb-2"><div className="h-full rounded-full bg-primary" style={{ width: `${category.percent}%` }} /></div>
+              <p className="text-sm font-bold">{faNum(category.value)} تومان</p>
+              <p className="text-xs text-muted-foreground mt-1">{faNum(filteredExpenses.filter((expense) => (expense.category || "عمومی") === category.name).length)} رکورد</p>
             </div>
-          ))}
+          )) : <p className="text-sm text-muted-foreground col-span-full">در این بازه هزینه‌ای ثبت نشده است.</p>}
         </div>
       </div>
 
@@ -488,11 +460,15 @@ export default function Accounting() {
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {tab === "expense" && filteredExpenses.map((e) => (
-              <ExpenseRow key={e.id} expense={e} isLocked={isLocked(e.date)} onDelete={() => handleDelete("expense", e.id)} onEdit={(data) => base44.entities.Expense.update(e.id, data).then(loadAll)} />
+            {tab === "expense" && groupedRecords(filteredExpenses).map((group) => (
+              <MonthAccordion key={group.key} group={group} expanded={expandedMonths[group.key] ?? (group.key === getPersianDate(0).slice(0, 7))} onToggle={() => setExpandedMonths((state) => ({ ...state, [group.key]: !(state[group.key] ?? (group.key === getPersianDate(0).slice(0, 7))) }))}>
+                {group.items.map((expense) => <ExpenseRow key={expense.id} expense={expense} isLocked={isLocked(expense.date)} onDelete={() => handleDelete("expense", expense.id)} onEdit={() => openEdit("expense", expense)} />)}
+              </MonthAccordion>
             ))}
-            {tab === "income" && filteredIncomes.map((i) => (
-              <Row key={i.id} title={i.title} sub={i.date || i.description} amount={i.amount} positive onDelete={() => handleDelete("income", i.id)} />
+            {tab === "income" && groupedRecords(filteredIncomes).map((group) => (
+              <MonthAccordion key={group.key} group={group} expanded={expandedMonths[group.key] ?? (group.key === getPersianDate(0).slice(0, 7))} onToggle={() => setExpandedMonths((state) => ({ ...state, [group.key]: !(state[group.key] ?? (group.key === getPersianDate(0).slice(0, 7))) }))}>
+                {group.items.map((income) => <Row key={income.id} title={income.title} sub={income.date || income.description} amount={income.amount} positive isLocked={isLocked(income.date)} onDelete={() => handleDelete("income", income.id)} onEdit={() => openEdit("income", income)} />)}
+              </MonthAccordion>
             ))}
             {tab === "salary" && filteredSalaries.map((s) => (
               <SalaryRow key={s.id} salary={s} isLocked={isLocked(s.date)} onDelete={() => handleDelete("salary", s.id)} onEdit={(data) => base44.entities.Salary.update(s.id, data).then(loadAll)} onViewSlip={(slip) => setSalarySlip(slip)} />
@@ -504,7 +480,8 @@ export default function Accounting() {
         )}
       </div>
 
-      {showForm && <FormModal tab={tab} onClose={() => setShowForm(false)} onSaved={loadAll} />}
+      {showForm && <FormModal tab={tab} isDateLocked={isLocked} onClose={() => setShowForm(false)} onSaved={loadAll} />}
+      {editingRecord && <FormModal tab={editingRecord.type} isDateLocked={isLocked} initial={editingRecord.item} onClose={() => setEditingRecord(null)} onSaved={(data) => saveRecord(editingRecord.type, editingRecord.item.id, data)} />}
 
       {showCsvImport && (
         <ImportCsvModal
@@ -534,8 +511,8 @@ export default function Accounting() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">با قفل شدن یک ماه، امکان ویرایش و حذف هزینه‌ها و حقوق همان ماه غیرفعال می‌شود.</p>
-            <label className="text-sm font-medium block mb-1.5">نام ماه</label>
+            <p className="text-sm text-muted-foreground mb-4">قفل دوره برای بستن حساب‌های یک ماه است؛ پس از قفل، رکوردهای هزینه و حقوق آن ماه فقط خواندنی می‌شوند تا تغییر ناخواسته‌ای در گزارش نهایی ایجاد نشود.</p>
+            <label className="text-sm font-medium block mb-1.5">ماه در سال {getPersianDate(0).split("/")[0]}</label>
             <select
               value={lockMonth}
               onChange={(e) => setLockMonth(e.target.value)}
@@ -758,80 +735,169 @@ async function readCsvFile(file) {
   }
 }
 
-function Row({ title, sub, amount, category, positive, onDelete }) {
+
+function Row({ title, sub, amount, category, positive, isLocked, onDelete, onEdit }) {
   return (
-    <div className="flex items-center justify-between p-4 hover:bg-accent/30 transition-colors">
+    <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 hover:bg-accent/30 transition-colors ${isLocked ? "opacity-60 bg-muted/30" : ""}`}>
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${positive ? "bg-green-100" : "bg-red-100"}`}>
-          <span className={`text-lg font-bold ${positive ? "text-green-600" : "text-red-600"}`}>{positive ? "↓" : "↑"}</span>
-        </div>
         <div className="min-w-0">
           <p className="font-medium text-sm truncate">{title}</p>
           <p className="text-xs text-muted-foreground">{sub}{category ? ` • ${category}` : ""}</p>
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
         <p className={`font-bold text-sm ${positive ? "text-green-600" : "text-red-600"}`}>{positive ? "+" : "−"}{faNum(amount)}</p>
-        <button onClick={onDelete} className="p-2 text-muted-foreground hover:text-red-500 hover:bg-destructive/10 rounded-lg transition-colors">
-          <Trash2 className="w-4 h-4" />
-        </button>
+        {!isLocked && <>
+          <button onClick={onEdit} className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-primary border border-primary/20 rounded-lg hover:bg-primary/5" title="ویرایش درآمد"><Pencil className="w-4 h-4" /><span>ویرایش</span></button>
+          <button onClick={onDelete} className="p-2 text-muted-foreground hover:text-red-500 hover:bg-destructive/10 rounded-lg transition-colors" title="حذف"><Trash2 className="w-4 h-4" /></button>
+        </>}
+        {isLocked && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Lock className="w-4 h-4" /> قفل</span>}
       </div>
     </div>
   );
 }
 
-function FormModal({ tab, onClose, onSaved }) {
-  const [form, setForm] = useState(() =>
-    tab === "expense" || tab === "income" ? { date: getPersianDate(0) } : {}
-  );
+function MonthAccordion({ group, expanded, onToggle, children }) {
+  return <section>
+    <button type="button" onClick={onToggle} aria-expanded={expanded} className="w-full flex items-center justify-between gap-3 p-4 text-right bg-muted/30 hover:bg-muted/60">
+      <span className="flex items-center gap-2 font-semibold"><ChevronDown className={`w-4 h-4 transition-transform ${expanded ? "rotate-180" : ""}`} />{group.label}<span className="text-xs font-normal text-muted-foreground">{faNum(group.items.length)} رکورد</span></span>
+      <span className="text-sm font-bold whitespace-nowrap">{faNum(group.total)} تومان</span>
+    </button>
+    {expanded && <div className="divide-y divide-border">{children}</div>}
+  </section>;
+}
+
+function periodLabel(period) {
+  const [year, month] = period.split("/");
+  return `${months.find((item) => item.value === month)?.label || month} ${year}`;
+}
+
+const digitWords = ["صفر", "یک", "دو", "سه", "چهار", "پنج", "شش", "هفت", "هشت", "نه"];
+const teenWords = ["ده", "یازده", "دوازده", "سیزده", "چهارده", "پانزده", "شانزده", "هفده", "هجده", "نوزده"];
+const tensWords = ["", "", "بیست", "سی", "چهل", "پنجاه", "شصت", "هفتاد", "هشتاد", "نود"];
+const hundredsWords = ["", "صد", "دویست", "سیصد", "چهارصد", "پانصد", "ششصد", "هفتصد", "هشتصد", "نهصد"];
+function threeDigitWords(value) {
+  const n = Number(value) || 0;
+  const parts = [];
+  if (Math.floor(n / 100)) parts.push(hundredsWords[Math.floor(n / 100)]);
+  const rest = n % 100;
+  if (rest >= 10 && rest < 20) parts.push(teenWords[rest - 10]);
+  else {
+    if (Math.floor(rest / 10)) parts.push(tensWords[Math.floor(rest / 10)]);
+    if (rest % 10) parts.push(digitWords[rest % 10]);
+  }
+  return parts.join(" و ");
+}
+function amountInWords(amount) {
+  const number = Math.floor(Number(amount) || 0);
+  if (number === 0) return "صفر تومان";
+  if (number < 0 || number > 999_999_999_999) return "";
+  const scales = ["", "هزار", "میلیون", "میلیارد"];
+  const groups = [];
+  let rest = number;
+  while (rest > 0) {
+    groups.push(rest % 1000);
+    rest = Math.floor(rest / 1000);
+  }
+  const parts = groups.map((group, index) => group ? `${threeDigitWords(group)}${scales[index] ? ` ${scales[index]}` : ""}` : "").filter(Boolean).reverse();
+  return `${parts.join(" و ")} تومان`;
+}
+
+function normalizeDigits(value) {
+  const persian = "۰۱۲۳۴۵۶۷۸۹";
+  const arabic = "٠١٢٣٤٥٦٧٨٩";
+  return String(value).replace(/[۰-۹٠-٩]/g, (digit) => {
+    const index = persian.indexOf(digit);
+    return String(index >= 0 ? index : arabic.indexOf(digit));
+  });
+}
+
+function FormModal({ tab, initial, isDateLocked, onClose, onSaved }) {
+  const [form, setForm] = useState(() => ({
+    ...(tab === "expense" || tab === "income" ? { date: getPersianDate(0) } : {}),
+    ...(tab === "expense" ? { category: "عمومی", status: "approved" } : {}),
+    ...(initial || {}),
+    amount: initial?.amount ?? "",
+  }));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saveError, setSaveError] = useState("");
 
-  const fields = {
-    expense: [
-      { name: "title", label: "عنوان هزینه", type: "text", required: true },
-      { name: "amount", label: "مبلغ (تومان)", type: "number", required: true },
-      { name: "date", label: "تاریخ", type: "text", required: true, placeholder: "1405/06/12" },
-      { name: "category", label: "دسته‌بندی", type: "select", options: categories },
-      { name: "project_id", label: "پروژه (اختیاری)", type: "text", placeholder: "شناسه پروژه" },
-      { name: "status", label: "وضعیت", type: "select", options: ["pending", "approved", "rejected"], labels: ["در انتظار", "تایید", "رد"] },
-    ],
-    income: [
-      { name: "title", label: "عنوان درآمد", type: "text", required: true },
-      { name: "amount", label: "مبلغ (تومان)", type: "number", required: true },
-      { name: "description", label: "توضیحات", type: "text" },
-      { name: "date", label: "تاریخ", type: "text", required: true, placeholder: "1405/06/12" },
-    ],
-    salary: [
-      { name: "employee_name", label: "نام کارمند", type: "text", required: true },
-      { name: "amount", label: "مبلغ حقوق", type: "number", required: true },
-      { name: "base_pay", label: "حقوق پایه", type: "number" },
-      { name: "overtime", label: "اضافه‌کاری", type: "number" },
-      { name: "deductions", label: "کسورات", type: "number" },
-      { name: "benefits", label: "مزایا", type: "number" },
-      { name: "month", label: "ماه", type: "text", required: true, placeholder: "مرداد ۱۴۰۵" },
-      { name: "status", label: "وضعیت", type: "select", options: ["pending", "paid"], labels: ["در انتظار", "پرداخت شده"] },
-    ],
-  };
+  const expenseTitleLabel = form.category === "حقوق" ? "شرح حقوق" : form.category === "اینترنت" ? "سرویس یا بازهٔ پرداخت" : form.category === "تجهیزات" ? "نام کالا یا خدمت" : form.category === "پذیرایی" ? "شرح خرید" : "شرح هزینه";
+  const contextualFields = form.category === "اینترنت" || form.category === "آب/برق/گاز" ? [
+    { name: "provider", label: form.category === "اینترنت" ? "نام سرویس یا شرکت" : "نام شرکت خدماتی", type: "text", required: !initial, placeholder: form.category === "اینترنت" ? "مثلاً سرویس اینترنت یا سرور" : "مثلاً آبفا یا اداره برق" },
+    { name: "billing_period", label: "بازهٔ صورتحساب (اختیاری)", type: "text", placeholder: "مثلاً مهر ۱۴۰۵" },
+  ] : form.category === "تبلیغات" ? [
+    { name: "channel", label: "کانال تبلیغاتی", type: "text", required: !initial, placeholder: "مثلاً اینستاگرام" },
+    { name: "campaign", label: "نام یا موضوع کمپین (اختیاری)", type: "text" },
+  ] : [];
+  const usesStructuredTitle = form.category === "حقوق" || contextualFields.length > 0;
+  const fields = tab === "expense" ? [
+    { name: "category", label: "دسته‌بندی هزینه", type: "select", options: categories, labels: categories.map((category) => categoryLabels[category]), required: true },
+    ...(form.category === "حقوق" ? [
+      { name: "payee", label: "نام دریافت‌کننده", type: "text", required: !initial, placeholder: "مثلاً حدیث" },
+      { name: "purpose", label: "بابت", type: "text", required: !initial, placeholder: "مثلاً تدوین ویدیو" },
+    ] : []),
+    ...contextualFields,
+    ...((initial || !usesStructuredTitle) ? [{ name: "title", label: expenseTitleLabel, type: "text", required: !initial && !usesStructuredTitle, placeholder: "شرح کوتاه برای گزارش‌های مالی" }] : []),
+    { name: "amount", label: "مبلغ (تومان)", type: "amount", required: true },
+    { name: "date", label: "تاریخ پرداخت", type: "date", required: true },
+    { name: "project_id", label: "پروژه (اختیاری)", type: "text", placeholder: "شناسه پروژه" },
+  ] : tab === "income" ? [
+    { name: "title", label: "عنوان درآمد", type: "text", required: true },
+    { name: "amount", label: "مبلغ (تومان)", type: "amount", required: true },
+    { name: "description", label: "توضیحات", type: "text" },
+    { name: "date", label: "تاریخ دریافت", type: "date", required: true },
+  ] : [
+    { name: "employee_name", label: "نام کارمند", type: "text", required: true },
+    { name: "amount", label: "مبلغ حقوق", type: "amount", required: true },
+    { name: "base_pay", label: "حقوق پایه", type: "amount" },
+    { name: "overtime", label: "اضافه‌کاری", type: "amount" },
+    { name: "deductions", label: "کسورات", type: "amount" },
+    { name: "benefits", label: "مزایا", type: "amount" },
+    { name: "month", label: "ماه", type: "text", required: true, placeholder: "مرداد ۱۴۰۵" },
+    { name: "status", label: "وضعیت", type: "select", options: ["pending", "paid"], labels: ["در انتظار", "پرداخت شده"] },
+  ];
 
   const entityName = tab === "expense" ? "Expense" : tab === "income" ? "Income" : "Salary";
-  const titles = { expense: "ثبت هزینه", income: "ثبت درآمد", salary: "ثبت حقوق" };
+  const titles = { expense: initial ? "ویرایش هزینه" : "ثبت هزینه", income: initial ? "ویرایش درآمد" : "ثبت درآمد", salary: initial ? "ویرایش حقوق" : "ثبت حقوق" };
 
   const handleSave = async () => {
-    const missingRequiredField = fields[tab].find(
+    const missingRequiredField = fields.find(
       (field) => field.required && !String(form[field.name] ?? "").trim()
     );
     if (missingRequiredField) {
       setSaveError(`لطفاً فیلد «${missingRequiredField.label}» را تکمیل کنید.`);
       return;
     }
+    if (tab !== "salary" && isDateLocked?.(form.date)) {
+      setSaveError("این دورهٔ حسابداری قفل است و ثبت یا ویرایش رکورد در آن امکان‌پذیر نیست.");
+      return;
+    }
     setSaving(true);
     setSaveError("");
     try {
-      await base44.entities[entityName].create(form);
-      await onSaved();
-      toast({ title: "اطلاعات ثبت شد" });
+      const payload = { ...form };
+      ["amount", "base_pay", "overtime", "deductions", "benefits"].forEach((key) => {
+        if (payload[key] === "" || payload[key] == null) delete payload[key];
+        else payload[key] = Number(String(payload[key]).replace(/[^0-9]/g, ""));
+      });
+      if (tab === "expense" && form.category === "حقوق" && (form.payee || form.purpose)) {
+        payload.title = `حقوق ${form.payee || ""} بابت ${form.purpose || ""}`.trim();
+      }
+      if (tab === "expense" && ["اینترنت", "آب/برق/گاز"].includes(form.category) && form.provider) {
+        payload.title = `${form.provider}${form.billing_period ? ` - ${form.billing_period}` : ""}`;
+      }
+      if (tab === "expense" && form.category === "تبلیغات" && form.channel) {
+        payload.title = `تبلیغات ${form.channel}${form.campaign ? ` - ${form.campaign}` : ""}`;
+      }
+      ["payee", "purpose", "provider", "billing_period", "channel", "campaign"].forEach((key) => delete payload[key]);
+      if (initial) await onSaved(payload);
+      else {
+        await base44.entities[entityName].create(payload);
+        await onSaved();
+      }
+      toast({ title: initial ? "تغییرات ذخیره شد" : "اطلاعات ثبت شد" });
       onClose();
     } catch (err) {
       console.error(`Failed to create ${entityName}:`, err);
@@ -856,7 +922,7 @@ function FormModal({ tab, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-card rounded-2xl w-full max-w-md p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-card rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-bold text-lg">{titles[tab]}</h2>
           <button onClick={onClose} className="p-2 hover:bg-accent rounded-lg">
@@ -864,12 +930,19 @@ function FormModal({ tab, onClose, onSaved }) {
           </button>
         </div>
         <div className="space-y-4">
-          {fields[tab].map((f) => (
+          {fields.map((f) => (
             <div key={f.name}>
               <label className="text-sm font-medium block mb-1.5">
                 {f.label} {f.required && <span className="text-[#D35400]">*</span>}
               </label>
-              {f.type === "select" ? (
+              {f.type === "date" ? (
+                <PersianDatePicker label={null} value={form[f.name] || ""} onChange={(value) => setForm({ ...form, [f.name]: value })} placeholder="انتخاب تاریخ" required={f.required} />
+              ) : f.type === "amount" ? (
+                <>
+                  <input type="text" inputMode="numeric" required={f.required} value={form[f.name] === "" ? "" : faNum(String(form[f.name]).replace(/[^۰-۹0-9]/g, ""))} onChange={(e) => setForm({ ...form, [f.name]: normalizeDigits(e.target.value).replace(/[^0-9]/g, "") })} placeholder="مثلاً ۱٬۴۰۰٬۰۰۰" className="w-full border border-input rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  {f.name === "amount" && <p className="text-xs text-muted-foreground mt-1.5">{form.amount ? amountInWords(String(form.amount).replace(/[^0-9]/g, "")) : "مبلغ را وارد کنید تا معادل حروفی نمایش داده شود."}</p>}
+                </>
+              ) : f.type === "select" ? (
                 <select
                   value={form[f.name] || ""}
                   onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
@@ -916,7 +989,7 @@ function FormModal({ tab, onClose, onSaved }) {
           disabled={saving}
           className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-medium mt-6 hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          {saving ? "در حال ثبت..." : "ثبت"}
+          {saving ? "در حال ذخیره..." : initial ? "ذخیره تغییرات" : "ثبت"}
         </button>
       </div>
     </div>

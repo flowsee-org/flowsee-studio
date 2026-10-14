@@ -1,0 +1,22 @@
+{
+  "name": "AccountingPeriodLock",
+  "type": "object",
+  "properties": {
+    "period_key": {
+      "type": "string",
+      "title": "دوره محاسبی"
+    },
+    "locked_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "زمان قفل"
+    }
+  },
+  "required": ["period_key"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

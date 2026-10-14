@@ -151,6 +151,11 @@ export default function AdminDashboard() {
   const totalExpense = filtered.expenses.reduce((s, e) => s + (e.amount || 0), 0);
   const totalIncome = filtered.incomes.reduce((s, i) => s + (i.amount || 0), 0);
   const balance = totalIncome - totalExpense;
+  const currentMonthPrefix = toCompareKey(getPersianDate(0)).slice(0, 6);
+  const currentMonthExpense = data.expenses.filter((item) => itemKey(item).startsWith(currentMonthPrefix)).reduce((sum, item) => sum + (item.amount || 0), 0);
+  const currentMonthIncome = data.incomes.filter((item) => itemKey(item).startsWith(currentMonthPrefix)).reduce((sum, item) => sum + (item.amount || 0), 0);
+  const currentMonthBalance = currentMonthIncome - currentMonthExpense;
+  const [currentYear, currentMonth] = getPersianDate(0).split("/");
   const pendingTasks = data.tasks.filter((t) => t.status !== "done").length;
 
   const stats = [
@@ -250,6 +255,23 @@ export default function AdminDashboard() {
           </div>
         ))}
       </div>
+
+      <section className="rounded-2xl border border-border bg-card p-4 sm:p-5" aria-labelledby="current-month-finance-title">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 id="current-month-finance-title" className="font-bold">خلاصه مالی این ماه</h2>
+          <span className="text-xs sm:text-sm text-muted-foreground">{persianMonthNames[Number(currentMonth) - 1]} {currentYear}</span>
+        </div>
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-2 sm:gap-3">
+          {[
+            { label: "موجودی خالص", value: currentMonthBalance, icon: Wallet, color: currentMonthBalance >= 0 ? "text-primary bg-primary/10" : "text-red-600 bg-red-100" },
+            { label: "درآمد ماه", value: currentMonthIncome, icon: TrendingUp, color: "text-green-600 bg-green-100" },
+            { label: "هزینه ماه", value: currentMonthExpense, icon: TrendingDown, color: "text-red-600 bg-red-100" },
+          ].map((item) => <div key={item.label} className="flex min-w-0 items-center gap-3 rounded-xl border border-border p-3 sm:p-4">
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${item.color}`}><item.icon className="h-4 w-4" /></span>
+            <div className="min-w-0"><p className="text-xs text-muted-foreground">{item.label}</p><p className="mt-1 truncate text-sm sm:text-base font-bold">{faNum(item.value)} <span className="text-[10px] font-normal text-muted-foreground">تومان</span></p></div>
+          </div>)}
+        </div>
+      </section>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {quickLinks.map((q) => (

@@ -147,6 +147,7 @@ const KNOWN_ENTITIES = [
   "AppSettings",
   "Comment",
   "ActivityLog",
+  "AccountingPeriodLock",
   "Employee",
   "Expense",
   "Goal",
