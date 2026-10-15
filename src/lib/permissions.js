@@ -15,6 +15,7 @@ export const MODULES = [
   { id: "admin", label: "پنل ادمین", path: "/admin", adminOnly: true },
   { id: "website-messages", label: "پیام‌های سایت", path: "/website-messages", adminOnly: true },
   { id: "site-content", label: "محتوای سایت", path: "/site-content", adminOnly: true },
+  { id: "blog-content", label: "مقالات بلاگ", path: "/blog-content", adminOnly: true },
 ];
 
 export const DEFAULT_MODULE_ACCESS = MODULES.map(({ id }) => id);
