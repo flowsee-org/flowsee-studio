@@ -7,6 +7,8 @@ import { buildWeeklyFinancialData } from "@/lib/reportData";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { toast } from "@/components/ui/use-toast";
+import vazirmatnRegularUrl from "@/assets/fonts/Vazirmatn-Regular.ttf?url";
+import vazirmatnBoldUrl from "@/assets/fonts/Vazirmatn-Bold.ttf?url";
 
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
 
@@ -173,70 +175,91 @@ export default function Reports() {
   };
 
   const exportToPDF = async () => {
-    const doc = new jsPDF({ orientation: 'landscape' });
+    try {
+      const loadFont = async (url) => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("بارگذاری فونت گزارش ناموفق بود.");
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        let binary = "";
+        for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+          binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+        }
+        return window.btoa(binary);
+      };
+      const [regularFont, boldFont] = await Promise.all([
+        loadFont(vazirmatnRegularUrl),
+        loadFont(vazirmatnBoldUrl),
+      ]);
+      const doc = new jsPDF({ orientation: "landscape" });
+      doc.addFileToVFS("Vazirmatn-Regular.ttf", regularFont);
+      doc.addFont("Vazirmatn-Regular.ttf", "Vazirmatn", "normal");
+      doc.addFileToVFS("Vazirmatn-Bold.ttf", boldFont);
+      doc.addFont("Vazirmatn-Bold.ttf", "Vazirmatn", "bold");
+      doc.setFont("Vazirmatn", "normal");
+      doc.setR2L(true);
 
-    // Add Persian font support (using built-in font)
-    doc.setFont("helvetica");
+      // Title
+      doc.setFontSize(20);
+      doc.text("گزارش مالی", 14, 22);
 
-    // Title
-    doc.setFontSize(20);
-    doc.text("گزارش مالی", 14, 22);
+      // Date range
+      doc.setFontSize(10);
+      doc.text(`بازه زمانی: ${dateRange.from || 'شروع'} تا ${dateRange.to || 'پایان'}`, 14, 30);
+      doc.text(`تاریخ گزارش: ${new Date().toLocaleDateString('fa-IR')}`, 14, 36);
 
-    // Date range
-    doc.setFontSize(10);
-    doc.text(`بازه زمانی: ${dateRange.from || 'شروع'} تا ${dateRange.to || 'پایان'}`, 14, 30);
-    doc.text(`تاریخ گزارش: ${new Date().toLocaleDateString('fa-IR')}`, 14, 36);
+      // Summary table
+      doc.setFontSize(12);
+      doc.text("خلاصه مالی", 14, 46);
 
-    // Summary table
-    doc.setFontSize(12);
-    doc.text("خلاصه مالی", 14, 46);
-
-    autoTable(doc, {
-      startY: 50,
-      head: [['شاخص', 'مبلغ (تومان)', 'تغییر نسبت به دوره قبل']],
-      body: [
-        ['کل درآمد', faNum(totalIncome), compareMode ? `${incomeChange >= 0 ? '+' : ''}${incomeChange}%` : '—'],
-        ['کل هزینه', faNum(totalExpense), compareMode ? `${expenseChange >= 0 ? '+' : ''}${expenseChange}%` : '—'],
-        ['سود/زیان خالص', faNum(totalIncome - totalExpense), '—'],
-      ],
-      theme: 'striped',
-      styles: { font: 'helvetica', halign: 'right' },
-      headStyles: { fillColor: [31, 160, 80] }
-    });
-
-    // Category breakdown
-    if (categoryData.length > 0) {
-      doc.text("هزینه‌ها بر اساس دسته‌بندی", 14, doc.lastAutoTable.finalY + 10);
       autoTable(doc, {
-        startY: doc.lastAutoTable.finalY + 14,
-        head: [['دسته‌بندی', 'مبلغ (تومان)', 'درصد از کل']],
-        body: categoryData.map(c => [c.name, faNum(c.value), `${totalExpense > 0 ? Math.round((c.value / totalExpense) * 100) : 0}%`]),
+        startY: 50,
+        head: [['شاخص', 'مبلغ (تومان)', 'تغییر نسبت به دوره قبل']],
+        body: [
+          ['کل درآمد', faNum(totalIncome), compareMode ? `${incomeChange >= 0 ? '+' : ''}${incomeChange}%` : '—'],
+          ['کل هزینه', faNum(totalExpense), compareMode ? `${expenseChange >= 0 ? '+' : ''}${expenseChange}%` : '—'],
+          ['سود/زیان خالص', faNum(totalIncome - totalExpense), '—'],
+        ],
         theme: 'striped',
-        styles: { font: 'helvetica', halign: 'right' },
-        headStyles: { fillColor: [249, 115, 22] }
+        styles: { font: "Vazirmatn", halign: "right" },
+        headStyles: { font: "Vazirmatn", fontStyle: "bold", fillColor: [31, 160, 80] }
       });
-    }
 
-    // Project profitability
-    if (projectProfitability.length > 0) {
-      doc.text("سودآوری پروژه‌ها", 14, doc.lastAutoTable.finalY + 10);
-      autoTable(doc, {
-        startY: doc.lastAutoTable.finalY + 14,
-        head: [['پروژه', 'درآمد', 'هزینه', 'سود', 'حاشیه سود']],
-        body: projectProfitability.map(p => [
-          p.name,
-          faNum(p.incomes),
-          faNum(p.expenses),
-          faNum(p.profit),
-          `${p.profitMargin}%`
-        ]),
-        theme: 'striped',
-        styles: { font: 'helvetica', halign: 'right' },
-        headStyles: { fillColor: [16, 185, 129] }
-      });
-    }
+      // Category breakdown
+      if (categoryData.length > 0) {
+        doc.text("هزینه‌ها بر اساس دسته‌بندی", 14, doc.lastAutoTable.finalY + 10);
+        autoTable(doc, {
+          startY: doc.lastAutoTable.finalY + 14,
+          head: [['دسته‌بندی', 'مبلغ (تومان)', 'درصد از کل']],
+          body: categoryData.map(c => [c.name, faNum(c.value), `${totalExpense > 0 ? Math.round((c.value / totalExpense) * 100) : 0}%`]),
+          theme: 'striped',
+          styles: { font: "Vazirmatn", halign: "right" },
+          headStyles: { font: "Vazirmatn", fontStyle: "bold", fillColor: [249, 115, 22] }
+        });
+      }
 
-    doc.save(`گزارش-مالی-${new Date().toISOString().split('T')[0]}.pdf`);
+      // Project profitability
+      if (projectProfitability.length > 0) {
+        doc.text("سودآوری پروژه‌ها", 14, doc.lastAutoTable.finalY + 10);
+        autoTable(doc, {
+          startY: doc.lastAutoTable.finalY + 14,
+          head: [['پروژه', 'درآمد', 'هزینه', 'سود', 'حاشیه سود']],
+          body: projectProfitability.map(p => [
+            p.name,
+            faNum(p.incomes),
+            faNum(p.expenses),
+            faNum(p.profit),
+            `${p.profitMargin}%`
+          ]),
+          theme: 'striped',
+          styles: { font: "Vazirmatn", halign: "right" },
+          headStyles: { font: "Vazirmatn", fontStyle: "bold", fillColor: [16, 185, 129] }
+        });
+      }
+
+      doc.save(`گزارش-مالی-${new Date().toISOString().split("T")[0]}.pdf`);
+    } catch (error) {
+      toast({ title: "خروجی PDF آماده نشد", description: error.message || "خطایی در ساخت PDF رخ داد.", variant: "destructive" });
+    }
   };
 
   if (loading)
