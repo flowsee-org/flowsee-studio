@@ -9,6 +9,7 @@ import autoTable from "jspdf-autotable";
 import { toast } from "@/components/ui/use-toast";
 
 const enNum = (n) => Number(n || 0).toLocaleString("en-US");
+const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
 const persianToLatin = (value) => {
   const letters = {
     ا: "a", آ: "a", أ: "a", إ: "e", ب: "b", پ: "p", ت: "t", ث: "s", ج: "j", چ: "ch", ح: "h", خ: "kh",
