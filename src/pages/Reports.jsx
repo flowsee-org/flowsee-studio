@@ -6,6 +6,7 @@ import PersianDatePicker from "@/components/PersianDatePicker";
 import { buildWeeklyFinancialData } from "@/lib/reportData";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { toast } from "@/components/ui/use-toast";
 
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
 
@@ -19,6 +20,7 @@ export default function Reports() {
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("financial"); // financial, project, team
+  const [exportingCsv, setExportingCsv] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -143,8 +145,31 @@ export default function Reports() {
   const incomeChange = prevTotalIncome > 0 ? Math.round(((totalIncome - prevTotalIncome) / prevTotalIncome) * 100) : 0;
   const colors = ["hsl(252 63% 58%)", "hsl(173 58% 39%)", "hsl(197 70% 50%)", "hsl(43 74% 66%)", "hsl(27 87% 67%)", "hsl(0 84% 60%)"];
 
-  const exportToCSV = (entityName) => {
-    window.open(`/api/apps/${base44.appId}/export/${entityName}`, '_blank');
+  const exportToCSV = async (entityName) => {
+    setExportingCsv(entityName);
+    try {
+      const token = window.localStorage.getItem("base44_access_token");
+      const response = await fetch(`/api/apps/${base44.appId}/export/${entityName}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        if (response.status === 401) throw new Error("نشست شما معتبر نیست؛ یک‌بار خارج شوید و دوباره وارد شوید.");
+        throw new Error(errorBody.message || "دریافت فایل CSV ناموفق بود.");
+      }
+      const fileUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = fileUrl;
+      link.download = `${entityName}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
+    } catch (error) {
+      toast({ title: "خروجی CSV آماده نشد", description: error.message, variant: "destructive" });
+    } finally {
+      setExportingCsv("");
+    }
   };
 
   const exportToPDF = async () => {
@@ -233,9 +258,9 @@ export default function Reports() {
             <FileText className="w-4 h-4" /> خروجی PDF
           </button>
           <div className="flex gap-1">
-            <button onClick={() => exportToCSV("Expense")} className="border border-input rounded-lg px-3 py-2 text-sm hover:bg-primary/5">هزینه‌ها (CSV)</button>
-            <button onClick={() => exportToCSV("Income")} className="border border-input rounded-lg px-3 py-2 text-sm hover:bg-primary/5">درآمدها (CSV)</button>
-            <button onClick={() => exportToCSV("Project")} className="border border-input rounded-lg px-3 py-2 text-sm hover:bg-primary/5">پروژه‌ها (CSV)</button>
+            <button disabled={Boolean(exportingCsv)} onClick={() => exportToCSV("Expense")} className="border border-input rounded-lg px-3 py-2 text-sm hover:bg-primary/5 disabled:opacity-50">{exportingCsv === "Expense" ? "در حال دریافت…" : "هزینه‌ها (CSV)"}</button>
+            <button disabled={Boolean(exportingCsv)} onClick={() => exportToCSV("Income")} className="border border-input rounded-lg px-3 py-2 text-sm hover:bg-primary/5 disabled:opacity-50">{exportingCsv === "Income" ? "در حال دریافت…" : "درآمدها (CSV)"}</button>
+            <button disabled={Boolean(exportingCsv)} onClick={() => exportToCSV("Project")} className="border border-input rounded-lg px-3 py-2 text-sm hover:bg-primary/5 disabled:opacity-50">{exportingCsv === "Project" ? "در حال دریافت…" : "پروژه‌ها (CSV)"}</button>
           </div>
         </div>
       </div>

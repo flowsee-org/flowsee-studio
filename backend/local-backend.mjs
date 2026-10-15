@@ -245,7 +245,12 @@ function publicUser(u) {
   return rest;
 }
 function findUserByEmail(email) {
-  return db.users.find((u) => String(u.email).toLowerCase() === String(email).toLowerCase());
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const matches = db.users.filter((u) => String(u.email || "").trim().toLowerCase() === normalizedEmail);
+  // Prefer a usable account if older data contains a soft-deleted duplicate.
+  return matches.find((u) => !u.deleted_at && u.is_active !== false)
+    || matches.find((u) => !u.deleted_at)
+    || matches[0];
 }
 function seedUsers() {
   const seed = (email, password, role, full_name) => {
@@ -589,8 +594,27 @@ async function handleRequest(req, res) {
       if (!email) return error(res, 400, "Email is required");
       if (role === "superadmin" && u.role !== "superadmin")
         return error(res, 403, "Only a superadmin can create another superadmin");
-      if (findUserByEmail(email)) return error(res, 409, "An account with this email already exists");
       const now = new Date().toISOString();
+      const existingUser = findUserByEmail(email);
+      if (existingUser && !existingUser.deleted_at && existingUser.is_active !== false)
+        return error(res, 409, "An account with this email already exists");
+      if (existingUser) {
+        if (existingUser.role === "superadmin" && (u.role !== "superadmin" || role !== "superadmin"))
+          return error(res, 403, "Only a superadmin can restore a superadmin account");
+        const initialPassword = String(body.initial_password || "");
+        delete existingUser.deleted_at;
+        delete existingUser.deleted_by;
+        existingUser.is_active = true;
+        existingUser.email = email;
+        existingUser.full_name = String(body.full_name || existingUser.full_name || "");
+        existingUser.phone = String(body.phone || existingUser.phone || "");
+        existingUser.role = role;
+        if (initialPassword.length >= 6) existingUser.password_hash = hashPassword(initialPassword);
+        existingUser.updated_date = now;
+        saveDb();
+        console.log(`[local-auth] restored ${email} (role: ${role})`);
+        return sendJson(res, 200, { success: true, reactivated: true, user: publicUser(existingUser) });
+      }
       // Dev backend: no email to deliver, so the user is created already
       // verified. If the admin supplies an initial password use it, otherwise
       // a random one (the member can log in and reset it).

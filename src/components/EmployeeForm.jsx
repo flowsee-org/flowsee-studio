@@ -24,14 +24,17 @@ export default function EmployeeForm({ onClose, onSaved, isSuperadmin = false })
     setSaving(true);
     setError("");
     try {
-      await inviteUser({
+      const result = await inviteUser({
         userEmail: form.email.trim(),
         role: form.role,
         full_name: form.full_name.trim(),
         initial_password: form.initial_password,
       });
-      setCreatedCredentials({ email: form.email.trim(), password: form.initial_password });
-      toast({ title: "کاربر ساخته شد", description: "اطلاعات ورود را از همین پنجره بردارید." });
+      setCreatedCredentials({ email: form.email.trim(), password: form.initial_password, reactivated: result?.reactivated === true });
+      toast({
+        title: result?.reactivated ? "حساب قبلی دوباره فعال شد" : "کاربر ساخته شد",
+        description: "اطلاعات ورود را از همین پنجره بردارید.",
+      });
       setSaving(false);
       onSaved();
     } catch (err) {
@@ -55,7 +58,7 @@ export default function EmployeeForm({ onClose, onSaved, isSuperadmin = false })
         {createdCredentials ? (
           <div className="space-y-4">
             <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-green-900 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200">
-              <h3 className="font-semibold">کاربر با موفقیت ساخته شد</h3>
+              <h3 className="font-semibold">{createdCredentials.reactivated ? "حساب قبلی با موفقیت دوباره فعال شد" : "کاربر با موفقیت ساخته شد"}</h3>
               <p className="mt-1 text-sm">نام کاربری همان ایمیل است. این اطلاعات را امن به کاربر تحویل دهید.</p>
             </div>
             <div className="space-y-3 rounded-xl border border-border p-4 text-sm">
