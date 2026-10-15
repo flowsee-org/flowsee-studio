@@ -11,6 +11,7 @@ import vazirmatnRegularUrl from "@/assets/fonts/Vazirmatn-Regular.ttf?url";
 import vazirmatnBoldUrl from "@/assets/fonts/Vazirmatn-Bold.ttf?url";
 
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
+const pdfText = (value) => String(value).replace(/[A-Za-z0-9۰-۹٠-٩][A-Za-z0-9۰-۹٠-٩٬٫,./:+%−-]*/g, (run) => [...run].reverse().join(""));
 
 export default function Reports() {
   const [expenses, setExpenses] = useState([]);
@@ -197,27 +198,32 @@ export default function Reports() {
       doc.addFont("Vazirmatn-Bold.ttf", "Vazirmatn", "bold");
       doc.setFont("Vazirmatn", "normal");
       doc.setR2L(true);
+      const rightEdge = doc.internal.pageSize.getWidth() - 14;
 
       // Title
       doc.setFontSize(20);
-      doc.text("گزارش مالی", 14, 22);
+      doc.setFont("Vazirmatn", "bold");
+      doc.text(pdfText("گزارش مالی"), rightEdge, 22, { align: "right" });
 
       // Date range
+      doc.setFont("Vazirmatn", "normal");
       doc.setFontSize(10);
-      doc.text(`بازه زمانی: ${dateRange.from || 'شروع'} تا ${dateRange.to || 'پایان'}`, 14, 30);
-      doc.text(`تاریخ گزارش: ${new Date().toLocaleDateString('fa-IR')}`, 14, 36);
+      doc.text(pdfText(`بازه زمانی: ${dateRange.from || 'شروع'} تا ${dateRange.to || 'پایان'}`), rightEdge, 30, { align: "right" });
+      doc.text(pdfText(`تاریخ گزارش: ${new Date().toLocaleDateString('fa-IR')}`), rightEdge, 36, { align: "right" });
 
       // Summary table
       doc.setFontSize(12);
-      doc.text("خلاصه مالی", 14, 46);
+      doc.setFont("Vazirmatn", "bold");
+      doc.text(pdfText("خلاصه مالی"), rightEdge, 46, { align: "right" });
+      doc.setFont("Vazirmatn", "normal");
 
       autoTable(doc, {
         startY: 50,
-        head: [['شاخص', 'مبلغ (تومان)', 'تغییر نسبت به دوره قبل']],
+        head: [[pdfText('تغییر نسبت به دوره قبل'), pdfText('مبلغ (تومان)'), pdfText('شاخص')]],
         body: [
-          ['کل درآمد', faNum(totalIncome), compareMode ? `${incomeChange >= 0 ? '+' : ''}${incomeChange}%` : '—'],
-          ['کل هزینه', faNum(totalExpense), compareMode ? `${expenseChange >= 0 ? '+' : ''}${expenseChange}%` : '—'],
-          ['سود/زیان خالص', faNum(totalIncome - totalExpense), '—'],
+          [pdfText(compareMode ? `${incomeChange >= 0 ? '+' : ''}${incomeChange}%` : '—'), pdfText(faNum(totalIncome)), pdfText('کل درآمد')],
+          [pdfText(compareMode ? `${expenseChange >= 0 ? '+' : ''}${expenseChange}%` : '—'), pdfText(faNum(totalExpense)), pdfText('کل هزینه')],
+          [pdfText('—'), pdfText(faNum(totalIncome - totalExpense)), pdfText('سود/زیان خالص')],
         ],
         theme: 'striped',
         styles: { font: "Vazirmatn", halign: "right" },
@@ -226,11 +232,17 @@ export default function Reports() {
 
       // Category breakdown
       if (categoryData.length > 0) {
-        doc.text("هزینه‌ها بر اساس دسته‌بندی", 14, doc.lastAutoTable.finalY + 10);
+        doc.setFont("Vazirmatn", "bold");
+        doc.text(pdfText("هزینه‌ها بر اساس دسته‌بندی"), rightEdge, doc.lastAutoTable.finalY + 10, { align: "right" });
+        doc.setFont("Vazirmatn", "normal");
         autoTable(doc, {
           startY: doc.lastAutoTable.finalY + 14,
-          head: [['دسته‌بندی', 'مبلغ (تومان)', 'درصد از کل']],
-          body: categoryData.map(c => [c.name, faNum(c.value), `${totalExpense > 0 ? Math.round((c.value / totalExpense) * 100) : 0}%`]),
+          head: [[pdfText('درصد از کل'), pdfText('مبلغ (تومان)'), pdfText('دسته‌بندی')]],
+          body: categoryData.map(c => [
+            pdfText(`${totalExpense > 0 ? Math.round((c.value / totalExpense) * 100) : 0}%`),
+            pdfText(faNum(c.value)),
+            pdfText(c.name),
+          ]),
           theme: 'striped',
           styles: { font: "Vazirmatn", halign: "right" },
           headStyles: { font: "Vazirmatn", fontStyle: "bold", fillColor: [249, 115, 22] }
@@ -239,16 +251,18 @@ export default function Reports() {
 
       // Project profitability
       if (projectProfitability.length > 0) {
-        doc.text("سودآوری پروژه‌ها", 14, doc.lastAutoTable.finalY + 10);
+        doc.setFont("Vazirmatn", "bold");
+        doc.text(pdfText("سودآوری پروژه‌ها"), rightEdge, doc.lastAutoTable.finalY + 10, { align: "right" });
+        doc.setFont("Vazirmatn", "normal");
         autoTable(doc, {
           startY: doc.lastAutoTable.finalY + 14,
-          head: [['پروژه', 'درآمد', 'هزینه', 'سود', 'حاشیه سود']],
+          head: [[pdfText('حاشیه سود'), pdfText('سود'), pdfText('هزینه'), pdfText('درآمد'), pdfText('پروژه')]],
           body: projectProfitability.map(p => [
-            p.name,
-            faNum(p.incomes),
-            faNum(p.expenses),
-            faNum(p.profit),
-            `${p.profitMargin}%`
+            pdfText(`${p.profitMargin}%`),
+            pdfText(faNum(p.profit)),
+            pdfText(faNum(p.expenses)),
+            pdfText(faNum(p.incomes)),
+            pdfText(p.name),
           ]),
           theme: 'striped',
           styles: { font: "Vazirmatn", halign: "right" },
