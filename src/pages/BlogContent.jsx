@@ -138,3 +138,5 @@ export default function BlogContent() {
     {editor && <PostEditor key={editor.post?.id || "new"} post={editor.post} categories={categories} token={localStorage.getItem("base44_access_token")} onClose={() => setEditor(null)} onSaved={saved} />}
   </main>;
 }
+
+//ur a nerd nigga and ur girl was fat and ugly she also cheated on ur ass llllmmmmmffffaaaaooooo
