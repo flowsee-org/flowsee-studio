@@ -139,4 +139,4 @@ export default function BlogContent() {
   </main>;
 }
 
-//ur a nerd nigga and ur girl was fat and ugly she also cheated on ur ass llllmmmmmffffaaaaooooo
+
