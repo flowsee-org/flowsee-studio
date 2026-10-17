@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { LayoutDashboard, Wallet, BarChart3, Calendar, Users, FolderKanban, ClipboardList, ListTodo, Menu, Shield, LogOut, UserCircle, Sun, Moon, Megaphone, Flag, Target, CalendarDays, Settings, AlertTriangle, X, RefreshCw, Send, Inbox, PanelRightClose, PanelRightOpen, BriefcaseBusiness } from "lucide-react";
+import { LayoutDashboard, Wallet, BarChart3, Calendar, Users, FolderKanban, ClipboardList, ListTodo, Menu, Shield, LogOut, UserCircle, Sun, Moon, Megaphone, Flag, Target, CalendarDays, Settings, AlertTriangle, X, RefreshCw, Send, Inbox, PanelRightClose, PanelRightOpen, BriefcaseBusiness, FileText } from "lucide-react";
 import { roleLabel } from "@/lib/roles";
 import NotificationCenter from "@/components/NotificationCenter";
 import { toast } from "@/components/ui/use-toast";
@@ -25,6 +25,7 @@ const allNavItems = [
   { to: "/admin", label: "پنل ادمین", icon: Shield, adminOnly: true, module: "admin" },
   { to: "/website-messages", label: "پیام‌های سایت", icon: Inbox, adminOnly: true, module: "website-messages" },
   { to: "/site-content", label: "محتوای سایت", icon: BriefcaseBusiness, adminOnly: true, module: "site-content" },
+  { to: "/blog-content", label: "مقالات بلاگ", icon: FileText, adminOnly: true, module: "blog-content" },
 ];
 
 export default function Layout() {
