@@ -1,4 +1,5 @@
 import RichTextField from "@/components/RichTextField";
+import { uploadEditorImage } from "@/lib/editor-image";
 import { useCallback, useEffect, useState } from "react";
 import { ExternalLink, FileText, Loader2, Plus, RefreshCw, Save, Trash2, Upload, X } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
@@ -76,7 +77,7 @@ function PostEditor({ post, categories, onClose, onSaved, token }) {
     <EditorField label="خلاصهٔ مقاله" value={form.excerpt} onChange={(value) => set("excerpt", value)} multiline maxLength={1000} placeholder="خلاصه‌ای که در کارت‌های بلاگ نمایش داده می‌شود" />
     <ImageUpload value={form.cover_image} onChange={(value) => set("cover_image", value)} token={token} />
     <EditorField label="متن جایگزین تصویر" value={form.cover_alt} onChange={(value) => set("cover_alt", value)} maxLength={255} />
-    <RichTextField key={post?.id || "new-post"} value={form.content} onChange={(value) => set("content", value)} />
+    <RichTextField key={post?.id || "new-post"} value={form.content} onChange={(value) => set("content", value)} uploadImage={uploadEditorImage} />
     <div className="grid gap-4 sm:grid-cols-2"><EditorField label="عنوان سئو" value={form.meta_title} onChange={(value) => set("meta_title", value)} maxLength={255} /><EditorField label="توضیحات سئو" value={form.meta_description} onChange={(value) => set("meta_description", value)} multiline maxLength={500} /></div>
     <div className="grid gap-3 sm:grid-cols-2"><label className="flex items-center gap-2 rounded-xl border p-3 text-sm"><input type="checkbox" checked={!!form.is_featured} onChange={(event) => set("is_featured", event.target.checked)} />مقالهٔ پیشنهادی</label><label className="flex items-center gap-2 rounded-xl border p-3 text-sm"><input type="checkbox" checked={!!form.is_published} onChange={(event) => set("is_published", event.target.checked)} />انتشار در سایت</label></div>
     {error && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}

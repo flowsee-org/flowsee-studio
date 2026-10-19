@@ -8,7 +8,7 @@ import { TableKit } from "@tiptap/extension-table";
 import { Bold, Italic, Underline, Strikethrough, List, ListOrdered, Quote, Undo2, Redo2, Link, Unlink, ImagePlus, Table2, AlignRight, AlignCenter, AlignLeft, Maximize2, Minimize2, Code2 } from "lucide-react";
 import "./rich-text.css";
 
-export default function RichTextField({ label = "متن مقاله", value = "", onChange, placeholder = "اینجا بنویسید…" }) {
+export default function RichTextField({ label = "متن مقاله", value = "", onChange, placeholder = "اینجا بنویسید…", uploadImage = null }) {
   const id = useId();
   const change = useRef(onChange);
   change.current = onChange;
@@ -17,6 +17,7 @@ export default function RichTextField({ label = "متن مقاله", value = "",
   const [url, setUrl] = useState("");
   const [alt, setAlt] = useState("");
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
   const editor = useEditor({
     extensions: [StarterKit.configure({ heading: { levels: [2, 3, 4] }, link: { openOnClick: false, defaultProtocol: "https" } }), Image, TextAlign.configure({ types: ["heading", "paragraph"] }), Placeholder.configure({ placeholder }), TableKit.configure({ table: { resizable: false } })],
     content: value || "",
@@ -36,6 +37,15 @@ export default function RichTextField({ label = "متن مقاله", value = "",
   if (!editor) return null;
   const tool = (title, Icon, action, active = false, disabled = false) => <button key={title} type="button" title={title} aria-label={title} aria-pressed={active} disabled={disabled} onClick={action}><Icon size={17} /></button>;
   const openInsert = (type) => { setDialog(type); setUrl(type === "link" ? editor.getAttributes("link").href || "" : ""); setAlt(""); setError(""); };
+  const upload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !uploadImage) return;
+    setUploading(true); setError('');
+    try { setUrl(await uploadImage(file)); }
+    catch (failure) { setError(failure.message || 'آپلود تصویر ناموفق بود.'); }
+    finally { setUploading(false); }
+  };
   const insert = () => {
     let parsed;
     try { parsed = new URL(url); } catch { setError("یک نشانی کامل با https وارد کنید."); return; }
@@ -69,6 +79,7 @@ export default function RichTextField({ label = "متن مقاله", value = "",
     </div>
     {editor.isActive("table") && <div className="flowsee-editor-tools"><button type="button" onClick={() => editor.chain().focus().addRowAfter().run()}>افزودن ردیف</button><button type="button" onClick={() => editor.chain().focus().addColumnAfter().run()}>افزودن ستون</button><button type="button" onClick={() => editor.chain().focus().deleteRow().run()}>حذف ردیف</button><button type="button" onClick={() => editor.chain().focus().deleteColumn().run()}>حذف ستون</button><button type="button" onClick={() => editor.chain().focus().deleteTable().run()}>حذف جدول</button></div>}
     {dialog && <div className="flowsee-editor-insert" role="group" aria-label={dialog === "image" ? "درج تصویر" : "درج لینک"}><input autoFocus aria-label="نشانی" dir="ltr" type="url" placeholder="https://" value={url} onChange={(event) => setUrl(event.target.value)} />{dialog === "image" && <input aria-label="متن جایگزین تصویر" placeholder="توضیح تصویر برای سئو و دسترس‌پذیری" value={alt} onChange={(event) => setAlt(event.target.value)} />}<button type="button" onClick={insert}>درج</button><button type="button" onClick={() => setDialog(null)}>انصراف</button>{error && <p role="alert">{error}</p>}</div>}
+    {dialog === 'image' && uploadImage && <div className="flowsee-editor-insert"><label>آپلود تصویر از دستگاه<input aria-label="آپلود تصویر از دستگاه" type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading} onChange={upload} /></label><span role="status">{uploading ? 'در حال آپلود؛ بعد از پایان، درج را بزنید…' : 'JPG، PNG یا WebP، حداکثر ۵ مگابایت'}</span></div>}
     <EditorContent editor={editor} />
     <div className="flowsee-editor-status">{editor.getText().trim().split(/\s+/).filter(Boolean).length.toLocaleString("fa-IR")} واژه · ذخیره با دکمهٔ ذخیره</div>
   </div>;
