@@ -1,0 +1,4 @@
+/* فقط import. تم در dig-theme.css (مالِ دیگ) و برند در brand.css (مالِ
+   پروژه) است؛ ترتیب مهم است: برند بعد از تم می‌آید تا برنده باشد. */
+@import "./dig-theme.css";
+@import "./brand.css";

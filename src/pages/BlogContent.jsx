@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import RichTextField from "@/components/RichTextField";
+import { uploadEditorImage } from "@/lib/editor-image";
+import { useCallback, useEffect, useState } from "react";
 import { ExternalLink, FileText, Loader2, Plus, RefreshCw, Save, Trash2, Upload, X } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -7,25 +9,12 @@ import { siteContentMediaUrl } from "@/lib/site-content-media";
 
 const API = "https://flowsee.ir/api/studio/site-content/blog";
 const SITE = "https://flowsee.ir";
-const RTE_CDN = "https://cdn.jsdelivr.net/npm/@richscripts/richtexteditor@2.14.1/richtexteditor";
 const UiButton = /** @type {any} */ (Button);
-let rteAssets;
-const rteWindow = /** @type {any} */ (window);
 
 const persianToLatin = { ا: "a", آ: "a", ب: "b", پ: "p", ت: "t", ث: "s", ج: "j", چ: "ch", ح: "h", خ: "kh", د: "d", ذ: "z", ر: "r", ز: "z", ژ: "zh", س: "s", ش: "sh", ص: "s", ض: "z", ط: "t", ظ: "z", ع: "a", غ: "gh", ف: "f", ق: "gh", ک: "k", گ: "g", ل: "l", م: "m", ن: "n", و: "v", ه: "h", ی: "y", ء: "", ئ: "y", ؤ: "v", ي: "y", ك: "k" };
 function slugify(value) {
   return value.toLowerCase().split("").map((char) => persianToLatin[char] ?? char).join("")
     .normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 120);
-}
-function loadRte() {
-  if (rteWindow.RichTextEditor) return Promise.resolve();
-  if (!rteAssets) {
-    rteAssets = new Promise((resolve, reject) => {
-      const css = document.createElement("link"); css.rel = "stylesheet"; css.href = `${RTE_CDN}/rte_theme_default.min.css`; document.head.appendChild(css);
-      const script = document.createElement("script"); script.src = `${RTE_CDN}/rte.js`; script.async = true; script.onload = resolve; script.onerror = () => reject(new Error("ویرایشگر متن بارگذاری نشد.")); document.head.appendChild(script);
-    }).catch((error) => { rteAssets = null; throw error; });
-  }
-  return rteAssets;
 }
 function authHeaders() { return { Authorization: `Bearer ${localStorage.getItem("base44_access_token") || ""}`, Accept: "application/json" }; }
 async function apiRequest(path = "", options = {}) {
@@ -49,33 +38,6 @@ function toLocalInput(value) {
 function EditorField({ label, value, onChange, multiline = false, dir = "rtl", ...props }) {
   const classes = "w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
   return <label className="block space-y-1.5"><span className="text-sm font-medium">{label}</span>{multiline ? <textarea {...props} dir={dir} value={value ?? ""} onChange={(event) => onChange(event.target.value)} className={`${classes} min-h-24 resize-y`} /> : <input {...props} dir={dir} value={value ?? ""} onChange={(event) => onChange(event.target.value)} className={classes} />}</label>;
-}
-
-function RichTextField({ value, onChange }) {
-  const id = useId().replace(/:/g, "");
-  const changeRef = useRef(onChange);
-  const [error, setError] = useState("");
-  useEffect(() => { changeRef.current = onChange; }, [onChange]);
-  useEffect(() => {
-    let active = true; let editor;
-    loadRte().then(() => {
-      if (!active) return;
-      editor = new rteWindow.RichTextEditor(`#${id}`, {
-        toolbar: "custom",
-        toolbar_custom: "{paragraphs,fontname,fontsize}|{bold,italic,underline,strike}|{justifymenu,insertorderedlist,insertunorderedlist,insertblockquote}/{insertlink,unlink}|{undo,redo,cleancode,code,preview,fullscreen}",
-        toolbarMobile: "mobile", maxWidthForMobile: 720, height: "420px",
-        contentCssText: "body{direction:rtl;text-align:right;font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:1.9;padding:12px;color:#222}",
-        editorBodyCssText: "direction:rtl;text-align:right;font-family:Tahoma,Arial,sans-serif;font-size:16px;line-height:1.9;padding:12px;",
-        linkDefaultProtocol: "https://", pasteMarkdown: true,
-      });
-      editor.setHTMLCode(value || "");
-      editor.attachEvent("change", () => changeRef.current(editor.getHTMLCode()));
-    }).catch((loadError) => { if (active) setError(loadError.message || "ویرایشگر متن بارگذاری نشد."); });
-    return () => { active = false; editor?.destroy?.(); };
-  // Initialize once; the editor change event owns subsequent updates.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-  return <div className="space-y-2"><span className="text-sm font-medium">متن مقاله</span><div id={id} dir="rtl" className="min-h-[420px] rounded-xl border border-input bg-background" />{error && <><p role="alert" className="text-xs text-destructive">{error} می‌توانید متن HTML را در کادر زیر وارد کنید.</p><textarea aria-label="متن HTML مقاله" value={value} onChange={(event) => onChange(event.target.value)} className="min-h-48 w-full rounded-xl border border-input bg-background p-3 font-mono text-xs" dir="ltr" /></>}</div>;
 }
 
 function ImageUpload({ value, onChange, token }) {
@@ -115,7 +77,7 @@ function PostEditor({ post, categories, onClose, onSaved, token }) {
     <EditorField label="خلاصهٔ مقاله" value={form.excerpt} onChange={(value) => set("excerpt", value)} multiline maxLength={1000} placeholder="خلاصه‌ای که در کارت‌های بلاگ نمایش داده می‌شود" />
     <ImageUpload value={form.cover_image} onChange={(value) => set("cover_image", value)} token={token} />
     <EditorField label="متن جایگزین تصویر" value={form.cover_alt} onChange={(value) => set("cover_alt", value)} maxLength={255} />
-    <RichTextField key={post?.id || "new-post"} value={form.content} onChange={(value) => set("content", value)} />
+    <RichTextField key={post?.id || "new-post"} value={form.content} onChange={(value) => set("content", value)} uploadImage={uploadEditorImage} />
     <div className="grid gap-4 sm:grid-cols-2"><EditorField label="عنوان سئو" value={form.meta_title} onChange={(value) => set("meta_title", value)} maxLength={255} /><EditorField label="توضیحات سئو" value={form.meta_description} onChange={(value) => set("meta_description", value)} multiline maxLength={500} /></div>
     <div className="grid gap-3 sm:grid-cols-2"><label className="flex items-center gap-2 rounded-xl border p-3 text-sm"><input type="checkbox" checked={!!form.is_featured} onChange={(event) => set("is_featured", event.target.checked)} />مقالهٔ پیشنهادی</label><label className="flex items-center gap-2 rounded-xl border p-3 text-sm"><input type="checkbox" checked={!!form.is_published} onChange={(event) => set("is_published", event.target.checked)} />انتشار در سایت</label></div>
     {error && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
