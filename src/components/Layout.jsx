@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Outlet, NavLink } from "react-router-dom";
+import { Outlet, NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { LayoutDashboard, Wallet, BarChart3, Calendar, Users, FolderKanban, ClipboardList, ListTodo, Menu, Shield, LogOut, UserCircle, Sun, Moon, Megaphone, Flag, Target, CalendarDays, Settings, AlertTriangle, X, RefreshCw, Send, Inbox, PanelRightClose, PanelRightOpen, BriefcaseBusiness, FileText } from "lucide-react";
+import { ChevronDown, LayoutDashboard, Wallet, BarChart3, Calendar, Users, FolderKanban, ClipboardList, ListTodo, Menu, Shield, LogOut, UserCircle, Sun, Moon, Megaphone, Flag, Target, CalendarDays, Settings, AlertTriangle, X, RefreshCw, Send, Inbox, PanelRightClose, PanelRightOpen, BriefcaseBusiness, FileText } from "lucide-react";
 import { roleLabel } from "@/lib/roles";
 import NotificationCenter from "@/components/NotificationCenter";
 import { toast } from "@/components/ui/use-toast";
@@ -9,7 +9,7 @@ import { base44 } from "@/api/base44Client";
 import { canAccessModule } from "@/lib/permissions";
 
 const allNavItems = [
-  { to: "/", label: "داشبورد", icon: LayoutDashboard, end: true, adminOnly: false, module: "dashboard" },
+  { to: "/", label: "داشبورد", icon: ChevronDown, LayoutDashboard, end: true, adminOnly: false, module: "dashboard" },
   { to: "/announcements", label: "اعلانات", icon: Megaphone, adminOnly: false, module: "announcements" },
   { to: "/accounting", label: "حسابداری", icon: Wallet, adminOnly: true, module: "accounting" },
   { to: "/reports", label: "گزارش", icon: BarChart3, adminOnly: true, module: "reports" },
@@ -24,11 +24,29 @@ const allNavItems = [
   { to: "/settings", label: "تنظیمات", icon: Settings, adminOnly: true, module: "settings" },
   { to: "/admin", label: "پنل ادمین", icon: Shield, adminOnly: true, module: "admin" },
   { to: "/website-messages", label: "پیام‌های سایت", icon: Inbox, adminOnly: true, module: "website-messages" },
-  { to: "/site-content", label: "محتوای سایت", icon: BriefcaseBusiness, adminOnly: true, module: "site-content" },
+  { to: "/site-content", label: "نمونه‌کارها", icon: BriefcaseBusiness, adminOnly: true, module: "site-content" },
   { to: "/blog-content", label: "مقالات بلاگ", icon: FileText, adminOnly: true, module: "blog-content" },
 ];
 
+const navGroups = [
+  { label: "محتوا و وب‌سایت", routes: ["/site-content", "/blog-content", "/website-messages", "/announcements"] },
+  { label: "پروژه و برنامه‌ریزی", routes: ["/projects", "/tasks", "/sprints", "/goals", "/meetings", "/work-reports"] },
+  { label: "مالی و گزارش‌ها", routes: ["/accounting", "/reports"] },
+  { label: "مدیریت و تیم", routes: ["/employees", "/leave-requests", "/admin", "/settings"] },
+];
+function NavigationGroup({ group, items, pathname, onNavigate }) {
+  const active = items.some(item => pathname === item.to || pathname.startsWith(item.to + "/"));
+  const [expanded, setExpanded] = useState(active);
+  useEffect(() => { if (active) setExpanded(true); }, [active, pathname]);
+  const id = group.routes[0].slice(1);
+  return <div className="py-1"><button type="button" aria-expanded={expanded} aria-controls={`nav-${id}`} onClick={() => setExpanded(!expanded)} className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold hover:bg-accent ${active ? "text-primary" : "text-muted-foreground"}`}><span>{group.label}</span><ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} /></button><div id={`nav-${id}`} hidden={!expanded} className="mr-3 space-y-1 border-r border-border pr-2">{items.map(item => <NavigationItem key={item.to} item={item} onNavigate={onNavigate} />)}</div></div>;
+}
+function NavigationItem({ item, onNavigate }) {
+  return <NavLink to={item.to} end={item.end} onClick={onNavigate} className={({ isActive }) => `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${isActive ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-accent"}`}><item.icon className="h-5 w-5 shrink-0" />{item.label}</NavLink>;
+}
+
 export default function Layout() {
+  const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem("studio-sidebar-hidden") === "true");
   const { user, logout, isAdmin, isSuperadmin } = useAuth();
@@ -97,24 +115,11 @@ export default function Layout() {
           </div>
         </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              onClick={() => setOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                    : "text-foreground hover:bg-accent"
-                }`
-              }
-            >
-              <item.icon className="w-5 h-5" />
-              {item.label}
-            </NavLink>
-          ))}
+          {navItems.filter(item => item.to === "/").map(item => <NavigationItem key={item.to} item={item} onNavigate={() => setOpen(false)} />)}
+          {navGroups.map(group => {
+            const items = navItems.filter(item => group.routes.includes(item.to));
+            return items.length ? <NavigationGroup key={group.label} group={group} items={items} pathname={pathname} onNavigate={() => setOpen(false)} /> : null;
+          })}
         </nav>
         <div className="p-4 border-t border-border space-y-3">
           <button

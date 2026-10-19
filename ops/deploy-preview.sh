@@ -23,7 +23,10 @@ trap cleanup EXIT
 mkdir "$BUILD/source"
 git -C "$APP" archive "$SHA" | tar -x -C "$BUILD/source"
 cp "$APP/.flowsee-preview.vite.config.mjs" "$BUILD/source/.flowsee-preview.vite.config.mjs"
-ln -s "$APP/node_modules" "$BUILD/source/node_modules"
+(
+ cd "$BUILD/source"
+ npm ci --no-audit --no-fund
+)
 (
  cd "$BUILD/source"
  VITE_BASE44_APP_ID=flowsee-preview VITE_BASE44_APP_BASE_URL="https://$DOMAIN" npm run build -- --config "$BUILD/source/.flowsee-preview.vite.config.mjs" --outDir "$BUILD/dist" --emptyOutDir
