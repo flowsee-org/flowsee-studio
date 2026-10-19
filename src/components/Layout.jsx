@@ -9,7 +9,7 @@ import { base44 } from "@/api/base44Client";
 import { canAccessModule } from "@/lib/permissions";
 
 const allNavItems = [
-  { to: "/", label: "داشبورد", icon: ChevronDown, LayoutDashboard, end: true, adminOnly: false, module: "dashboard" },
+  { to: "/", label: "داشبورد", icon: LayoutDashboard, end: true, adminOnly: false, module: "dashboard" },
   { to: "/announcements", label: "اعلانات", icon: Megaphone, adminOnly: false, module: "announcements" },
   { to: "/accounting", label: "حسابداری", icon: Wallet, adminOnly: true, module: "accounting" },
   { to: "/reports", label: "گزارش", icon: BarChart3, adminOnly: true, module: "reports" },
