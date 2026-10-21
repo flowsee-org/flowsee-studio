@@ -19,8 +19,6 @@ jobs:
     steps:
       - name: Deploy latest main to studio.flowsee.ir
         env:
-          DEPLOY_HOST: ${{ secrets.STUDIO_DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.STUDIO_DEPLOY_USER }}
           DEPLOY_KEY: ${{ secrets.STUDIO_DEPLOY_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.STUDIO_DEPLOY_KNOWN_HOSTS }}
           DEPLOY_PORT: ${{ vars.STUDIO_DEPLOY_PORT || '22' }}
@@ -32,7 +30,7 @@ jobs:
             exit 1
           fi
 
-          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_KEY DEPLOY_KNOWN_HOSTS; do
+          for name in DEPLOY_KEY DEPLOY_KNOWN_HOSTS; do
             if [[ -z "${!name}" ]]; then
               echo "Required GitHub secret is missing: $name" >&2
               exit 1
@@ -53,5 +51,5 @@ jobs:
             -o BatchMode=yes \
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile="$known_hosts_file" \
-            "$DEPLOY_USER@$DEPLOY_HOST" \
-            'sudo -n /var/www/flowsee-studio/ops/deploy-preview.sh'
+            'root@46.34.163.250' \
+            '/var/www/flowsee-studio/ops/deploy-preview.sh'
