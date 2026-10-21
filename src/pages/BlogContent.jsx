@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { siteContentMediaUrl } from "@/lib/site-content-media";
 
-const API = "https://flowsee.ir/api/studio/site-content/blog";
-const SITE = "https://flowsee.ir";
+const MAIN_API_URL = import.meta.env.VITE_MAIN_API_URL || "";
+const API = `${MAIN_API_URL}/api/studio/site-content/blog`;
+const SITE = MAIN_API_URL;
 const UiButton = /** @type {any} */ (Button);
 
 const persianToLatin = { ا: "a", آ: "a", ب: "b", پ: "p", ت: "t", ث: "s", ج: "j", چ: "ch", ح: "h", خ: "kh", د: "d", ذ: "z", ر: "r", ز: "z", ژ: "zh", س: "s", ش: "sh", ص: "s", ض: "z", ط: "t", ظ: "z", ع: "a", غ: "gh", ف: "f", ق: "gh", ک: "k", گ: "g", ل: "l", م: "m", ن: "n", و: "v", ه: "h", ی: "y", ء: "", ئ: "y", ؤ: "v", ي: "y", ك: "k" };
@@ -47,7 +48,7 @@ function ImageUpload({ value, onChange, token }) {
     setBusy(true); setError("");
     try {
       const body = new FormData(); body.append("image", file);
-      const response = await fetch("https://flowsee.ir/api/studio/site-content/images", { method: "POST", headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }, body });
+      const response = await fetch(`${MAIN_API_URL}/api/studio/site-content/images`, { method: "POST", headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }, body });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.message || "آپلود تصویر انجام نشد.");
       onChange(result.path);

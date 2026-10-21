@@ -1,11 +1,13 @@
 import { siteContentMediaUrl } from './site-content-media';
 
+const MAIN_API_URL = import.meta.env.VITE_MAIN_API_URL || '';
+
 export async function uploadEditorImage(file) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('تصویر JPG، PNG یا WebP انتخاب کنید.');
   if (file.size > 5 * 1024 * 1024) throw new Error('حجم تصویر باید حداکثر ۵ مگابایت باشد.');
   const body = new FormData();
   body.append('image', file);
-  const response = await fetch('https://flowsee.ir/api/studio/site-content/images', {
+  const response = await fetch(`${MAIN_API_URL}/api/studio/site-content/images`, {
     method: 'POST', body,
     headers: { Authorization: `Bearer ${localStorage.getItem('base44_access_token') || ''}`, Accept: 'application/json' },
   });
