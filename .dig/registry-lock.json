@@ -1,0 +1,17 @@
+{
+  "components": {
+    "theme": {
+      "version": "1.1.0",
+      "registryUrl": "https://docs.digdesign.ir",
+      "installedAt": "2026-10-19T16:03:21.433Z",
+      "files": {
+        "src/app/dig-theme.css": "sha256:7e6dc92a8fe58f1428fb4d0402cf879da0435eede2b642486a36ed1e5ddaa7fa"
+      },
+      "snapshot": {
+        "version": "1.1.0",
+        "path": ".dig/snapshots/theme/1.1.0",
+        "installedAt": "2026-10-19T16:03:21.433Z"
+      }
+    }
+  }
+}

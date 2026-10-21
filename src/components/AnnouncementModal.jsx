@@ -1,32 +1,8 @@
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { X, Upload, Pin, Clock } from "lucide-react";
-import ReactQuill from "react-quill-new";
-import "react-quill-new/dist/quill.snow.css";
+import RichTextField from "@/components/RichTextField";
 import PersianDatePicker from "@/components/PersianDatePicker";
-
-const quillModules = {
-  toolbar: [
-    [{ header: [2, 3, false] }],
-    ["bold", "italic", "underline", "strike"],
-    [{ list: "ordered" }, { list: "bullet" }],
-    [{ align: [] }],
-    ["link"],
-    ["clean"],
-  ],
-};
-
-const quillFormats = [
-  "header",
-  "bold",
-  "italic",
-  "underline",
-  "strike",
-  "list",
-  "bullet",
-  "align",
-  "link",
-];
 
 export default function AnnouncementModal({ editAnnouncement, onClose, onSaved }) {
   const [employees, setEmployees] = useState([]);
@@ -112,15 +88,7 @@ export default function AnnouncementModal({ editAnnouncement, onClose, onSaved }
               متن <span className="text-[#D35400]">*</span>
             </label>
             <div className="border border-input rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/30 [&_.ql-editor]:min-h-[140px] [&_.ql-editor]:text-sm [&_.ql-toolbar]:border-b [&_.ql-toolbar]:border-input [&_.ql-container]:border-0">
-              <ReactQuill
-                theme="snow"
-                value={form.body}
-                onChange={(html) => setForm({ ...form, body: html })}
-                modules={quillModules}
-                formats={quillFormats}
-                dir="rtl"
-                placeholder="متن اعلان را بنویسید..."
-              />
+              <RichTextField label="متن اعلان" value={form.body} onChange={(html) => setForm({ ...form, body: html })} placeholder="متن اعلان را بنویسید…" />
             </div>
             <p className="text-xs text-muted-foreground mt-1.5">می‌توانید متن را پررنگ، زیرخط‌دار یا به صورت لیست بنویسید.</p>
           </div>
