@@ -7,6 +7,7 @@ import AnnouncementComments from "@/components/AnnouncementComments";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { getPersianDate } from "@/components/PersianDatePicker";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
+import { sanitizeAnnouncementHtml } from "@/lib/announcementSanitize";
 
 const isHtml = (text) => /<\/?[a-z][\s\S]*>/i.test(text || "");
 
@@ -190,7 +191,7 @@ export default function Announcements() {
                   )}
                 </div>
                 {isHtml(a.body) ? (
-                  <div className="text-sm text-foreground/90 rich-text-copy" dir="rtl" dangerouslySetInnerHTML={{ __html: a.body }} />
+                  <div className="text-sm text-foreground/90 rich-text-copy" dir="rtl" dangerouslySetInnerHTML={{ __html: sanitizeAnnouncementHtml(a.body) }} />
                 ) : (
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">{a.body}</p>
                 )}
