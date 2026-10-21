@@ -4,16 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { Megaphone, Pin, ArrowLeft, Paperclip } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getPersianDate } from "@/components/PersianDatePicker";
-
-const plainText = (html) => {
-  const s = String(html || "");
-  if (/<\/?[a-z][\s\S]*>/i.test(s)) {
-    const div = document.createElement("div");
-    div.innerHTML = s;
-    return div.textContent || div.innerText || "";
-  }
-  return s;
-};
+import { plainTextFromHtml } from "@/lib/announcementSanitize";
 
 export default function AnnouncementWidget() {
   const { user } = useAuth();
@@ -82,7 +73,7 @@ export default function AnnouncementWidget() {
                     <p className="font-medium text-sm">{a.title}</p>
                     {isUnread && <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">جدید</span>}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{plainText(a.body)}</p>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{plainTextFromHtml(a.body)}</p>
                   {a.file_url && (
                     <a href={a.file_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-xs text-primary mt-1.5 flex items-center gap-1">
                       <Paperclip className="w-3 h-3" /> فایل پیوست
