@@ -1,8 +1,17 @@
 import json
+import os
 
 data = json.load(open('.local/db.json'))
 
-target_emails = ['bariran.ramtin@gmail.com', 'ivcharon92@gmail.com']
+# Emails to remove from the local database. Real addresses must stay out of
+# source control: pass them via the CLEAN_TARGET_EMAILS environment variable
+# (comma-separated) when running this helper, e.g.
+#   CLEAN_TARGET_EMAILS="a@example.test,b@example.test" python clean_db.py
+target_emails = [email.strip() for email in os.environ.get('CLEAN_TARGET_EMAILS', '').split(',') if email.strip()]
+
+if not target_emails:
+    raise SystemExit('No target emails provided. Set CLEAN_TARGET_EMAILS (comma-separated) and re-run.')
+
 target_ids = []
 for u in data['users']:
     if u['email'] in target_emails:

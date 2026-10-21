@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/AuthContext";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-const API_URL = "https://flowsee.ir/api/studio/website-messages";
+const MAIN_API_URL = import.meta.env.VITE_MAIN_API_URL || "";
+const API_URL = `${MAIN_API_URL}/api/studio/website-messages`;
 
 function formatDate(value) {
   if (!value) return "—";

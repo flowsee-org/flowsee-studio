@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { siteContentMediaUrl } from "@/lib/site-content-media";
 
-const API = "https://flowsee.ir/api/studio/site-content";
-const SITE = "https://flowsee.ir";
+const MAIN_API_URL = import.meta.env.VITE_MAIN_API_URL || "";
+const API = `${MAIN_API_URL}/api/studio/site-content`;
+const SITE = MAIN_API_URL;
 
 function ImagePreview({ path, alt = "", className }) {
   const [failedPath, setFailedPath] = useState("");

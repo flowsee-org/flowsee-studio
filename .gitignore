@@ -1,6 +1,7 @@
 #env
 .env
 .env.*
+!.env.example
 
 # Logs
 /logs
@@ -30,3 +31,10 @@ dist-ssr
 .env
 .vite
 base44/.app.jsonc
+
+# Local self-hosted backend database (never commit user data)
+.local/
+
+# Temporary cleanup scripts / one-off DB helpers
+clean_db*.py
+clean_db*.py.tmp
