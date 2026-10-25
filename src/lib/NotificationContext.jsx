@@ -64,14 +64,16 @@ export const NotificationProvider = ({ children }) => {
 
   const markAllAsRead = async () => {
     try {
-      await fetch(`/api/apps/${base44.appId}/notification/mark-all-read`, {
-        method: 'POST',
+      const endpoint = "/api/apps/" + base44.appId + "/notification/mark-all-read";
+      const response = await fetch(endpoint, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('base44_access_token')}`,
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + (localStorage.getItem("base44_access_token") || ""),
         },
       });
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      if (!response.ok) throw new Error("درخواست علامت‌گذاری اعلان‌ها ناموفق بود (" + response.status + ").");
+      setNotifications([]);
       setUnreadCount(0);
     } catch (err) {
       console.error('Failed to mark all as read:', err);
@@ -79,16 +81,13 @@ export const NotificationProvider = ({ children }) => {
   };
 
   const addNotification = (notification) => {
-    let added = false;
-    setNotifications((previous) => {
-      const fingerprint = notificationFingerprint(notification);
-      const createdAt = new Date(notification.created_date || Date.now()).getTime();
-      const duplicate = previous.some((item) => notificationFingerprint(item) === fingerprint && Math.abs(new Date(item.created_date || Date.now()).getTime() - createdAt) <= 10 * 60 * 1000);
-      if (duplicate || notification.read) return previous;
-      added = true;
-      return [notification, ...previous];
-    });
-    if (added) setUnreadCount((previous) => previous + 1);
+    if (notification.read) return;
+    const fingerprint = notificationFingerprint(notification);
+    const createdAt = new Date(notification.created_date || Date.now()).getTime();
+    const duplicate = notifications.some((item) => notificationFingerprint(item) === fingerprint && Math.abs(new Date(item.created_date || Date.now()).getTime() - createdAt) <= 10 * 60 * 1000);
+    if (duplicate) return;
+    setNotifications((previous) => [notification, ...previous]);
+    setUnreadCount((previous) => previous + 1);
   };
 
   return (
