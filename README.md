@@ -68,6 +68,17 @@ After pushing your changes to git, open the Base44 dashboard and publish the app
 base44 dashboard open
 ```
 
+## Deploy to the Flowsee Server
+
+Pushes to `main` can publish the self-hosted Studio frontend to `studio.flowsee.ir` with the GitHub Actions workflow in `.github/workflows/deploy.yml`. The workflow connects to the server and runs the existing atomic deployment script, which builds the latest `main`, checks the site, and restores the previous release if the health check fails.
+
+The workflow connects to `root@46.34.163.250`. Configure these GitHub Actions repository secrets before enabling production deploys:
+
+- `STUDIO_DEPLOY_KEY`: an SSH private key authorized for root on the server.
+- `STUDIO_DEPLOY_KNOWN_HOSTS`: the server host key entry, verified out of band.
+
+Optionally configure the repository variable `STUDIO_DEPLOY_PORT` (defaults to `22`). The matching public key must be authorized for root on the server. The workflow will fail clearly if a required secret is missing; it never learns the server host key automatically.
+
 ## Docs & Support
 
 Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)

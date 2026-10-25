@@ -1,0 +1,55 @@
+name: Deploy Studio to Server
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flowsee-studio-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Deploy latest main to studio.flowsee.ir
+        env:
+          DEPLOY_KEY: ${{ secrets.STUDIO_DEPLOY_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.STUDIO_DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_PORT: ${{ vars.STUDIO_DEPLOY_PORT || '22' }}
+        run: |
+          set -Eeuo pipefail
+
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Production deploys are only allowed from main." >&2
+            exit 1
+          fi
+
+          for name in DEPLOY_KEY DEPLOY_KNOWN_HOSTS; do
+            if [[ -z "${!name}" ]]; then
+              echo "Required GitHub secret is missing: $name" >&2
+              exit 1
+            fi
+          done
+
+          install -d -m 700 "$RUNNER_TEMP/studio-ssh"
+          key_file="$RUNNER_TEMP/studio-ssh/deploy_key"
+          known_hosts_file="$RUNNER_TEMP/studio-ssh/known_hosts"
+          printf '%s\n' "$DEPLOY_KEY" > "$key_file"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$known_hosts_file"
+          chmod 600 "$key_file" "$known_hosts_file"
+
+          ssh \
+            -i "$key_file" \
+            -p "$DEPLOY_PORT" \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$known_hosts_file" \
+            'root@46.34.163.250' \
+            '/var/www/flowsee-studio/ops/deploy-preview.sh'
