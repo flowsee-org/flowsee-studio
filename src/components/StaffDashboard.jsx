@@ -71,6 +71,9 @@ export default function StaffDashboard() {
     const assignees = t.assignees || (t.assignee ? [t.assignee] : []);
     return assignees.includes(userName) || t.created_by_id === user?.id;
   });
+  const myMeetings = data.meetings.filter((m) =>
+    m.created_by_id === user?.id || m.colleague === userName || m.colleague_email === user?.email
+  );
   const myReports = data.workReports.filter((r) => r.created_by_id === user?.id);
 
   const pendingCount = myTasks.filter((t) => t.status !== "done").length;
@@ -118,7 +121,6 @@ export default function StaffDashboard() {
           </div>
         </div>}
 
-      {/* Compact summary stats */}
       {visibleWidgets.stats && <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 border-t border-border pt-4">
         {stats.map((s) => (
           <div key={s.label} className="flex min-w-0 items-center gap-2 rounded-xl bg-accent/30 p-3">
@@ -129,19 +131,6 @@ export default function StaffDashboard() {
       </div>}
       </div>
 
-      {visibleWidgets.stats && <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-        {stats.map((s) => (
-          <div key={s.label} className="bg-card rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-border">
-            <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl ${s.color} flex items-center justify-center mb-2 sm:mb-3`}>
-              <s.icon className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <p className="text-xs sm:text-sm text-muted-foreground">{s.label}</p>
-            <p className="text-base sm:text-2xl font-bold mt-0.5">{s.value}</p>
-          </div>
-        ))}
-      </div>}
-
-      {/* Quick links - 2x2 grid on mobile */}
       {visibleWidgets.quickLinks && <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {quickLinks.map((q) => (
           <Link key={q.to} to={q.to} className={`${q.color} text-white rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between hover:opacity-90 transition-opacity`}>
@@ -151,7 +140,6 @@ export default function StaffDashboard() {
         ))}
       </div>}
 
-      {/* Today Tasks + Announcements */}
       {visibleWidgets.today && <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         <TodayTasks />
         <AnnouncementWidget />
@@ -159,7 +147,6 @@ export default function StaffDashboard() {
 
       {visibleWidgets.reminders && <MeetingReminders />}
 
-      {/* Latest tasks */}
       {visibleWidgets.recentTasks && <div className="bg-card rounded-2xl border border-border p-4 sm:p-5">
           <h2 className="font-bold text-sm sm:text-base mb-3">تسک‌های اخیر</h2>
           <div className="space-y-1">
@@ -177,9 +164,6 @@ export default function StaffDashboard() {
             ))}
           </div>
         </div>}
-
-
-
     </div>
   );
 }
