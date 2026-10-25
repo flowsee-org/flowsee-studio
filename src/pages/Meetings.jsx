@@ -1,12 +1,18 @@
 import { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { Plus, Calendar, Clock, User, CheckCircle, X, Video, Clock3, RefreshCw, FileText, AlertCircle, History, ArrowDownCircle, Filter, ChevronDown, Users, Star } from "lucide-react";
+import { Plus, Calendar, Clock, User, CheckCircle, X, Video, Clock3, RefreshCw, FileText, AlertCircle, History, ArrowDownCircle, Filter, ChevronDown, Users, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import MeetingModal from "@/components/MeetingModal";
-import PersianDatePicker from "@/components/PersianDatePicker";
+import PersianDatePicker, { getPersianDate } from "@/components/PersianDatePicker";
+import DateObject from "react-date-object";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
 import { loadTeamMembers } from "@/lib/teamMembers";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
+
+const persianMonthNames = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
+const formatCalendarDate = (year, month, day) => String(year) + "/" + String(month).padStart(2, "0") + "/" + String(day).padStart(2, "0");
 
 const statusLabels = { pending: "در انتظار تایید", confirmed: "تایید شده", rescheduled: "زمان پیشنهادی", done: "انجام شده", cancelled: "لغو شده" };
 const statusColors = { pending: "bg-amber-100 text-amber-700", confirmed: "bg-blue-100 text-blue-700", rescheduled: "bg-purple-100 text-purple-700", done: "bg-green-100 text-green-700", cancelled: "bg-red-100 text-red-700" };
@@ -16,7 +22,12 @@ export default function Meetings() {
   const userName = user?.full_name || user?.email || "";
   const userEmail = user?.email || "";
   const [meetings, setMeetings] = useState([]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const initialCalendarDate = getPersianDate(0);
+  const [calendarYear, setCalendarYear] = useState(() => initialCalendarDate ? parseInt(initialCalendarDate.split("/")[0], 10) : 1405);
+  const [calendarMonth, setCalendarMonth] = useState(() => initialCalendarDate ? parseInt(initialCalendarDate.split("/")[1], 10) : 1);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(() => initialCalendarDate || "1405/01/01");
   const [showModal, setShowModal] = useState(false);
   const [proposingFor, setProposingFor] = useState(null);
   const [proposedDate, setProposedDate] = useState("");
@@ -38,14 +49,25 @@ export default function Meetings() {
   useEffect(() => {
     load();
     loadCreators();
-    const unsubscribe = base44.entities.Meeting.subscribe(() => load());
-    return unsubscribe;
+    const unsubscribeMeeting = base44.entities.Meeting.subscribe(() => load());
+    const unsubscribeLeave = base44.entities.LeaveRequest.subscribe(() => load());
+    return () => {
+      if (typeof unsubscribeMeeting === "function") unsubscribeMeeting();
+      if (typeof unsubscribeLeave === "function") unsubscribeLeave();
+    };
   }, []);
 
   const load = async () => {
-    const data = await base44.entities.Meeting.list("-created_date");
-    setMeetings(data);
-    setLoading(false);
+    try {
+      const [data, leaves] = await Promise.all([
+        base44.entities.Meeting.list("-created_date").catch(() => []),
+        base44.entities.LeaveRequest.list("-created_date").catch(() => []),
+      ]);
+      setMeetings(Array.isArray(data) ? data : []);
+      setLeaveRequests(Array.isArray(leaves) ? leaves : []);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const { deleteWithUndo } = useDeleteUndo("Meeting", (id) => base44.entities.Meeting.delete(id), load);
@@ -68,6 +90,23 @@ export default function Meetings() {
     : meetings.filter((m) => m.created_by_id === user?.id || m.colleague === userName || m.colleague_email === userEmail);
 
   const activeMeetings = visibleMeetings.filter((m) => m.status !== "done" && m.status !== "cancelled");
+
+  const visibleApprovedLeaves = leaveRequests.filter((leave) => leave.status === "approved" && (isAdmin || leave.created_by_id === user?.id || leave.user_email === userEmail));
+  const monthStart = new DateObject({ year: calendarYear, month: calendarMonth, day: 1, calendar: persian, locale: persian_fa });
+  const calendarDayCount = monthStart.month.length;
+  const calendarWeekdayOffset = monthStart.weekDay.index;
+  const calendarCellCount = Math.ceil((calendarDayCount + calendarWeekdayOffset) / 7) * 7;
+  const calendarCells = Array.from({ length: calendarCellCount }, (_, index) => { const day = index - calendarWeekdayOffset + 1; return day < 1 || day > calendarDayCount ? null : day; });
+  const selectedDayMeetings = visibleMeetings.filter((meeting) => meeting.date === selectedCalendarDate && meeting.status !== "cancelled").sort((a, b) => String(a.time || "").localeCompare(String(b.time || "")));
+  const selectedDayLeaves = visibleApprovedLeaves.filter((leave) => leave.start_date <= selectedCalendarDate && leave.end_date >= selectedCalendarDate);
+  const moveCalendarMonth = (offset) => {
+    const monthIndex = calendarYear * 12 + calendarMonth - 1 + offset;
+    const nextYear = Math.floor(monthIndex / 12);
+    const nextMonth = (monthIndex % 12) + 1;
+    setCalendarYear(nextYear);
+    setCalendarMonth(nextMonth);
+    setSelectedCalendarDate(formatCalendarDate(nextYear, nextMonth, 1));
+  };
 
   // Apply filters to history meetings
   const filteredHistoryMeetings = visibleMeetings
