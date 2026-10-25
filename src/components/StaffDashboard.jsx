@@ -2,11 +2,10 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { ListTodo, CheckCircle, Clock, Calendar, ArrowLeft, Video, Settings2, UserRound } from "lucide-react";
+import { ListTodo, CheckCircle, Clock, Calendar, ArrowLeft, Settings2, UserRound } from "lucide-react";
 import TodayTasks from "@/components/TodayTasks";
 import AnnouncementWidget from "@/components/AnnouncementWidget";
 import MeetingReminders from "@/components/MeetingReminders";
-import OnboardingChecklist from "@/components/OnboardingChecklist";
 import { roleLabel } from "@/lib/roles";
 
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
@@ -16,8 +15,6 @@ const dashboardWidgets = [
   { id: "reminders", label: "یادآوری جلسه‌ها" },
   { id: "today", label: "کارهای امروز و اعلان‌ها" },
   { id: "recentTasks", label: "تسک‌های اخیر" },
-  { id: "meetings", label: "جلسات پیش رو" },
-  { id: "onboarding", label: "چک‌لیست آنبوردینگ" },
 ];
 const defaultWidgets = Object.fromEntries(dashboardWidgets.map(({ id }) => [id, true]));
 
@@ -34,6 +31,12 @@ export default function StaffDashboard() {
   });
   const [data, setData] = useState({ tasks: [], meetings: [], workReports: [] });
   const [loading, setLoading] = useState(true);
+  const [clockNow, setClockNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(new Date()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -69,7 +72,6 @@ export default function StaffDashboard() {
     return assignees.includes(userName) || t.created_by_id === user?.id;
   });
   const myReports = data.workReports.filter((r) => r.created_by_id === user?.id);
-  const myMeetings = data.meetings.filter((m) => m.created_by_id === user?.id || m.colleague === userName);
 
   const pendingCount = myTasks.filter((t) => t.status !== "done").length;
   const doneCount = myTasks.filter((t) => t.status === "done").length;
@@ -98,9 +100,9 @@ export default function StaffDashboard() {
             {user?.profile_image && !avatarBroken ? <img src={user.profile_image} alt={userName} className="w-full h-full object-cover" onError={() => setAvatarBroken(true)} /> : <span>{userName.charAt(0) || <UserRound className="w-6 h-6" />}</span>}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground">{new Date().getHours() < 12 ? "صبح بخیر" : new Date().getHours() < 18 ? "روز بخیر" : "عصر بخیر"}</p>
             <h1 className="text-xl sm:text-2xl font-bold truncate">{user?.full_name || "همکار عزیز"}</h1>
             <p className="text-sm text-muted-foreground mt-1">{roleLabel(user?.role)}{user?.department ? ` · ${user.department}` : ""}</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground"><span>شمسی: {new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "medium", timeZone: "Asia/Tehran" }).format(clockNow)}</span><span className="mx-1.5">·</span><span>میلادی: {new Intl.DateTimeFormat("fa-IR-u-ca-gregory", { dateStyle: "medium", timeZone: "Asia/Tehran" }).format(clockNow)}</span><span className="mx-1.5">·</span><span>ساعت ایران: {new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Tehran" }).format(clockNow)}</span></p>
           </div>
           <Link to="/profile" className="hidden sm:inline-flex rounded-xl border border-border px-3 py-2 text-sm hover:bg-accent">پروفایل من</Link>
           <button type="button" onClick={() => setCustomizeOpen((open) => !open)} aria-expanded={customizeOpen} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm hover:bg-accent">
@@ -115,11 +117,18 @@ export default function StaffDashboard() {
             </label>)}
           </div>
         </div>}
+
+      {/* Compact summary stats */}
+      {visibleWidgets.stats && <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 border-t border-border pt-4">
+        {stats.map((s) => (
+          <div key={s.label} className="flex min-w-0 items-center gap-2 rounded-xl bg-accent/30 p-3">
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${s.color}`}><s.icon className="h-4 w-4" /></div>
+            <div className="min-w-0"><p className="truncate text-xs text-muted-foreground">{s.label}</p><p className="text-lg font-bold tabular-nums">{s.value}</p></div>
+          </div>
+        ))}
+      </div>}
       </div>
 
-      {visibleWidgets.reminders && <MeetingReminders />}
-
-      {/* Stats - 2x2 grid on mobile, 4 cols on desktop */}
       {visibleWidgets.stats && <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {stats.map((s) => (
           <div key={s.label} className="bg-card rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-border">
@@ -148,9 +157,10 @@ export default function StaffDashboard() {
         <AnnouncementWidget />
       </div>}
 
-      {/* Tasks + Meetings */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-        {visibleWidgets.recentTasks && <div className="bg-card rounded-2xl border border-border p-4 sm:p-5">
+      {visibleWidgets.reminders && <MeetingReminders />}
+
+      {/* Latest tasks */}
+      {visibleWidgets.recentTasks && <div className="bg-card rounded-2xl border border-border p-4 sm:p-5">
           <h2 className="font-bold text-sm sm:text-base mb-3">تسک‌های اخیر</h2>
           <div className="space-y-1">
             {myTasks.length === 0 && <p className="text-center text-muted-foreground py-6 text-sm">تسکی برای شما ثبت نشده</p>}
@@ -168,38 +178,8 @@ export default function StaffDashboard() {
           </div>
         </div>}
 
-        {visibleWidgets.meetings && <div className="bg-card rounded-2xl border border-border p-4 sm:p-5">
-          <h2 className="font-bold text-sm sm:text-base mb-3">جلسات پیش رو</h2>
-          <div className="space-y-1">
-            {myMeetings.filter((m) => m.status !== "done" && m.status !== "cancelled").length === 0 && (
-              <p className="text-center text-muted-foreground py-6 text-sm">جلسه‌ای در پیش رو نیست</p>
-            )}
-            {myMeetings.filter((m) => m.status !== "done" && m.status !== "cancelled").slice(0, 5).map((m) => (
-              <div key={m.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
-                    <Calendar className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-sm truncate">{m.colleague}</p>
-                    <p className="text-xs text-muted-foreground">{m.date} {m.time}</p>
-                  </div>
-                </div>
-                {m.status === "confirmed" ? (
-                  <a href={`https://meet.jit.si/modiryar-${m.id}`} target="_blank" rel="noopener noreferrer" className="text-xs bg-primary text-primary-foreground px-2.5 py-1 rounded-lg flex items-center gap-1 shrink-0">
-                    <Video className="w-3 h-3" /> ورود
-                  </a>
-                ) : (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 shrink-0">در انتظار</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>}
-      </div>
 
-      {/* Onboarding Checklist for new staff */}
-      {visibleWidgets.onboarding && <OnboardingChecklist user={user} />}
+
     </div>
   );
 }

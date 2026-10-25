@@ -99,7 +99,7 @@ export default function NotificationCenter() {
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
                 <Bell className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                <p>اعلانی وجود ندارد</p>
+                <p>اعلان خوانده‌نشده‌ای وجود ندارد</p>
               </div>
             ) : (
               <div className="divide-y divide-border">

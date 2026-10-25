@@ -1,5 +1,14 @@
 import { base44 } from "@/api/base44Client";
 
+const normalizeKey = (value) => String(value || "")
+  .normalize("NFKC")
+  .replace(/[\u200c\u200d\u200e\u200f\ufeff]/g, "")
+  .replace(/[يى]/g, "ی")
+  .replace(/ك/g, "ک")
+  .replace(/\s+/g, " ")
+  .trim()
+  .toLocaleLowerCase("fa-IR");
+
 export async function loadTeamMembers() {
   let users = [];
   let employees = [];
@@ -22,19 +31,21 @@ export async function loadTeamMembers() {
 
   // First pass: add all users
   users.forEach((u) => {
-    const name = u.full_name || u.email;
-    const key = (u.email || name || "").toLowerCase();
-    if (name && !seenEmails.has(key)) {
+    const name = String(u.full_name || u.email || "").trim();
+    const emailKey = normalizeKey(u.email);
+    const nameKey = normalizeKey(name);
+    const key = emailKey || nameKey;
+    if (name && !seenEmails.has(key) && !seenNames.has(nameKey)) {
       seenEmails.add(key);
-      seenNames.add(name.toLowerCase());
+      seenNames.add(nameKey);
       merged.push({ id: u.id, name, email: u.email });
     }
   });
 
   // Second pass: add employees, but try to match with existing users by email
   employees.forEach((e) => {
-    const emailKey = (e.email || "").toLowerCase();
-    const nameKey = (e.name || "").toLowerCase();
+    const emailKey = normalizeKey(e.email);
+    const nameKey = normalizeKey(e.name);
 
     // Check if there's already a user with this email
     const existingByEmail = emailKey && seenEmails.has(emailKey);
@@ -48,7 +59,7 @@ export async function loadTeamMembers() {
       merged.push({ id: e.id, name: e.name, email: e.email });
     } else if (e.name && emailKey && existingByEmail) {
       // Update the existing entry with employee info if needed
-      const existing = merged.find(m => m.email?.toLowerCase() === emailKey);
+      const existing = merged.find((m) => normalizeKey(m.email) === emailKey);
       if (existing) {
         // Keep the user's name (full_name) as primary
         // We don't override the name from employee

@@ -114,21 +114,7 @@ export default function Layout() {
             </div>
           </div>
         </div>
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin">
-          {navItems.filter(item => item.to === "/").map(item => <NavigationItem key={item.to} item={item} onNavigate={() => setOpen(false)} />)}
-          {navGroups.map(group => {
-            const items = navItems.filter(item => group.routes.includes(item.to));
-            return items.length ? <NavigationGroup key={group.label} group={group} items={items} pathname={pathname} onNavigate={() => setOpen(false)} /> : null;
-          })}
-        </nav>
-        <div className="p-4 border-t border-border space-y-3">
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground w-full px-4 py-2 rounded-lg hover:bg-accent transition-colors"
-          >
-            {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            {darkMode ? "حالت روشن" : "حالت تاریک"}
-          </button>
+        <div className="shrink-0 space-y-2 border-b border-border px-4 py-3">
           <div className="flex items-center gap-3 px-2">
             <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
               {(user?.full_name || user?.email || "؟").charAt(0)}
@@ -154,6 +140,22 @@ export default function Layout() {
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-red-500 w-full px-4 py-2 rounded-lg hover:bg-destructive/10 transition-colors"
           >
             <LogOut className="w-4 h-4" /> خروج از حساب
+          </button>
+        </div>
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin">
+          {navItems.filter(item => item.to === "/").map(item => <NavigationItem key={item.to} item={item} onNavigate={() => setOpen(false)} />)}
+          {navGroups.map(group => {
+            const items = navItems.filter(item => group.routes.includes(item.to));
+            return items.length ? <NavigationGroup key={group.label} group={group} items={items} pathname={pathname} onNavigate={() => setOpen(false)} /> : null;
+          })}
+        </nav>
+        <div className="p-4 border-t border-border space-y-3">
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground w-full px-4 py-2 rounded-lg hover:bg-accent transition-colors"
+          >
+            {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {darkMode ? "حالت روشن" : "حالت تاریک"}
           </button>
         </div>
       </aside>

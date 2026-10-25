@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { X, Paperclip } from "lucide-react";
+import { X, Paperclip, Sparkles } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import { loadTeamMembers } from "@/lib/teamMembers";
 import SubtaskList from "./SubtaskList";
@@ -28,6 +28,7 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
   );
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [generatingDescription, setGeneratingDescription] = useState(false);
   const showRecurring = !!form.recurring_config;
 
   useEffect(() => {
@@ -76,6 +77,30 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
         ? (current.recurring_config || { frequency: "weekly", day_of_week: 0 })
         : null,
     }));
+  };
+
+  const generateTaskDescription = async () => {
+    if (!String(form.title || "").trim()) {
+      toast({ title: "ابتدا عنوان تسک را وارد کنید", variant: "destructive" });
+      return;
+    }
+    setGeneratingDescription(true);
+    try {
+      const response = await base44.integrations.Core.InvokeLLM({
+        prompt: "برای تسک زیر یک شرح ساختاریافته و قابل اجرا به فارسی بنویس. بخش‌ها: هدف، مراحل اجرا، چک‌لیست تحویل، معیار پذیرش و وابستگی‌ها. از ساختن جزئیات نامعلوم خودداری کن و موارد نامعلوم را به شکل سؤال مشخص کن.\nعنوان: " + form.title + "\nپروژه: " + (form.project_name || projects.find((p) => p.id === form.project_id)?.name || "مشخص نشده") + "\nشرح فعلی: " + (form.description || "ندارد"),
+      });
+      const candidate = typeof response === "string"
+        ? response
+        : response?.text || response?.result || response?.output || response?.response || response?.content || "";
+      const generated = typeof candidate === "string" ? candidate : JSON.stringify(candidate, null, 2);
+      if (!String(generated).trim()) throw new Error("پاسخ قابل استفاده‌ای از هوش مصنوعی دریافت نشد.");
+      setForm((current) => ({ ...current, description: String(generated).trim() }));
+      toast({ title: "شرح ساختاریافته تولید شد", description: "پیش از ثبت، متن را بازبینی کنید." });
+    } catch (error) {
+      toast({ title: "تولید متن ناموفق بود", description: error.message || "دوباره تلاش کنید.", variant: "destructive" });
+    } finally {
+      setGeneratingDescription(false);
+    }
   };
 
   const handleSave = async () => {
@@ -306,7 +331,7 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
           </div>
 
           <div>
-            <label className="text-sm font-medium block mb-1.5">توضیحات</label>
+            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2"><label className="text-sm font-medium">توضیحات</label><button type="button" onClick={generateTaskDescription} disabled={generatingDescription || !String(form.title || "").trim()} className="inline-flex items-center gap-1.5 rounded-lg border border-primary/25 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"><Sparkles className="h-3.5 w-3.5" />{generatingDescription ? "در حال تولید..." : "ساخت متن با هوش مصنوعی"}</button></div>
             <textarea
               value={form.description || ""}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -318,7 +343,7 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
         <button
           onClick={handleSave}
           disabled={saving || !form.title}
-          className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-medium mt-5 hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="sticky bottom-0 z-10 w-full border-t border-border bg-primary py-3 font-medium text-primary-foreground mt-5 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {saving ? "در حال ثبت..." : editTask?.id ? "ذخیره تغییرات" : "ثبت تسک"}
         </button>

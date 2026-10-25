@@ -6,8 +6,9 @@ import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { siteContentMediaUrl } from "@/lib/site-content-media";
+import { MAIN_API_URL } from "@/lib/mainApi";
 
-const MAIN_API_URL = import.meta.env.VITE_MAIN_API_URL || "";
+
 const API = `${MAIN_API_URL}/api/studio/site-content/blog`;
 const SITE = MAIN_API_URL;
 const UiButton = /** @type {any} */ (Button);
@@ -82,7 +83,7 @@ function PostEditor({ post, categories, onClose, onSaved, token }) {
     <div className="grid gap-4 sm:grid-cols-2"><EditorField label="عنوان سئو" value={form.meta_title} onChange={(value) => set("meta_title", value)} maxLength={255} /><EditorField label="توضیحات سئو" value={form.meta_description} onChange={(value) => set("meta_description", value)} multiline maxLength={500} /></div>
     <div className="grid gap-3 sm:grid-cols-2"><label className="flex items-center gap-2 rounded-xl border p-3 text-sm"><input type="checkbox" checked={!!form.is_featured} onChange={(event) => set("is_featured", event.target.checked)} />مقالهٔ پیشنهادی</label><label className="flex items-center gap-2 rounded-xl border p-3 text-sm"><input type="checkbox" checked={!!form.is_published} onChange={(event) => set("is_published", event.target.checked)} />انتشار در سایت</label></div>
     {error && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
-    <footer className="flex justify-start gap-3 border-t border-border pt-4"><UiButton type="submit" disabled={saving}>{saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}ذخیرهٔ مقاله</UiButton><UiButton type="button" variant="outline" onClick={onClose}>انصراف</UiButton></footer>
+    <footer className="sticky bottom-0 -mx-5 mt-4 flex flex-wrap justify-start gap-3 border-t border-border bg-card px-5 py-4 sm:-mx-6 sm:px-6"><UiButton type="submit" disabled={saving}>{saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}ذخیرهٔ مقاله</UiButton><UiButton type="button" variant="outline" onClick={onClose}>انصراف</UiButton></footer>
   </form></section></div>;
 }
 

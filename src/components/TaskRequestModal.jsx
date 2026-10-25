@@ -184,7 +184,7 @@ export default function TaskRequestModal({ projects, onClose, onSaved }) {
         <button
           onClick={handleSave}
           disabled={saving || !form.title.trim() || !form.requestee}
-          className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-medium mt-5 hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+          className="sticky bottom-0 z-10 w-full border-t border-border bg-primary text-primary-foreground py-3 rounded-xl font-medium mt-5 hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
         >
           <Send className="w-4 h-4" />
           {saving ? "در حال ارسال..." : "ارسال درخواست"}

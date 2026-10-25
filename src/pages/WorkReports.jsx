@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { Plus, Trash2, Sparkles, Clock, User, Pencil, Filter, X } from "lucide-react";
+import { Plus, Trash2, Sparkles, Clock, User, Pencil, Filter, X, ChevronDown } from "lucide-react";
 import ReportForm from "@/components/ReportForm";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import { loadTeamMembers } from "@/lib/teamMembers";
@@ -22,6 +22,7 @@ export default function WorkReports() {
   const [editReport, setEditReport] = useState(null);
   const [analyzing, setAnalyzing] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Filters
   const [memberFilter, setMemberFilter] = useState("");
@@ -125,17 +126,30 @@ export default function WorkReports() {
   };
 
   const analyzeReport = async (report) => {
+    const taskTitles = report.task_titles || (report.task_title ? [report.task_title] : []);
+    const matchingTasks = tasks.filter((task) => taskTitles.includes(task.title));
+    const taskBreakdown = matchingTasks.map((task) => {
+      const subtasks = (task.subtasks || []).map((subtask) => subtask.title || subtask.name).filter(Boolean).join("، ");
+      return `${task.title}؛ وضعیت: ${task.status || "نامشخص"}؛ زیرتسک‌ها: ${subtasks || "ثبت نشده"}`;
+    }).join("\n");
+    const history = visibleReports
+      .filter((item) => item.employee_name === report.employee_name && item.id !== report.id)
+      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+      .slice(0, 5);
+    const historySummary = history.map((item) => `${item.date || "بدون تاریخ"}: ${item.hours || 0} ساعت؛ ${item.description || ""}`).join("\n");
     setAnalyzing(report.id);
     try {
       const res = await base44.integrations.Core.InvokeLLM({
-        prompt: `شما یک مدیر حرفه‌ای تیم هستید. این گزارش کار روزانه یک کارمند را تحلیل کنید و بازخورد کوتاه و مفید به فارسی بدهید:\n\nکارمند: ${report.employee_name}\nتسک‌ها: ${(report.task_titles || (report.task_title ? [report.task_title] : [])).join("، ")}\nپروژه: ${report.project_name || "نامشخص"}\nساعت کار: ${report.hours || 0}\nتوضیحات: ${report.description}\n\nبازخورد شامل: ارزیابی کیفیت کار، میزان بهره‌وری، و یک پیشنهاد برای بهبود.`,
+        prompt: `شما تحلیل‌گر عملکرد تیم هستید. گزارش زیر را به فارسی، مستند و منصفانه تحلیل کنید. خروجی را در بخش‌های «خروجی‌های تحویل‌شده»، «پیشرفت تسک‌ها و زیرتسک‌ها»، «روند عملکرد نسبت به گزارش‌های قبلی»، «ریسک‌ها و موانع» و «اقدام بعدی پیشنهادی» ارائه دهید. از حدس‌زدن خروجی تحویل‌شده یا قضاوت درباره فرد بدون شواهد خودداری کنید؛ اطلاعات ناموجود را صریحاً مشخص کنید.\n\nکارمند: ${report.employee_name}\nتاریخ: ${report.date || "نامشخص"}\nپروژه: ${report.project_name || "نامشخص"}\nتسک‌های گزارش‌شده: ${taskTitles.join("، ") || "ذکر نشده"}\nجزئیات تسک و زیرتسک: ${taskBreakdown || "اطلاعات تکمیلی تسک در دسترس نیست"}\nخروجی‌های تحویل‌شده (در صورت ثبت): ${report.deliverables || report.outputs || report.completed_outputs || "در گزارش جداگانه مشخص نشده"}\nساعت کار: ${report.hours || 0}\nشرح گزارش: ${report.description || "ندارد"}\nگزارش‌های اخیر همین کارمند برای مقایسه روند: ${historySummary || "سابقه دیگری موجود نیست"}`,
       });
       await base44.entities.WorkReport.update(report.id, { ai_analysis: res });
-      load();
+      await load();
     } catch (err) {
       console.error(err);
+      toast({ title: "تحلیل گزارش ناموفق بود", description: err.message || "دوباره تلاش کنید.", variant: "destructive" });
+    } finally {
+      setAnalyzing(null);
     }
-    setAnalyzing(null);
   };
 
   if (loading)
@@ -162,7 +176,8 @@ export default function WorkReports() {
 
       {/* Filters bar */}
       <div className="bg-card border border-border rounded-xl p-3 sm:p-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
+        <button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} className="flex w-full items-center justify-between gap-3 rounded-lg px-1 py-1 text-sm font-medium hover:text-primary"><span className="flex items-center gap-2"><Filter className="h-4 w-4" />فیلترهای پیشرفته گزارش‌ها{hasFilters && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">فعال</span>}</span><ChevronDown className={"h-4 w-4 transition-transform " + (filtersOpen ? "rotate-180" : "")} /></button>
+        {filtersOpen && <div className="flex flex-wrap items-center gap-3">
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground font-medium">
             <Filter className="w-4 h-4" /> فیلترها:
           </span>
@@ -198,7 +213,7 @@ export default function WorkReports() {
               <X className="w-3.5 h-3.5" /> پاک کردن فیلترها
             </button>
           )}
-        </div>
+        </div>}
         {filteredReports.length > 0 && (
           <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground border-t border-border pt-3">
             <span>{faNum(filteredReports.length)} گزارش</span>

@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/AuthContext";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MAIN_API_URL } from "@/lib/mainApi";
 
-const MAIN_API_URL = import.meta.env.VITE_MAIN_API_URL || "";
+
 const API_URL = `${MAIN_API_URL}/api/studio/website-messages`;
 
 function formatDate(value) {

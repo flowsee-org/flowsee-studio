@@ -27,12 +27,35 @@ export default function MeetingModal({ onClose, onSaved }) {
   const [error, setError] = useState("");
   const [isGroup, setIsGroup] = useState(false);
   const [participants, setParticipants] = useState([]);
+  const [agendaSuggestions, setAgendaSuggestions] = useState(suggestedTopics);
 
   useEffect(() => {
-    loadTeamMembers().then((all) => {
+    let active = true;
+    Promise.all([
+      loadTeamMembers(),
+      base44.entities.Meeting.list("-created_date").catch(() => []),
+    ]).then(([all, history]) => {
+      if (!active) return;
       setMembers(all.filter((m) => m.email !== user?.email && m.name !== (user?.full_name || user?.email)));
+      const historicTopics = history
+        .filter((meeting) => meeting.created_by_id === user?.id || meeting.colleague === (user?.full_name || user?.email))
+        .flatMap((meeting) => Array.isArray(meeting.topics) ? meeting.topics : [])
+        .map((topic) => String(topic || "").trim())
+        .filter(Boolean);
+      setAgendaSuggestions([...new Set([...historicTopics, ...suggestedTopics])].slice(0, 8));
+    }).catch(() => {
+      if (active) setMembers([]);
     });
-  }, [user?.email, user?.full_name]);
+    return () => { active = false; };
+  }, [user?.id, user?.email, user?.full_name]);
+
+  useEffect(() => {
+    if (!time) return;
+    const [hours, minutes] = time.split(":").map(Number);
+    const totalMinutes = Math.min(23 * 60 + 59, hours * 60 + minutes + (urgent ? 15 : 45));
+    const nextEndTime = String(Math.floor(totalMinutes / 60)).padStart(2, "0") + ":" + String(totalMinutes % 60).padStart(2, "0");
+    setEndTime(nextEndTime);
+  }, [urgent, time]);
 
   const handleColleagueChange = (name) => {
     const member = members.find((m) => m.name === name);
@@ -268,7 +291,7 @@ export default function MeetingModal({ onClose, onSaved }) {
           <div>
             <p className="text-sm font-medium mb-2">موضوع‌های پیشنهادی:</p>
             <div className="flex flex-wrap gap-2">
-              {suggestedTopics.map((t, i) => (
+              {agendaSuggestions.map((t, i) => (
                 <button
                   key={i}
                   onClick={() => addSuggested(t)}
@@ -287,7 +310,7 @@ export default function MeetingModal({ onClose, onSaved }) {
             {error}
           </div>
         )}
-        <div className="flex items-center justify-between mt-5 pt-4 border-t border-border gap-3">
+        <div className="sticky bottom-0 -mx-5 sm:-mx-6 mt-5 flex items-center justify-between gap-3 border-t border-border bg-card px-5 py-4 sm:-mx-6 sm:px-6">
           <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground px-4 py-2.5">
             بستن
           </button>

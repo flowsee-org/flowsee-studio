@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -111,6 +111,12 @@ export default function Tasks() {
   const [isMobileBoard, setIsMobileBoard] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches);
   const [selectedTasks, setSelectedTasks] = useState(new Set());
   const [detailTask, setDetailTask] = useState(null);
+  const [longPressedTaskId, setLongPressedTaskId] = useState(null);
+  const longPressTimer = useRef(null);
+  const clearLongPressTimer = () => {
+    if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
+    longPressTimer.current = null;
+  };
 
   // ConfirmDialog states
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -143,14 +149,14 @@ export default function Tasks() {
     ? tasks
     : tasks.filter((t) => {
         const assignees = t.assignees || (t.assignee ? [t.assignee] : []);
-        return assignees.includes(userName) || t.created_by_id === user?.id;
+        return assignees.includes(userName) || [t.process_owner, t.process_owner_name, t.processOwner, t.owner].some((owner) => String(owner || "").trim() === userName) || t.created_by_id === user?.id;
       });
 
   // Apply view mode filter
   const viewFilteredTasks = useMemo(() => {
     return baseVisibleTasks.filter((t) => {
       const assignees = t.assignees || (t.assignee ? [t.assignee] : []);
-      if (viewMode === "assigned") return assignees.includes(userName);
+      if (viewMode === "assigned") return assignees.includes(userName) || [t.process_owner, t.process_owner_name, t.processOwner, t.owner].some((owner) => String(owner || "").trim() === userName);
       if (viewMode === "created") return t.created_by_id === user?.id;
       return true; // "all"
     });
@@ -180,7 +186,8 @@ export default function Tasks() {
       if (projectFilter && t.project_id !== projectFilter) return false;
       if (employeeFilter) {
         const assignees = t.assignees || (t.assignee ? [t.assignee] : []);
-        if (!assignees.includes(employeeFilter)) return false;
+        const processOwner = [t.process_owner, t.process_owner_name, t.processOwner, t.owner].some((owner) => String(owner || "").trim() === employeeFilter);
+        if (!assignees.includes(employeeFilter) && !processOwner) return false;
       }
       if (dateFrom && t.due_date && t.due_date < dateFrom) return false;
       if (dateTo && t.due_date && t.due_date > dateTo) return false;
@@ -512,13 +519,17 @@ export default function Tasks() {
                 className="col-span-2 w-full sm:col-span-1 sm:w-auto border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 sm:min-w-[180px]"
               >
                 <option value="">همه کارمندان</option>
-                {Array.from(new Set(baseVisibleTasks.flatMap(t => t.assignees || (t.assignee ? [t.assignee] : [])))).map((name) => (
+                {Array.from(new Set(baseVisibleTasks.flatMap((t) => [...(t.assignees || (t.assignee ? [t.assignee] : [])), t.process_owner, t.process_owner_name, t.processOwner, t.owner].filter(Boolean)))).map((name) => (
                   <option key={name} value={name}>{name}</option>
                 ))}
               </SelectControl>
             )}
-            <PersianDatePicker label="از تاریخ" value={dateFrom} onChange={setDateFrom} placeholder="از ددلاین" />
-            <PersianDatePicker label="تا تاریخ" value={dateTo} onChange={setDateTo} placeholder="تا ددلاین" />
+            <div className="col-span-2 min-w-0 sm:col-span-1 sm:min-w-[180px]">
+              <PersianDatePicker label="از تاریخ" value={dateFrom} onChange={setDateFrom} placeholder="از ددلاین" />
+            </div>
+            <div className="col-span-2 min-w-0 sm:col-span-1 sm:min-w-[180px]">
+              <PersianDatePicker label="تا تاریخ" value={dateTo} onChange={setDateTo} placeholder="تا ددلاین" />
+            </div>
             {hasTaskFilters && (
               <button
                 onClick={clearTaskFilters}
@@ -661,7 +672,7 @@ export default function Tasks() {
                                 ref={prov.innerRef}
                                 {...prov.draggableProps}
                                 {...prov.dragHandleProps}
-                                className={`bg-card border border-border rounded-xl p-2.5 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${
+                                className={`relative bg-card border border-border rounded-xl p-2.5 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${
                                   selectedTasks.has(t.id) ? "ring-2 ring-primary ring-offset-2" : ""
                                 }`}
                                 onClick={(e) => {
@@ -669,6 +680,13 @@ export default function Tasks() {
                                     handleViewDetail(t);
                                   }
                                 }}
+                                onTouchStart={() => {
+                                  clearLongPressTimer();
+                                  longPressTimer.current = window.setTimeout(() => setLongPressedTaskId(t.id), 450);
+                                }}
+                                onTouchEnd={() => { clearLongPressTimer(); setLongPressedTaskId(null); }}
+                                onTouchMove={() => { clearLongPressTimer(); setLongPressedTaskId(null); }}
+                                onTouchCancel={() => { clearLongPressTimer(); setLongPressedTaskId(null); }}
                               >
                                 {/* Selection checkbox */}
                                 <div className="flex items-start justify-between gap-1 mb-2">
@@ -698,8 +716,12 @@ export default function Tasks() {
                                   {t.task_number && (
                                     <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">{t.task_number}</span>
                                   )}
-                                  <p className="font-medium text-sm leading-snug flex-1 min-w-0 truncate">{t.title}</p>
+                                  <p title={t.title} className="font-medium text-sm leading-snug flex-1 min-w-0 truncate">{t.title}</p>
                                 </div>
+                                {longPressedTaskId === t.id && <div role="tooltip" className="absolute inset-x-2 top-12 z-30 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-lg">
+                                  <p className="font-semibold text-sm whitespace-normal break-words">{t.title}</p>
+                                  {t.description && <p className="mt-1 text-xs leading-relaxed whitespace-pre-wrap break-words">{t.description}</p>}
+                                </div>}
                                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                                   {t.priority && (
                                     <span className={`text-xs px-1.5 py-0.5 rounded-full ${priorityColors[t.priority]}`}>{priorityLabels[t.priority]}</span>
