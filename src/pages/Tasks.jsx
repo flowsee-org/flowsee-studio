@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -111,6 +111,12 @@ export default function Tasks() {
   const [isMobileBoard, setIsMobileBoard] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches);
   const [selectedTasks, setSelectedTasks] = useState(new Set());
   const [detailTask, setDetailTask] = useState(null);
+  const [longPressedTaskId, setLongPressedTaskId] = useState(null);
+  const longPressTimer = useRef(null);
+  const clearLongPressTimer = () => {
+    if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
+    longPressTimer.current = null;
+  };
 
   // ConfirmDialog states
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -662,7 +668,7 @@ export default function Tasks() {
                                 ref={prov.innerRef}
                                 {...prov.draggableProps}
                                 {...prov.dragHandleProps}
-                                className={`bg-card border border-border rounded-xl p-2.5 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${
+                                className={`relative bg-card border border-border rounded-xl p-2.5 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${
                                   selectedTasks.has(t.id) ? "ring-2 ring-primary ring-offset-2" : ""
                                 }`}
                                 onClick={(e) => {
@@ -670,6 +676,13 @@ export default function Tasks() {
                                     handleViewDetail(t);
                                   }
                                 }}
+                                onTouchStart={() => {
+                                  clearLongPressTimer();
+                                  longPressTimer.current = window.setTimeout(() => setLongPressedTaskId(t.id), 450);
+                                }}
+                                onTouchEnd={() => { clearLongPressTimer(); setLongPressedTaskId(null); }}
+                                onTouchMove={() => { clearLongPressTimer(); setLongPressedTaskId(null); }}
+                                onTouchCancel={() => { clearLongPressTimer(); setLongPressedTaskId(null); }}
                               >
                                 {/* Selection checkbox */}
                                 <div className="flex items-start justify-between gap-1 mb-2">
@@ -701,6 +714,10 @@ export default function Tasks() {
                                   )}
                                   <p title={t.title} className="font-medium text-sm leading-snug flex-1 min-w-0 truncate">{t.title}</p>
                                 </div>
+                                {longPressedTaskId === t.id && <div role="tooltip" className="absolute inset-x-2 top-12 z-30 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-lg">
+                                  <p className="font-semibold text-sm whitespace-normal break-words">{t.title}</p>
+                                  {t.description && <p className="mt-1 text-xs leading-relaxed whitespace-pre-wrap break-words">{t.description}</p>}
+                                </div>}
                                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                                   {t.priority && (
                                     <span className={`text-xs px-1.5 py-0.5 rounded-full ${priorityColors[t.priority]}`}>{priorityLabels[t.priority]}</span>
