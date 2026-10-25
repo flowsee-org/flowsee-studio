@@ -1,6 +1,7 @@
 import { siteContentMediaUrl } from './site-content-media';
+import { MAIN_API_URL } from './mainApi.js';
 
-const MAIN_API_URL = import.meta.env.VITE_MAIN_API_URL || '';
+
 
 export async function uploadEditorImage(file) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('تصویر JPG، PNG یا WebP انتخاب کنید.');
