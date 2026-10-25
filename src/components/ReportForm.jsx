@@ -126,7 +126,7 @@ export default function ReportForm({ tasks, userName, editReport, onClose, onSav
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-medium mt-5 hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="sticky bottom-0 z-10 w-full border-t border-border bg-primary text-primary-foreground py-3 rounded-xl font-medium mt-5 hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {saving ? "در حال ثبت..." : editReport ? "ذخیره تغییرات" : "ثبت گزارش"}
         </button>
