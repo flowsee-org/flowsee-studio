@@ -59,7 +59,7 @@ export async function loadTeamMembers() {
       merged.push({ id: e.id, name: e.name, email: e.email });
     } else if (e.name && emailKey && existingByEmail) {
       // Update the existing entry with employee info if needed
-      const existing = merged.find(m => m.email?.toLowerCase() === emailKey);
+      const existing = merged.find((m) => normalizeKey(m.email) === emailKey);
       if (existing) {
         // Keep the user's name (full_name) as primary
         // We don't override the name from employee
