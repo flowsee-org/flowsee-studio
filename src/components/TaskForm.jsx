@@ -89,7 +89,10 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
       const response = await base44.integrations.Core.InvokeLLM({
         prompt: "برای تسک زیر یک شرح ساختاریافته و قابل اجرا به فارسی بنویس. بخش‌ها: هدف، مراحل اجرا، چک‌لیست تحویل، معیار پذیرش و وابستگی‌ها. از ساختن جزئیات نامعلوم خودداری کن و موارد نامعلوم را به شکل سؤال مشخص کن.\nعنوان: " + form.title + "\nپروژه: " + (form.project_name || projects.find((p) => p.id === form.project_id)?.name || "مشخص نشده") + "\nشرح فعلی: " + (form.description || "ندارد"),
       });
-      const generated = typeof response === "string" ? response : response?.text || response?.result || "";
+      const candidate = typeof response === "string"
+        ? response
+        : response?.text || response?.result || response?.output || response?.response || response?.content || "";
+      const generated = typeof candidate === "string" ? candidate : JSON.stringify(candidate, null, 2);
       if (!String(generated).trim()) throw new Error("پاسخ قابل استفاده‌ای از هوش مصنوعی دریافت نشد.");
       setForm((current) => ({ ...current, description: String(generated).trim() }));
       toast({ title: "شرح ساختاریافته تولید شد", description: "پیش از ثبت، متن را بازبینی کنید." });
