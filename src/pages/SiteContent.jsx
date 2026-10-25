@@ -161,7 +161,7 @@ function Modal({ title, onClose, children }) {
 }
 
 function ModalActions({ saving, onClose }) {
-  return <footer className="flex justify-start gap-3 border-t border-border pt-4"><Button type="submit" disabled={saving}>{saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}ذخیره</Button><Button type="button" variant="outline" onClick={onClose}>انصراف</Button></footer>;
+  return <footer className="sticky bottom-0 -mx-5 mt-4 flex flex-wrap justify-start gap-3 border-t border-border bg-card px-5 py-4 sm:-mx-6 sm:px-6"><Button type="submit" disabled={saving}>{saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}ذخیره</Button><Button type="button" variant="outline" onClick={onClose}>انصراف</Button></footer>;
 }
 
 export default function SiteContent() {
