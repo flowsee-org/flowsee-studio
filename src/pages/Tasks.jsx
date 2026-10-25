@@ -524,8 +524,12 @@ export default function Tasks() {
                 ))}
               </SelectControl>
             )}
-            <PersianDatePicker label="از تاریخ" value={dateFrom} onChange={setDateFrom} placeholder="از ددلاین" />
-            <PersianDatePicker label="تا تاریخ" value={dateTo} onChange={setDateTo} placeholder="تا ددلاین" />
+            <div className="col-span-2 min-w-0 sm:col-span-1 sm:min-w-[180px]">
+              <PersianDatePicker label="از تاریخ" value={dateFrom} onChange={setDateFrom} placeholder="از ددلاین" />
+            </div>
+            <div className="col-span-2 min-w-0 sm:col-span-1 sm:min-w-[180px]">
+              <PersianDatePicker label="تا تاریخ" value={dateTo} onChange={setDateTo} placeholder="تا ددلاین" />
+            </div>
             {hasTaskFilters && (
               <button
                 onClick={clearTaskFilters}
