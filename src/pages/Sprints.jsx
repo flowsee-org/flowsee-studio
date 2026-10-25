@@ -137,7 +137,7 @@ function SprintModal({ sprint, onClose, onSaved }) {
           </div>
         )}
 
-        <div className="flex items-center justify-between mt-5 pt-4 border-t border-border gap-3">
+        <div className="sticky bottom-0 -mx-5 sm:-mx-6 mt-5 flex items-center justify-between gap-3 border-t border-border bg-card px-5 py-4 sm:px-6">
           <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground px-4 py-2.5">
             بستن
           </button>
@@ -164,13 +164,18 @@ export default function Sprints() {
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const load = async () => {
-    const [s, t] = await Promise.all([
-      base44.entities.Sprint.list("-created_date"),
-      base44.entities.Task.list(),
-    ]);
-    setSprints(s || []);
-    setTasks(t || []);
-    setLoading(false);
+    try {
+      const [s, t] = await Promise.all([
+        base44.entities.Sprint.list("-created_date").catch(() => []),
+        base44.entities.Task.list().catch(() => []),
+      ]);
+      setSprints(Array.isArray(s) ? s : []);
+      setTasks(Array.isArray(t) ? t : []);
+    } catch (error) {
+      toast({ title: "بارگذاری اسپرینت‌ها ناموفق بود", description: error.message || "اتصال را بررسی کنید.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const { deleteWithUndo } = useDeleteUndo("Sprint", (id) => base44.entities.Sprint.delete(id), load);
@@ -196,9 +201,13 @@ export default function Sprints() {
   }, [tasks]);
 
   const changeStatus = async (id, status) => {
-    await base44.entities.Sprint.update(id, { status });
-    toast({ title: "وضعیت اسپرینت به‌روزرسانی شد" });
-    load();
+    try {
+      await base44.entities.Sprint.update(id, { status });
+      toast({ title: "وضعیت اسپرینت به‌روزرسانی شد" });
+      await load();
+    } catch (error) {
+      toast({ title: "تغییر وضعیت اسپرینت انجام نشد", description: error.message || "دوباره تلاش کنید.", variant: "destructive" });
+    }
   };
 
   const confirmDelete = async () => {
