@@ -6,7 +6,6 @@ import { ListTodo, CheckCircle, Clock, Calendar, ArrowLeft, Video, Settings2, Us
 import TodayTasks from "@/components/TodayTasks";
 import AnnouncementWidget from "@/components/AnnouncementWidget";
 import MeetingReminders from "@/components/MeetingReminders";
-import OnboardingChecklist from "@/components/OnboardingChecklist";
 import { roleLabel } from "@/lib/roles";
 
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
@@ -16,8 +15,6 @@ const dashboardWidgets = [
   { id: "reminders", label: "یادآوری جلسه‌ها" },
   { id: "today", label: "کارهای امروز و اعلان‌ها" },
   { id: "recentTasks", label: "تسک‌های اخیر" },
-  { id: "meetings", label: "جلسات پیش رو" },
-  { id: "onboarding", label: "چک‌لیست آنبوردینگ" },
 ];
 const defaultWidgets = Object.fromEntries(dashboardWidgets.map(({ id }) => [id, true]));
 
@@ -34,6 +31,12 @@ export default function StaffDashboard() {
   });
   const [data, setData] = useState({ tasks: [], meetings: [], workReports: [] });
   const [loading, setLoading] = useState(true);
+  const [clockNow, setClockNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(new Date()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -98,9 +101,9 @@ export default function StaffDashboard() {
             {user?.profile_image && !avatarBroken ? <img src={user.profile_image} alt={userName} className="w-full h-full object-cover" onError={() => setAvatarBroken(true)} /> : <span>{userName.charAt(0) || <UserRound className="w-6 h-6" />}</span>}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground">{new Date().getHours() < 12 ? "صبح بخیر" : new Date().getHours() < 18 ? "روز بخیر" : "عصر بخیر"}</p>
             <h1 className="text-xl sm:text-2xl font-bold truncate">{user?.full_name || "همکار عزیز"}</h1>
             <p className="text-sm text-muted-foreground mt-1">{roleLabel(user?.role)}{user?.department ? ` · ${user.department}` : ""}</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground"><span>شمسی: {new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "medium", timeZone: "Asia/Tehran" }).format(clockNow)}</span><span className="mx-1.5">·</span><span>میلادی: {new Intl.DateTimeFormat("fa-IR-u-ca-gregory", { dateStyle: "medium", timeZone: "Asia/Tehran" }).format(clockNow)}</span><span className="mx-1.5">·</span><span>ساعت ایران: {new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Tehran" }).format(clockNow)}</span></p>
           </div>
           <Link to="/profile" className="hidden sm:inline-flex rounded-xl border border-border px-3 py-2 text-sm hover:bg-accent">پروفایل من</Link>
           <button type="button" onClick={() => setCustomizeOpen((open) => !open)} aria-expanded={customizeOpen} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm hover:bg-accent">
@@ -116,8 +119,6 @@ export default function StaffDashboard() {
           </div>
         </div>}
       </div>
-
-      {visibleWidgets.reminders && <MeetingReminders />}
 
       {/* Stats - 2x2 grid on mobile, 4 cols on desktop */}
       {visibleWidgets.stats && <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
@@ -148,6 +149,8 @@ export default function StaffDashboard() {
         <AnnouncementWidget />
       </div>}
 
+      {visibleWidgets.reminders && <MeetingReminders />}
+
       {/* Tasks + Meetings */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
         {visibleWidgets.recentTasks && <div className="bg-card rounded-2xl border border-border p-4 sm:p-5">
@@ -168,7 +171,7 @@ export default function StaffDashboard() {
           </div>
         </div>}
 
-        {visibleWidgets.meetings && <div className="bg-card rounded-2xl border border-border p-4 sm:p-5">
+        {false && <div className="bg-card rounded-2xl border border-border p-4 sm:p-5">
           <h2 className="font-bold text-sm sm:text-base mb-3">جلسات پیش رو</h2>
           <div className="space-y-1">
             {myMeetings.filter((m) => m.status !== "done" && m.status !== "cancelled").length === 0 && (
@@ -199,7 +202,7 @@ export default function StaffDashboard() {
       </div>
 
       {/* Onboarding Checklist for new staff */}
-      {visibleWidgets.onboarding && <OnboardingChecklist user={user} />}
+      {false && null}
     </div>
   );
 }
