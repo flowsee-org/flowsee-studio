@@ -232,6 +232,47 @@ export default function Meetings() {
         </button>
       </div>
 
+      {/* Combined meeting and approved-leave calendar */}
+      <section className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            <div><h2 className="font-bold">تقویم جلسات و مرخصی‌ها</h2><p className="text-xs text-muted-foreground mt-0.5">جلسات ثبت‌شده و مرخصی‌های تأییدشده در یک نما</p></div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => moveCalendarMonth(-1)} className="rounded-lg p-2 hover:bg-accent" aria-label="ماه قبل"><ChevronRight className="h-4 w-4" /></button>
+            <select aria-label="ماه تقویم" value={calendarMonth} onChange={(event) => { const month = Number(event.target.value); setCalendarMonth(month); setSelectedCalendarDate(formatCalendarDate(calendarYear, month, 1)); }} className="min-w-28 rounded-xl border border-input bg-card px-3 py-2 text-sm">
+              {persianMonthNames.map((name, index) => <option key={name} value={index + 1}>{name}</option>)}
+            </select>
+            <select aria-label="سال تقویم" value={calendarYear} onChange={(event) => { const year = Number(event.target.value); setCalendarYear(year); setSelectedCalendarDate(formatCalendarDate(year, calendarMonth, 1)); }} className="min-w-20 rounded-xl border border-input bg-card px-3 py-2 text-sm">
+              {Array.from({ length: 9 }, (_, index) => calendarYear - 4 + index).map((year) => <option key={year} value={year}>{year}</option>)}
+            </select>
+            <button type="button" onClick={() => moveCalendarMonth(1)} className="rounded-lg p-2 hover:bg-accent" aria-label="ماه بعد"><ChevronLeft className="h-4 w-4" /></button>
+          </div>
+        </div>
+        <div className="grid grid-cols-7 gap-1 text-center">
+          {["ش", "ی", "د", "س", "چ", "پ", "ج"].map((dayName) => <div key={dayName} className="py-2 text-[11px] font-medium text-muted-foreground">{dayName}</div>)}
+          {calendarCells.map((day, index) => {
+            if (!day) return <div key={"empty-" + index} className="min-h-[68px] rounded-lg border border-transparent" />;
+            const dateValue = formatCalendarDate(calendarYear, calendarMonth, day);
+            const dayMeetings = visibleMeetings.filter((meeting) => meeting.date === dateValue && meeting.status !== "cancelled");
+            const dayLeaves = visibleApprovedLeaves.filter((leave) => leave.start_date <= dateValue && leave.end_date >= dateValue);
+            const isSelected = selectedCalendarDate === dateValue;
+            const isToday = getPersianDate(0) === dateValue;
+            return <button type="button" key={dateValue} onClick={() => setSelectedCalendarDate(dateValue)} aria-pressed={isSelected} className={"min-h-[68px] min-w-0 rounded-lg border p-1.5 text-right transition-colors " + (isSelected ? "border-primary bg-primary/10" : isToday ? "border-primary/30 bg-primary/5" : "border-border/60 hover:bg-accent/50")}>
+              <span className={"text-xs font-semibold " + (isSelected || isToday ? "text-primary" : "text-foreground")}>{day.toLocaleString("fa-IR")}</span>
+              {dayMeetings.length > 0 && <span className="mt-1 block truncate rounded bg-blue-100 px-1 py-0.5 text-[9px] text-blue-800">{dayMeetings.length.toLocaleString("fa-IR")} جلسه</span>}
+              {dayLeaves.length > 0 && <span className="mt-0.5 block truncate rounded bg-emerald-100 px-1 py-0.5 text-[9px] text-emerald-800">{dayLeaves.length.toLocaleString("fa-IR")} مرخصی</span>}
+            </button>;
+          })}
+        </div>
+        <div className="border-t border-border pt-4 space-y-3">
+          <h3 className="text-sm font-bold">برنامهٔ {selectedCalendarDate}</h3>
+          {selectedDayMeetings.length === 0 && selectedDayLeaves.length === 0 && <p className="text-sm text-muted-foreground">برای این روز جلسه یا مرخصی تأییدشده‌ای ثبت نشده است.</p>}
+          {selectedDayMeetings.map((meeting) => <div key={meeting.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-blue-50 px-3 py-2.5 text-sm text-blue-900"><span className="flex min-w-0 items-center gap-2"><Clock className="h-4 w-4 shrink-0" /><span className="truncate">{meeting.time || "بدون ساعت"} · {meeting.colleague || "جلسه"}</span></span><span className="text-xs">{statusLabels[meeting.status] || statusLabels.pending}</span></div>)}
+          {selectedDayLeaves.map((leave) => <div key={leave.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900"><span className="flex min-w-0 items-center gap-2"><User className="h-4 w-4 shrink-0" /><span className="truncate">{leave.user_name} · {leave.leave_type === "sick" ? "استعلاجی" : leave.leave_type === "personal" ? "شخصی" : leave.leave_type === "other" ? "سایر" : "استحقاقی"}</span></span><span className="text-xs">مرخصی تأییدشده</span></div>)}
+        </div>
+      </section>
       {visibleMeetings.length === 0 ? (
         <div className="bg-card rounded-2xl border border-border p-8 sm:p-12 text-center">
           <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
