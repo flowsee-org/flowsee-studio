@@ -353,7 +353,7 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
         </div>
 
         {/* Footer actions */}
-        <div className="flex items-center justify-between p-4 border-t border-border">
+        <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-border bg-card p-4">
           <div className="flex gap-2">
             {task?.archived ? (
               <button onClick={() => setForm({ ...form, archived: false })} className="text-sm text-primary hover:underline">بازگرداندن از بایگانی</button>
