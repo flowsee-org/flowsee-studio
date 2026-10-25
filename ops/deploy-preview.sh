@@ -29,7 +29,7 @@ cp "$APP/.flowsee-preview.vite.config.mjs" "$BUILD/source/.flowsee-preview.vite.
 )
 (
  cd "$BUILD/source"
- VITE_BASE44_APP_ID=flowsee-preview VITE_BASE44_APP_BASE_URL="https://$DOMAIN" npm run build -- --config "$BUILD/source/.flowsee-preview.vite.config.mjs" --outDir "$BUILD/dist" --emptyOutDir
+ VITE_BASE44_APP_ID=flowsee-preview VITE_BASE44_APP_BASE_URL="https://$DOMAIN" VITE_MAIN_API_URL="https://flowsee.ir" npm run build -- --config "$BUILD/source/.flowsee-preview.vite.config.mjs" --outDir "$BUILD/dist" --emptyOutDir
 )
 [[ -s "$BUILD/dist/index.html" ]] || { echo 'Build output is incomplete.' >&2; exit 1; }
 grep -R -q -F '/website-messages' "$BUILD/dist/assets" || { echo 'The built app does not contain the website messages route.' >&2; exit 1; }
