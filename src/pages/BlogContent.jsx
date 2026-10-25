@@ -6,8 +6,9 @@ import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { siteContentMediaUrl } from "@/lib/site-content-media";
+import { MAIN_API_URL } from "@/lib/mainApi";
 
-const MAIN_API_URL = import.meta.env.VITE_MAIN_API_URL || "";
+
 const API = `${MAIN_API_URL}/api/studio/site-content/blog`;
 const SITE = MAIN_API_URL;
 const UiButton = /** @type {any} */ (Button);
