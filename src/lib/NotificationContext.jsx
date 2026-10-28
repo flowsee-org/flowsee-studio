@@ -8,17 +8,16 @@ const notificationFingerprint = (notification) =>
     .map((value) => String(value).trim().toLocaleLowerCase())
     .join("|");
 
-function dedupeRecentNotifications(items) {
-  const now = Date.now();
-  const seen = new Map();
+function dedupeNotifications(items) {
+  const seen = new Set();
   return [...(items || [])]
     .sort((a, b) => new Date(b.created_date || 0).getTime() - new Date(a.created_date || 0).getTime())
     .filter((item) => {
-      const fingerprint = notificationFingerprint(item);
-      const createdAt = new Date(item.created_date || now).getTime();
-      const previous = seen.get(fingerprint);
-      if (previous !== undefined && Math.abs(previous - createdAt) <= 10 * 60 * 1000) return false;
-      seen.set(fingerprint, createdAt);
+      // Only collapse duplicate records. Similar notifications with distinct IDs may
+      // represent separate actions and must not be silently discarded as "spam".
+      const key = item.id || `${notificationFingerprint(item)}|${item.created_date || ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     });
 }
@@ -31,9 +30,9 @@ export const NotificationProvider = ({ children }) => {
   const loadNotifications = async () => {
     try {
       const data = await base44.entities.Notification.list("-created_date", 100);
-      const unread = dedupeRecentNotifications(data).filter((notification) => !notification.read);
-      setNotifications(unread);
-      setUnreadCount(unread.length);
+      const items = dedupeNotifications(data);
+      setNotifications(items);
+      setUnreadCount(items.filter((notification) => !notification.read).length);
     } catch (err) {
       console.error('Failed to load notifications:', err);
     } finally {
@@ -54,8 +53,8 @@ export const NotificationProvider = ({ children }) => {
 
     try {
       await base44.entities.Notification.update(notificationId, { read: true });
-      // Acknowledged notifications leave the active inbox; read history remains in the backend.
-      setNotifications((prev) => prev.filter((item) => item.id !== notificationId));
+      // Keep the record available in the archived tab after it has been shown.
+      setNotifications((prev) => prev.map((item) => item.id === notificationId ? { ...item, read: true } : item));
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (err) {
       console.error('Failed to mark notification as read:', err);
@@ -73,7 +72,7 @@ export const NotificationProvider = ({ children }) => {
         },
       });
       if (!response.ok) throw new Error("درخواست علامت‌گذاری اعلان‌ها ناموفق بود (" + response.status + ").");
-      setNotifications([]);
+      setNotifications((previous) => previous.map((item) => ({ ...item, read: true })));
       setUnreadCount(0);
     } catch (err) {
       console.error('Failed to mark all as read:', err);
@@ -82,10 +81,7 @@ export const NotificationProvider = ({ children }) => {
 
   const addNotification = (notification) => {
     if (notification.read) return;
-    const fingerprint = notificationFingerprint(notification);
-    const createdAt = new Date(notification.created_date || Date.now()).getTime();
-    const duplicate = notifications.some((item) => notificationFingerprint(item) === fingerprint && Math.abs(new Date(item.created_date || Date.now()).getTime() - createdAt) <= 10 * 60 * 1000);
-    if (duplicate) return;
+    if (notifications.some((item) => item.id && item.id === notification.id)) return;
     setNotifications((previous) => [notification, ...previous]);
     setUnreadCount((previous) => previous + 1);
   };

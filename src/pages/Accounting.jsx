@@ -111,6 +111,10 @@ const sortAccountingRecords = (records, sortOrder) => [...records].sort((a, b) =
 });
 const categories = ["عمومی", "آب/برق/گاز", "اینترنت", "پذیرایی", "تجهیزات", "تبلیغات", "حقوق", "سایر"];
 const categoryLabels = { عمومی: "هزینه جاری", "آب/برق/گاز": "آب، برق و گاز", اینترنت: "اینترنت و سرور", پذیرایی: "پذیرایی", تجهیزات: "تجهیزات", تبلیغات: "تبلیغات", حقوق: "حقوق و دستمزد", سایر: "سایر" };
+function currentPersianMonthRange() {
+  const [year, month, day] = getPersianDate(0).split("/");
+  return { from: `${year}/${month}/01`, to: `${year}/${month}/${day}` };
+}
 const months = [
   { value: "01", label: "فروردین" },
   { value: "02", label: "اردیبهشت" },
@@ -138,7 +142,8 @@ export default function Accounting() {
   const [showCharts, setShowCharts] = useState(false);
   const [showDateFilters, setShowDateFilters] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
-  const [dateRange, setDateRange] = useState({ from: "", to: "" });
+  // Start with the current month while keeping every historical record intact.
+  const [dateRange, setDateRange] = useState(currentPersianMonthRange);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [sortOrder, setSortOrder] = useState("date-desc");
   const [lockedPeriods, setLockedPeriods] = useState([]);
@@ -241,7 +246,8 @@ export default function Accounting() {
   const monthlyData = useMemo(() => {
     const map = {};
     [...filteredExpenses, ...filteredIncomes].forEach((item) => {
-      const m = item.month || (item.date ? String(item.date).split("/")[1] : "") || "نامشخص";
+      const [year, month] = String(item.date || "").split("/");
+      const m = item.month || (year && month ? `${year}/${month}` : "نامشخص");
       if (!map[m]) map[m] = { name: m, هزینه: 0, درآمد: 0 };
       if (filteredExpenses.includes(item)) map[m].هزینه += item.amount || 0;
       else map[m].درآمد += item.amount || 0;
@@ -337,13 +343,16 @@ export default function Accounting() {
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground font-medium">
             <Filter className="w-4 h-4" /> بازه زمانی:
           </span>
+          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            {dateRange.from || dateRange.to ? "نمایش ماه انتخاب‌شده" : "نمایش همه ماه‌ها"}
+          </span>
           <PersianDatePicker label="از تاریخ" value={dateRange.from} onChange={(v) => setDateRange({...dateRange, from: v})} placeholder="از تاریخ" />
           <PersianDatePicker label="تا تاریخ" value={dateRange.to} onChange={(v) => setDateRange({...dateRange, to: v})} placeholder="تا تاریخ" />
           <button
-            onClick={() => setDateRange({ from: "", to: "" })}
+            onClick={() => setDateRange((range) => range.from || range.to ? { from: "", to: "" } : currentPersianMonthRange())}
             className="text-xs text-primary hover:underline flex items-center gap-1"
           >
-            <X className="w-3.5 h-3.5" /> پاک کردن
+            <X className="w-3.5 h-3.5" /> {dateRange.from || dateRange.to ? "نمایش همه درآمدها و هزینه‌ها" : "بازگشت به ماه جاری"}
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-border">

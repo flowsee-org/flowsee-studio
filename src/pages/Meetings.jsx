@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { Plus, Calendar, Clock, User, CheckCircle, X, Video, Clock3, RefreshCw, FileText, AlertCircle, History, ArrowDownCircle, Filter, ChevronDown, Users, Star, ChevronLeft, ChevronRight } from "lucide-react";
@@ -17,7 +18,70 @@ const formatCalendarDate = (year, month, day) => String(year) + "/" + String(mon
 const statusLabels = { pending: "در انتظار تایید", confirmed: "تایید شده", rescheduled: "زمان پیشنهادی", done: "انجام شده", cancelled: "لغو شده" };
 const statusColors = { pending: "bg-amber-100 text-amber-700", confirmed: "bg-blue-100 text-blue-700", rescheduled: "bg-purple-100 text-purple-700", done: "bg-green-100 text-green-700", cancelled: "bg-red-100 text-red-700" };
 
+function MeetingsCalendar({ year, month, selectedDate, meetings, approvedLeaves, onMoveMonth, onSetMonth, onSetYear, onSelectDate, embedded = false }) {
+  const monthStart = new DateObject({ year, month, day: 1, calendar: persian, locale: persian_fa });
+  const dayCount = monthStart.month.length;
+  const weekdayOffset = monthStart.weekDay.index;
+  const cellCount = Math.ceil((dayCount + weekdayOffset) / 7) * 7;
+  const cells = Array.from({ length: cellCount }, (_, index) => {
+    const day = index - weekdayOffset + 1;
+    return day < 1 || day > dayCount ? null : day;
+  });
+  const selectedMeetings = meetings.filter((meeting) => meeting.date === selectedDate && meeting.status !== "cancelled").sort((a, b) => String(a.time || "").localeCompare(String(b.time || "")));
+  const selectedLeaves = approvedLeaves.filter((leave) => leave.start_date <= selectedDate && leave.end_date >= selectedDate);
+
+  return (
+    <section className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-primary" />
+          <div><h2 className="font-bold">تقویم جلسات و مرخصی‌ها</h2><p className="mt-0.5 text-xs text-muted-foreground">جلسات ثبت‌شده و مرخصی‌های تأییدشده در یک نما</p></div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => onMoveMonth(-1)} className="rounded-lg p-2 hover:bg-accent" aria-label="ماه قبل"><ChevronRight className="h-4 w-4" /></button>
+          <select aria-label="ماه تقویم" value={month} onChange={(event) => onSetMonth(Number(event.target.value))} className="min-w-28 rounded-xl border border-input bg-card px-3 py-2 text-sm">
+            {persianMonthNames.map((name, index) => <option key={name} value={index + 1}>{name}</option>)}
+          </select>
+          <select aria-label="سال تقویم" value={year} onChange={(event) => onSetYear(Number(event.target.value))} className="min-w-20 rounded-xl border border-input bg-card px-3 py-2 text-sm">
+            {Array.from({ length: 9 }, (_, index) => year - 4 + index).map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+          <button type="button" onClick={() => onMoveMonth(1)} className="rounded-lg p-2 hover:bg-accent" aria-label="ماه بعد"><ChevronLeft className="h-4 w-4" /></button>
+        </div>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center">
+        {["ش", "ی", "د", "س", "چ", "پ", "ج"].map((dayName) => <div key={dayName} className="py-2 text-[11px] font-medium text-muted-foreground">{dayName}</div>)}
+        {cells.map((day, index) => {
+          if (!day) return <div key={`empty-${index}`} className="min-h-[68px] rounded-lg border border-transparent" />;
+          const dateValue = formatCalendarDate(year, month, day);
+          const dayMeetings = meetings.filter((meeting) => meeting.date === dateValue && meeting.status !== "cancelled");
+          const dayLeaves = approvedLeaves.filter((leave) => leave.start_date <= dateValue && leave.end_date >= dateValue);
+          const isSelected = selectedDate === dateValue;
+          const isToday = getPersianDate(0) === dateValue;
+          return <button type="button" key={dateValue} onClick={() => onSelectDate(dateValue)} aria-pressed={isSelected} className={`min-h-[68px] min-w-0 rounded-lg border p-1.5 text-right transition-colors ${isSelected ? "border-primary bg-primary/10" : isToday ? "border-primary/30 bg-primary/5" : "border-border/60 hover:bg-accent/50"}`}>
+            <span className={`text-xs font-semibold ${isSelected || isToday ? "text-primary" : "text-foreground"}`}>{day.toLocaleString("fa-IR")}</span>
+            {dayMeetings.length > 0 && <span className="mt-1 block truncate rounded bg-blue-100 px-1 py-0.5 text-[9px] text-blue-800">{dayMeetings.length.toLocaleString("fa-IR")} جلسه</span>}
+            {dayLeaves.length > 0 && <span className="mt-0.5 block truncate rounded bg-emerald-100 px-1 py-0.5 text-[9px] text-emerald-800">{dayLeaves.length.toLocaleString("fa-IR")} مرخصی</span>}
+          </button>;
+        })}
+      </div>
+      <div className="space-y-3 border-t border-border pt-4">
+        <h3 className="text-sm font-bold">برنامهٔ {selectedDate}</h3>
+        {selectedMeetings.length === 0 && selectedLeaves.length === 0 && <p className="text-sm text-muted-foreground">برای این روز جلسه یا مرخصی تأییدشده‌ای ثبت نشده است.</p>}
+        {selectedMeetings.map((meeting) => <div key={meeting.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-blue-50 px-3 py-2.5 text-sm text-blue-900"><span className="flex min-w-0 items-center gap-2"><Clock className="h-4 w-4 shrink-0" /><span className="truncate">{meeting.time || "بدون ساعت"} · {meeting.colleague || "جلسه"}</span></span><span className="text-xs">{statusLabels[meeting.status] || statusLabels.pending}</span></div>)}
+        {selectedLeaves.map((leave) => <div key={leave.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900"><span className="flex min-w-0 items-center gap-2"><User className="h-4 w-4 shrink-0" /><span className="truncate">{leave.user_name} · {leave.leave_type === "sick" ? "استعلاجی" : leave.leave_type === "personal" ? "شخصی" : leave.leave_type === "other" ? "سایر" : "استحقاقی"}</span></span><span className="text-xs">مرخصی تأییدشده</span></div>)}
+      </div>
+      {!embedded && <details className="rounded-xl border border-border bg-accent/20 p-3">
+        <summary className="cursor-pointer text-sm font-medium">ادغام تقویم در وب‌سایت دیگر (iFrame)</summary>
+        <p className="mt-2 text-xs leading-6 text-muted-foreground">این کد نمای تقویم همین حساب را درون صفحهٔ دیگر نشان می‌دهد. دسترسی به تقویم به ورود کاربر وابسته است.</p>
+        <code dir="ltr" className="mt-2 block overflow-x-auto rounded-lg bg-background p-3 text-left text-xs">&lt;iframe src="https://studio.flowsee.ir/meetings?embed=calendar" title="تقویم جلسات فلوسی" loading="lazy" width="100%" height="620" style="border:0;border-radius:16px"&gt;&lt;/iframe&gt;</code>
+      </details>}
+    </section>
+  );
+}
+
 export default function Meetings() {
+  const [searchParams] = useSearchParams();
+  const isCalendarEmbed = searchParams.get("embed") === "calendar";
   const { user, isAdmin } = useAuth();
   const userName = user?.full_name || user?.email || "";
   const userEmail = user?.email || "";
@@ -92,13 +156,6 @@ export default function Meetings() {
   const activeMeetings = visibleMeetings.filter((m) => m.status !== "done" && m.status !== "cancelled");
 
   const visibleApprovedLeaves = leaveRequests.filter((leave) => leave.status === "approved" && (isAdmin || leave.created_by_id === user?.id || leave.user_email === userEmail));
-  const monthStart = new DateObject({ year: calendarYear, month: calendarMonth, day: 1, calendar: persian, locale: persian_fa });
-  const calendarDayCount = monthStart.month.length;
-  const calendarWeekdayOffset = monthStart.weekDay.index;
-  const calendarCellCount = Math.ceil((calendarDayCount + calendarWeekdayOffset) / 7) * 7;
-  const calendarCells = Array.from({ length: calendarCellCount }, (_, index) => { const day = index - calendarWeekdayOffset + 1; return day < 1 || day > calendarDayCount ? null : day; });
-  const selectedDayMeetings = visibleMeetings.filter((meeting) => meeting.date === selectedCalendarDate && meeting.status !== "cancelled").sort((a, b) => String(a.time || "").localeCompare(String(b.time || "")));
-  const selectedDayLeaves = visibleApprovedLeaves.filter((leave) => leave.start_date <= selectedCalendarDate && leave.end_date >= selectedCalendarDate);
   const moveCalendarMonth = (offset) => {
     const monthIndex = calendarYear * 12 + calendarMonth - 1 + offset;
     const nextYear = Math.floor(monthIndex / 12);
@@ -220,6 +277,21 @@ export default function Meetings() {
       </div>
     );
 
+  if (isCalendarEmbed) {
+    return <div className="mx-auto w-full max-w-4xl p-3 sm:p-5"><MeetingsCalendar
+      year={calendarYear}
+      month={calendarMonth}
+      selectedDate={selectedCalendarDate}
+      meetings={visibleMeetings}
+      approvedLeaves={visibleApprovedLeaves}
+      onMoveMonth={moveCalendarMonth}
+      onSetMonth={(month) => { setCalendarMonth(month); setSelectedCalendarDate(formatCalendarDate(calendarYear, month, 1)); }}
+      onSetYear={(year) => { setCalendarYear(year); setSelectedCalendarDate(formatCalendarDate(year, calendarMonth, 1)); }}
+      onSelectDate={setSelectedCalendarDate}
+      embedded
+    /></div>;
+  }
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -232,47 +304,17 @@ export default function Meetings() {
         </button>
       </div>
 
-      {/* Combined meeting and approved-leave calendar */}
-      <section className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary" />
-            <div><h2 className="font-bold">تقویم جلسات و مرخصی‌ها</h2><p className="text-xs text-muted-foreground mt-0.5">جلسات ثبت‌شده و مرخصی‌های تأییدشده در یک نما</p></div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => moveCalendarMonth(-1)} className="rounded-lg p-2 hover:bg-accent" aria-label="ماه قبل"><ChevronRight className="h-4 w-4" /></button>
-            <select aria-label="ماه تقویم" value={calendarMonth} onChange={(event) => { const month = Number(event.target.value); setCalendarMonth(month); setSelectedCalendarDate(formatCalendarDate(calendarYear, month, 1)); }} className="min-w-28 rounded-xl border border-input bg-card px-3 py-2 text-sm">
-              {persianMonthNames.map((name, index) => <option key={name} value={index + 1}>{name}</option>)}
-            </select>
-            <select aria-label="سال تقویم" value={calendarYear} onChange={(event) => { const year = Number(event.target.value); setCalendarYear(year); setSelectedCalendarDate(formatCalendarDate(year, calendarMonth, 1)); }} className="min-w-20 rounded-xl border border-input bg-card px-3 py-2 text-sm">
-              {Array.from({ length: 9 }, (_, index) => calendarYear - 4 + index).map((year) => <option key={year} value={year}>{year}</option>)}
-            </select>
-            <button type="button" onClick={() => moveCalendarMonth(1)} className="rounded-lg p-2 hover:bg-accent" aria-label="ماه بعد"><ChevronLeft className="h-4 w-4" /></button>
-          </div>
-        </div>
-        <div className="grid grid-cols-7 gap-1 text-center">
-          {["ش", "ی", "د", "س", "چ", "پ", "ج"].map((dayName) => <div key={dayName} className="py-2 text-[11px] font-medium text-muted-foreground">{dayName}</div>)}
-          {calendarCells.map((day, index) => {
-            if (!day) return <div key={"empty-" + index} className="min-h-[68px] rounded-lg border border-transparent" />;
-            const dateValue = formatCalendarDate(calendarYear, calendarMonth, day);
-            const dayMeetings = visibleMeetings.filter((meeting) => meeting.date === dateValue && meeting.status !== "cancelled");
-            const dayLeaves = visibleApprovedLeaves.filter((leave) => leave.start_date <= dateValue && leave.end_date >= dateValue);
-            const isSelected = selectedCalendarDate === dateValue;
-            const isToday = getPersianDate(0) === dateValue;
-            return <button type="button" key={dateValue} onClick={() => setSelectedCalendarDate(dateValue)} aria-pressed={isSelected} className={"min-h-[68px] min-w-0 rounded-lg border p-1.5 text-right transition-colors " + (isSelected ? "border-primary bg-primary/10" : isToday ? "border-primary/30 bg-primary/5" : "border-border/60 hover:bg-accent/50")}>
-              <span className={"text-xs font-semibold " + (isSelected || isToday ? "text-primary" : "text-foreground")}>{day.toLocaleString("fa-IR")}</span>
-              {dayMeetings.length > 0 && <span className="mt-1 block truncate rounded bg-blue-100 px-1 py-0.5 text-[9px] text-blue-800">{dayMeetings.length.toLocaleString("fa-IR")} جلسه</span>}
-              {dayLeaves.length > 0 && <span className="mt-0.5 block truncate rounded bg-emerald-100 px-1 py-0.5 text-[9px] text-emerald-800">{dayLeaves.length.toLocaleString("fa-IR")} مرخصی</span>}
-            </button>;
-          })}
-        </div>
-        <div className="border-t border-border pt-4 space-y-3">
-          <h3 className="text-sm font-bold">برنامهٔ {selectedCalendarDate}</h3>
-          {selectedDayMeetings.length === 0 && selectedDayLeaves.length === 0 && <p className="text-sm text-muted-foreground">برای این روز جلسه یا مرخصی تأییدشده‌ای ثبت نشده است.</p>}
-          {selectedDayMeetings.map((meeting) => <div key={meeting.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-blue-50 px-3 py-2.5 text-sm text-blue-900"><span className="flex min-w-0 items-center gap-2"><Clock className="h-4 w-4 shrink-0" /><span className="truncate">{meeting.time || "بدون ساعت"} · {meeting.colleague || "جلسه"}</span></span><span className="text-xs">{statusLabels[meeting.status] || statusLabels.pending}</span></div>)}
-          {selectedDayLeaves.map((leave) => <div key={leave.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900"><span className="flex min-w-0 items-center gap-2"><User className="h-4 w-4 shrink-0" /><span className="truncate">{leave.user_name} · {leave.leave_type === "sick" ? "استعلاجی" : leave.leave_type === "personal" ? "شخصی" : leave.leave_type === "other" ? "سایر" : "استحقاقی"}</span></span><span className="text-xs">مرخصی تأییدشده</span></div>)}
-        </div>
-      </section>
+      <MeetingsCalendar
+        year={calendarYear}
+        month={calendarMonth}
+        selectedDate={selectedCalendarDate}
+        meetings={visibleMeetings}
+        approvedLeaves={visibleApprovedLeaves}
+        onMoveMonth={moveCalendarMonth}
+        onSetMonth={(month) => { setCalendarMonth(month); setSelectedCalendarDate(formatCalendarDate(calendarYear, month, 1)); }}
+        onSetYear={(year) => { setCalendarYear(year); setSelectedCalendarDate(formatCalendarDate(year, calendarMonth, 1)); }}
+        onSelectDate={setSelectedCalendarDate}
+      />
       {visibleMeetings.length === 0 ? (
         <div className="bg-card rounded-2xl border border-border p-8 sm:p-12 text-center">
           <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />

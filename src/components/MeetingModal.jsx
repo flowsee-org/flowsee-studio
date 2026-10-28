@@ -13,6 +13,23 @@ const suggestedTopics = [
   "موانعی که همین حالا سر راه هستند",
 ];
 
+function rankAgendaSuggestions(suggestions, query) {
+  const tokens = String(query || "")
+    .normalize("NFKC")
+    .replace(/[يى]/g, "ی")
+    .replace(/ك/g, "ک")
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((token) => token.length > 2);
+  if (!tokens.length) return suggestions.slice(0, 8);
+  const ranked = suggestions.map((suggestion, index) => {
+    const normalized = suggestion.normalize("NFKC").replace(/[يى]/g, "ی").replace(/ك/g, "ک");
+    const score = tokens.reduce((total, token) => total + (normalized.includes(token) ? 1 : 0), 0);
+    return { suggestion, score, index };
+  });
+  const matches = ranked.filter((item) => item.score > 0).sort((a, b) => b.score - a.score || a.index - b.index);
+  return (matches.length ? matches : ranked).slice(0, 8).map((item) => item.suggestion);
+}
+
 export default function MeetingModal({ onClose, onSaved }) {
   const { user } = useAuth();
   const [members, setMembers] = useState([]);
@@ -20,7 +37,7 @@ export default function MeetingModal({ onClose, onSaved }) {
   const [colleagueEmail, setColleagueEmail] = useState("");
   const [date, setDate] = useState(getPersianDate(0));
   const [time, setTime] = useState("10:00");
-  const [endTime, setEndTime] = useState("11:00");
+  const [endTime, setEndTime] = useState("10:45");
   const [topics, setTopics] = useState([""]);
   const [urgent, setUrgent] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -69,6 +86,7 @@ export default function MeetingModal({ onClose, onSaved }) {
   const addSuggested = (topic) => {
     if (!topics.includes(topic)) setTopics([...topics.filter((t) => t !== ""), topic]);
   };
+  const contextualSuggestions = rankAgendaSuggestions(agendaSuggestions, topics.find((topic) => topic.trim()) || "");
 
   const toggleParticipant = (name) => {
     const current = participants || [];
@@ -289,9 +307,9 @@ export default function MeetingModal({ onClose, onSaved }) {
           </div>
 
           <div>
-            <p className="text-sm font-medium mb-2">موضوع‌های پیشنهادی:</p>
+            <p className="text-sm font-medium mb-2">پیشنهاد بر اساس موضوع و سابقهٔ جلسه‌ها:</p>
             <div className="flex flex-wrap gap-2">
-              {agendaSuggestions.map((t, i) => (
+              {contextualSuggestions.map((t, i) => (
                 <button
                   key={i}
                   onClick={() => addSuggested(t)}

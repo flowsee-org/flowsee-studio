@@ -114,34 +114,6 @@ export default function Layout() {
             </div>
           </div>
         </div>
-        <div className="shrink-0 space-y-2 border-b border-border px-4 py-3">
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-              {(user?.full_name || user?.email || "؟").charAt(0)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user?.full_name || "کاربر"}</p>
-              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-            </div>
-          </div>
-          <NavLink
-            to="/profile"
-            onClick={() => setOpen(false)}
-            className={({ isActive }) =>
-              `flex items-center gap-2 text-sm w-full px-4 py-2 rounded-lg transition-colors ${
-                isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"
-              }`
-            }
-          >
-            <UserCircle className="w-4 h-4" /> پروفایل من
-          </NavLink>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-red-500 w-full px-4 py-2 rounded-lg hover:bg-destructive/10 transition-colors"
-          >
-            <LogOut className="w-4 h-4" /> خروج از حساب
-          </button>
-        </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin">
           {navItems.filter(item => item.to === "/").map(item => <NavigationItem key={item.to} item={item} onNavigate={() => setOpen(false)} />)}
           {navGroups.map(group => {
@@ -149,7 +121,7 @@ export default function Layout() {
             return items.length ? <NavigationGroup key={group.label} group={group} items={items} pathname={pathname} onNavigate={() => setOpen(false)} /> : null;
           })}
         </nav>
-        <div className="p-4 border-t border-border space-y-3">
+        <div className="shrink-0 border-t border-border p-4 space-y-2">
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground w-full px-4 py-2 rounded-lg hover:bg-accent transition-colors"
@@ -157,6 +129,34 @@ export default function Layout() {
             {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             {darkMode ? "حالت روشن" : "حالت تاریک"}
           </button>
+          <div className="flex items-center gap-3 px-2 py-1.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+              {(user?.full_name || user?.email || "؟").charAt(0)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{user?.full_name || "کاربر"}</p>
+              <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <NavLink
+              to="/profile"
+              onClick={() => setOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
+                  isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"
+                }`
+              }
+            >
+              <UserCircle className="h-4 w-4" /> پروفایل
+            </NavLink>
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-red-500"
+            >
+              <LogOut className="h-4 w-4" /> خروج
+            </button>
+          </div>
         </div>
       </aside>
 

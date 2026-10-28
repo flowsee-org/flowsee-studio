@@ -63,6 +63,44 @@ function sortTasks(tasks, sortBy) {
   }
 }
 
+function normalizeOwnerKey(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .replace(/[\u200c\u200d\u200e\u200f\ufeff]/g, "")
+    .replace(/[يى]/g, "ی")
+    .replace(/ك/g, "ک")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLocaleLowerCase("fa-IR");
+}
+
+function taskOwnerValues(task) {
+  return [
+    ...(Array.isArray(task.assignees) ? task.assignees : []),
+    task.assignee,
+    task.process_owner,
+    task.process_owner_name,
+    task.processOwner,
+    task.owner,
+    task.process_owner_email,
+    task.owner_email,
+  ].filter(Boolean);
+}
+
+function matchesTaskOwner(task, value) {
+  const key = normalizeOwnerKey(value);
+  return !!key && taskOwnerValues(task).some((owner) => normalizeOwnerKey(owner) === key);
+}
+
+function uniqueOwnerOptions(tasks) {
+  const owners = new Map();
+  tasks.forEach((task) => taskOwnerValues(task).forEach((owner) => {
+    const key = normalizeOwnerKey(owner);
+    if (key && !owners.has(key)) owners.set(key, String(owner).trim());
+  }));
+  return [...owners.values()];
+}
+
 function AssigneeAvatars({ task }) {
   const assignees = task.assignees || (task.assignee ? [task.assignee] : []);
   if (assignees.length === 0) return null;
@@ -113,6 +151,7 @@ export default function Tasks() {
   const [detailTask, setDetailTask] = useState(null);
   const [longPressedTaskId, setLongPressedTaskId] = useState(null);
   const longPressTimer = useRef(null);
+  const longPressTriggered = useRef(false);
   const clearLongPressTimer = () => {
     if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
     longPressTimer.current = null;
@@ -148,19 +187,17 @@ export default function Tasks() {
   const baseVisibleTasks = isAdmin
     ? tasks
     : tasks.filter((t) => {
-        const assignees = t.assignees || (t.assignee ? [t.assignee] : []);
-        return assignees.includes(userName) || [t.process_owner, t.process_owner_name, t.processOwner, t.owner].some((owner) => String(owner || "").trim() === userName) || t.created_by_id === user?.id;
+        return matchesTaskOwner(t, userName) || matchesTaskOwner(t, user?.email) || [t.process_owner_id, t.owner_id].some((ownerId) => String(ownerId || "") === String(user?.id || "")) || t.created_by_id === user?.id;
       });
 
   // Apply view mode filter
   const viewFilteredTasks = useMemo(() => {
     return baseVisibleTasks.filter((t) => {
-      const assignees = t.assignees || (t.assignee ? [t.assignee] : []);
-      if (viewMode === "assigned") return assignees.includes(userName) || [t.process_owner, t.process_owner_name, t.processOwner, t.owner].some((owner) => String(owner || "").trim() === userName);
+      if (viewMode === "assigned") return matchesTaskOwner(t, userName) || matchesTaskOwner(t, user?.email) || [t.process_owner_id, t.owner_id].some((ownerId) => String(ownerId || "") === String(user?.id || ""));
       if (viewMode === "created") return t.created_by_id === user?.id;
       return true; // "all"
     });
-  }, [baseVisibleTasks, viewMode, userName, user?.id]);
+  }, [baseVisibleTasks, viewMode, userName, user?.email, user?.id]);
 
   // Apply archived filter
   const archivedFilteredTasks = useMemo(() => {
@@ -185,9 +222,7 @@ export default function Tasks() {
     return searchFilteredTasks.filter((t) => {
       if (projectFilter && t.project_id !== projectFilter) return false;
       if (employeeFilter) {
-        const assignees = t.assignees || (t.assignee ? [t.assignee] : []);
-        const processOwner = [t.process_owner, t.process_owner_name, t.processOwner, t.owner].some((owner) => String(owner || "").trim() === employeeFilter);
-        if (!assignees.includes(employeeFilter) && !processOwner) return false;
+        if (!matchesTaskOwner(t, employeeFilter)) return false;
       }
       if (dateFrom && t.due_date && t.due_date < dateFrom) return false;
       if (dateTo && t.due_date && t.due_date > dateTo) return false;
@@ -519,7 +554,7 @@ export default function Tasks() {
                 className="col-span-2 w-full sm:col-span-1 sm:w-auto border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 sm:min-w-[180px]"
               >
                 <option value="">همه کارمندان</option>
-                {Array.from(new Set(baseVisibleTasks.flatMap((t) => [...(t.assignees || (t.assignee ? [t.assignee] : [])), t.process_owner, t.process_owner_name, t.processOwner, t.owner].filter(Boolean)))).map((name) => (
+                {uniqueOwnerOptions(baseVisibleTasks).map((name) => (
                   <option key={name} value={name}>{name}</option>
                 ))}
               </SelectControl>
@@ -608,7 +643,7 @@ export default function Tasks() {
                   className="border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[150px]"
                 >
                   <option value="">اختصاص به...</option>
-                  {Array.from(new Set(baseVisibleTasks.flatMap(t => t.assignees || (t.assignee ? [t.assignee] : [])))).map((name) => (
+                  {uniqueOwnerOptions(baseVisibleTasks).map((name) => (
                     <option key={name} value={name}>{name}</option>
                   ))}
                 </SelectControl>
@@ -676,17 +711,37 @@ export default function Tasks() {
                                   selectedTasks.has(t.id) ? "ring-2 ring-primary ring-offset-2" : ""
                                 }`}
                                 onClick={(e) => {
+                                  if (longPressTriggered.current) {
+                                    longPressTriggered.current = false;
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    return;
+                                  }
                                   if (!e.target.closest('button') && !selectedTasks.has(t.id)) {
                                     handleViewDetail(t);
                                   }
                                 }}
                                 onTouchStart={() => {
                                   clearLongPressTimer();
-                                  longPressTimer.current = window.setTimeout(() => setLongPressedTaskId(t.id), 450);
+                                  longPressTriggered.current = false;
+                                  setLongPressedTaskId(null);
+                                  longPressTimer.current = window.setTimeout(() => {
+                                    longPressTriggered.current = true;
+                                    setLongPressedTaskId(t.id);
+                                  }, 450);
                                 }}
-                                onTouchEnd={() => { clearLongPressTimer(); setLongPressedTaskId(null); }}
-                                onTouchMove={() => { clearLongPressTimer(); setLongPressedTaskId(null); }}
-                                onTouchCancel={() => { clearLongPressTimer(); setLongPressedTaskId(null); }}
+                                onTouchEnd={() => {
+                                  clearLongPressTimer();
+                                  if (longPressTriggered.current) {
+                                    longPressTimer.current = window.setTimeout(() => {
+                                      setLongPressedTaskId(null);
+                                      longPressTriggered.current = false;
+                                      longPressTimer.current = null;
+                                    }, 2500);
+                                  }
+                                }}
+                                onTouchMove={() => { clearLongPressTimer(); longPressTriggered.current = false; setLongPressedTaskId(null); }}
+                                onTouchCancel={() => { clearLongPressTimer(); longPressTriggered.current = false; setLongPressedTaskId(null); }}
                               >
                                 {/* Selection checkbox */}
                                 <div className="flex items-start justify-between gap-1 mb-2">

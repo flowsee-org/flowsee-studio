@@ -12,8 +12,8 @@ const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
 const dashboardWidgets = [
   { id: "stats", label: "خلاصه آمار" },
   { id: "quickLinks", label: "دسترسی‌های سریع" },
-  { id: "reminders", label: "یادآوری جلسه‌ها" },
   { id: "today", label: "کارهای امروز و اعلان‌ها" },
+  { id: "reminders", label: "یادآوری جلسه‌ها" },
   { id: "recentTasks", label: "تسک‌های اخیر" },
 ];
 const defaultWidgets = Object.fromEntries(dashboardWidgets.map(({ id }) => [id, true]));
@@ -103,9 +103,17 @@ export default function StaffDashboard() {
             {user?.profile_image && !avatarBroken ? <img src={user.profile_image} alt={userName} className="w-full h-full object-cover" onError={() => setAvatarBroken(true)} /> : <span>{userName.charAt(0) || <UserRound className="w-6 h-6" />}</span>}
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold truncate">{user?.full_name || "همکار عزیز"}</h1>
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h1 className="text-xl sm:text-2xl font-bold truncate">{user?.full_name || "همکار عزیز"}</h1>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "medium", timeZone: "Asia/Tehran" }).format(clockNow)}
+                <span className="mx-1.5">·</span>
+                {new Intl.DateTimeFormat("fa-IR-u-ca-gregory", { dateStyle: "medium", timeZone: "Asia/Tehran" }).format(clockNow)}
+                <span className="mx-1.5">·</span>
+                {new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Tehran" }).format(clockNow)}
+              </span>
+            </div>
             <p className="text-sm text-muted-foreground mt-1">{roleLabel(user?.role)}{user?.department ? ` · ${user.department}` : ""}</p>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground"><span>شمسی: {new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "medium", timeZone: "Asia/Tehran" }).format(clockNow)}</span><span className="mx-1.5">·</span><span>میلادی: {new Intl.DateTimeFormat("fa-IR-u-ca-gregory", { dateStyle: "medium", timeZone: "Asia/Tehran" }).format(clockNow)}</span><span className="mx-1.5">·</span><span>ساعت ایران: {new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Tehran" }).format(clockNow)}</span></p>
           </div>
           <Link to="/profile" className="hidden sm:inline-flex rounded-xl border border-border px-3 py-2 text-sm hover:bg-accent">پروفایل من</Link>
           <button type="button" onClick={() => setCustomizeOpen((open) => !open)} aria-expanded={customizeOpen} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm hover:bg-accent">
@@ -121,11 +129,11 @@ export default function StaffDashboard() {
           </div>
         </div>}
 
-      {visibleWidgets.stats && <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 border-t border-border pt-4">
+      {visibleWidgets.stats && <div className="mt-4 grid min-w-0 grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4 gap-2 border-t border-border pt-4">
         {stats.map((s) => (
-          <div key={s.label} className="flex min-w-0 items-center gap-2 rounded-xl bg-accent/30 p-3">
-            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${s.color}`}><s.icon className="h-4 w-4" /></div>
-            <div className="min-w-0"><p className="truncate text-xs text-muted-foreground">{s.label}</p><p className="text-lg font-bold tabular-nums">{s.value}</p></div>
+          <div key={s.label} className="flex min-w-0 items-center gap-3 rounded-xl border border-border/70 bg-accent/20 p-3 sm:p-3.5">
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${s.color}`}><s.icon className="h-4 w-4" /></div>
+            <div className="min-w-0 flex-1"><p className="truncate text-xs text-muted-foreground">{s.label}</p><p className="mt-0.5 text-lg font-bold tabular-nums">{s.value}</p></div>
           </div>
         ))}
       </div>}

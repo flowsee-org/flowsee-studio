@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bell, Check, MessageSquare, Calendar, ClipboardList, DollarSign, User, FileText } from 'lucide-react';
 import { useNotifications } from '@/lib/NotificationContext';
 
@@ -24,9 +24,56 @@ const typeLabels = {
   general: 'اطلاع‌رسانی',
 };
 
+function NotificationRow({ notification, archived, onOpen, onShown, getTimeAgo }) {
+  const rowRef = useRef(null);
+  const Icon = typeIcons[notification.type]?.icon || Bell;
+
+  useEffect(() => {
+    if (archived || notification.read || !rowRef.current) return undefined;
+    let timer;
+    const observer = new IntersectionObserver(([entry]) => {
+      window.clearTimeout(timer);
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+        timer = window.setTimeout(() => onShown(notification.id), 1400);
+      }
+    }, { threshold: [0.6] });
+    observer.observe(rowRef.current);
+    return () => {
+      window.clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [archived, notification.id, notification.read, onShown]);
+
+  return (
+    <button
+      ref={rowRef}
+      type="button"
+      onClick={() => onOpen(notification)}
+      className={`w-full p-4 text-right transition-colors hover:bg-accent/50 ${!notification.read ? 'bg-primary/5' : ''}`}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${typeIcons[notification.type]?.bg || 'bg-slate-100'}`}>
+          <Icon className={`h-4 w-4 ${typeIcons[notification.type]?.color || 'text-slate-500'}`} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className={`text-sm font-medium ${!notification.read ? 'text-foreground' : 'text-muted-foreground'}`}>
+              {typeLabels[notification.type] || notification.title || 'اعلان جدید'}
+            </p>
+            {!notification.read && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />}
+          </div>
+          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{notification.message}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{getTimeAgo(notification.created_date)}</p>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export default function NotificationCenter() {
   const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications();
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState("new");
 
   if (loading) return <div className="w-10 h-10" />;
 
@@ -37,6 +84,8 @@ export default function NotificationCenter() {
     }
     setOpen(false);
   };
+
+  const handleNotificationShown = (notificationId) => markAsRead(notificationId);
 
   const getTimeAgo = (dateString) => {
     if (!dateString) return '';
@@ -59,7 +108,7 @@ export default function NotificationCenter() {
       <button
         onClick={() => setOpen(!open)}
         className="relative p-2 rounded-lg hover:bg-accent transition-colors"
-        aria-label="اعلانات"
+        aria-label="اعلان‌ها"
       >
         <Bell className="w-5 h-5 text-muted-foreground" />
         {unreadCount > 0 && (
@@ -78,7 +127,7 @@ export default function NotificationCenter() {
           <div className="flex items-center justify-between p-4 border-b border-border">
             <div className="flex items-center gap-2">
               <Bell className="w-5 h-5 text-primary" />
-              <h3 className="font-bold">اعلانات</h3>
+              <h3 className="font-bold">اعلان‌ها</h3>
               {unreadCount > 0 && (
                 <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">{unreadCount} خوانده نشده</span>
               )}
@@ -95,36 +144,21 @@ export default function NotificationCenter() {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 border-b border-border p-2" role="tablist" aria-label="وضعیت اعلان‌ها">
+            <button type="button" role="tab" aria-selected={tab === "new"} onClick={() => setTab("new")} className={`rounded-lg px-3 py-2 text-sm ${tab === "new" ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-accent"}`}>جدید ({unreadCount})</button>
+            <button type="button" role="tab" aria-selected={tab === "archived"} onClick={() => setTab("archived")} className={`rounded-lg px-3 py-2 text-sm ${tab === "archived" ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-accent"}`}>بایگانی</button>
+          </div>
+
           <div className="max-h-96 overflow-y-auto">
-            {notifications.length === 0 ? (
+            {(tab === "new" ? notifications.filter((n) => !n.read) : notifications.filter((n) => n.read)).length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
                 <Bell className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                <p>اعلان خوانده‌نشده‌ای وجود ندارد</p>
+                <p>{tab === "new" ? "اعلان تازه‌ای وجود ندارد" : "اعلان بایگانی‌شده‌ای وجود ندارد"}</p>
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    onClick={() => handleNotificationClick(n)}
-                    className={`p-4 hover:bg-accent/50 transition-colors cursor-pointer ${!n.read ? 'bg-primary/5' : ''}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${typeIcons[n.type]?.bg || 'bg-slate-100'}`}>
-                        {(typeIcons[n.type]?.icon || Bell) && React.createElement(typeIcons[n.type]?.icon || Bell, { className: `w-4 h-4 ${typeIcons[n.type]?.color || 'text-slate-500'}` })}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className={`font-medium text-sm ${!n.read ? 'text-foreground' : 'text-muted-foreground'}`}>
-                            {typeLabels[n.type] || n.title}
-                          </p>
-                          {!n.read && <span className="w-2 h-2 rounded-full bg-primary shrink-0 mt-1" />}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{n.message}</p>
-                        <p className="text-xs text-muted-foreground mt-2">{getTimeAgo(n.created_date)}</p>
-                      </div>
-                    </div>
-                  </div>
+                {notifications.filter((n) => tab === "new" ? !n.read : n.read).map((n) => (
+                  <NotificationRow key={n.id} notification={n} archived={tab === "archived"} onOpen={handleNotificationClick} onShown={handleNotificationShown} getTimeAgo={getTimeAgo} />
                 ))}
               </div>
             )}

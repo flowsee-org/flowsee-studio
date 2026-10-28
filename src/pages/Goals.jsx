@@ -623,7 +623,7 @@ export default function Goals() {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-3 mt-6">
+            <div className="sticky bottom-0 z-10 -mx-5 sm:-mx-6 mt-6 flex items-center gap-3 border-t border-border bg-card px-5 py-4 sm:px-6">
               <button
                 onClick={handleSave}
                 disabled={saving || !form.title.trim()}
