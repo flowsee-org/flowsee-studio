@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { X } from "lucide-react";
 import PersianDatePicker, { getPersianDate } from "@/components/PersianDatePicker";
 import { toast } from "@/components/ui/use-toast";
+import { formatPersianNumber as faNum } from "@/lib/number-format";
 
 export default function ReportForm({ tasks, userName, editReport, onClose, onSaved }) {
   const [form, setForm] = useState(
@@ -87,7 +88,7 @@ export default function ReportForm({ tasks, userName, editReport, onClose, onSav
               ))}
             </div>
             {(form.task_ids || []).length > 0 && (
-              <p className="text-xs text-muted-foreground mt-1.5">{(form.task_ids || []).length} تسک انتخاب شده</p>
+              <p className="text-xs text-muted-foreground mt-1.5">{faNum((form.task_ids || []).length)} تسک انتخاب شده</p>
             )}
           </div>
 

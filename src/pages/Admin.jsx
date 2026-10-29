@@ -7,6 +7,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { appId } from "@/api/base44Client";
 import EmployeeForm from "@/components/EmployeeForm";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
+import { formatPersianNumber as formatFaNum } from "@/lib/number-format";
 
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
 
@@ -167,7 +168,7 @@ export default function Admin() {
       });
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
-      setDigestMsg(`✅ ارسال شد — ${data.sent} گیرنده، ${data.count} اعلامیه`);
+      setDigestMsg(`✅ ارسال شد — ${formatFaNum(data.sent)} گیرنده، ${formatFaNum(data.count)} اعلامیه`);
     } catch {
       setDigestMsg("❌ ارسال ناموفق بود");
     }

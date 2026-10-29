@@ -11,12 +11,14 @@ import PersianDatePicker from "@/components/PersianDatePicker";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { toast } from "@/components/ui/use-toast";
 import SelectControl from "@/components/ui/SelectControl";
+import { formatPersianNumber as faNum } from "@/lib/number-format";
 
 const columns = [
   { id: "todo", title: "در انتظار", color: "bg-slate-100" },
   { id: "in_progress", title: "در حال انجام", color: "bg-blue-100" },
   { id: "done", title: "انجام شده", color: "bg-green-100" },
 ];
+const archiveColumn = { id: "archived", title: "آرشیو", color: "bg-amber-100" };
 
 const priorityLabels = { low: "کم", medium: "متوسط", high: "زیاد" };
 const priorityColors = { low: "bg-slate-100 text-slate-600", medium: "bg-amber-100 text-amber-700", high: "bg-red-100 text-red-700" };
@@ -116,7 +118,7 @@ function AssigneeAvatars({ task }) {
         </div>
       ))}
       {assignees.length > 3 && (
-        <span className="text-[10px] text-muted-foreground mr-1">+{assignees.length - 3}</span>
+        <span className="text-[10px] text-muted-foreground mr-1">+{faNum(assignees.length - 3)}</span>
       )}
     </div>
   );
@@ -143,6 +145,7 @@ export default function Tasks() {
   const [creatorNames] = useState({});
   const [viewMode, setViewMode] = useState("assigned");
   const [showArchived, setShowArchived] = useState(false);
+  const [showArchiveColumn, setShowArchiveColumn] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [mobileBoardColumn, setMobileBoardColumn] = useState("todo");
@@ -275,8 +278,17 @@ export default function Tasks() {
     if (!result.destination) return;
     const taskId = result.draggableId;
     const newStatus = result.destination.droppableId;
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
-    await base44.entities.Task.update(taskId, { status: newStatus });
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task) return;
+    if (newStatus === "archived" && !isAdmin) {
+      toast({ title: "فقط مدیر می‌تواند تسک را تأیید و بایگانی کند", variant: "destructive" });
+      return;
+    }
+    const update = newStatus === "archived"
+      ? { status: "done", completion_approved: true, archived: true }
+      : { status: newStatus, ...(task.archived ? { archived: false, completion_approved: false } : {}) };
+    setTasks((prev) => prev.map((item) => item.id === taskId ? { ...item, ...update } : item));
+    await base44.entities.Task.update(taskId, update);
   };
 
   const handleDelete = async (id) => {
@@ -311,13 +323,23 @@ export default function Tasks() {
     }
   };
 
+  const approveAndArchiveTask = async (task) => {
+    try {
+      await base44.entities.Task.update(task.id, { status: "done", completion_approved: true, archived: true });
+      await load();
+      toast({ title: "تسک تأیید و به آرشیو منتقل شد" });
+    } catch (err) {
+      toast({ title: "انتقال به آرشیو انجام نشد", description: err?.message || "دوباره تلاش کنید.", variant: "destructive" });
+    }
+  };
+
   const handleBulkDelete = async () => {
     for (const id of selectedTasks) {
       await base44.entities.Task.delete(id);
     }
     setSelectedTasks(new Set());
     load();
-    toast({ title: `${selectedTasks.size} تسک حذف شد` });
+    toast({ title: `${faNum(selectedTasks.size)} تسک حذف شد` });
   };
 
   const handleBulkArchive = async () => {
@@ -328,7 +350,7 @@ export default function Tasks() {
       }
       setSelectedTasks(new Set());
       await load();
-      toast({ title: `${count} تسک ${showArchived ? "از بایگانی خارج شد" : "بایگانی شد"}` });
+      toast({ title: `${faNum(count)} تسک ${showArchived ? "از بایگانی خارج شد" : "بایگانی شد"}` });
     } catch (err) {
       toast({ title: "عملیات بایگانی کامل نشد", description: err?.message || "دوباره تلاش کنید.", variant: "destructive" });
     }
@@ -340,7 +362,7 @@ export default function Tasks() {
     }
     setSelectedTasks(new Set());
     load();
-    toast({ title: `${selectedTasks.size} تسک بروزرسانی شد` });
+    toast({ title: `${faNum(selectedTasks.size)} تسک بروزرسانی شد` });
   };
 
   const handleBulkAssign = async (assignee) => {
@@ -349,7 +371,7 @@ export default function Tasks() {
     }
     setSelectedTasks(new Set());
     load();
-    toast({ title: `${selectedTasks.size} تسک به ${assignee} اختصاص یافت` });
+    toast({ title: `${faNum(selectedTasks.size)} تسک به ${assignee} اختصاص یافت` });
   };
 
   const handleEdit = (task) => {
@@ -395,11 +417,23 @@ export default function Tasks() {
     columns.forEach(col => {
       result[col.id] = sortTasks(filteredTasks.filter(t => t.status === col.id), columnSort[col.id]);
     });
+    const query = searchQuery.trim().toLowerCase();
+    const archived = viewFilteredTasks.filter((task) => {
+      if (!task.archived) return false;
+      if (query && !task.title.toLowerCase().includes(query) && !(task.description || "").toLowerCase().includes(query) && !(task.task_number || "").toLowerCase().includes(query)) return false;
+      if (projectFilter && task.project_id !== projectFilter) return false;
+      if (employeeFilter && !matchesTaskOwner(task, employeeFilter)) return false;
+      if (dateFrom && task.due_date && task.due_date < dateFrom) return false;
+      if (dateTo && task.due_date && task.due_date > dateTo) return false;
+      return true;
+    });
+    result.archived = sortTasks(archived, "priority_created");
     return result;
-  }, [filteredTasks, columnSort]);
+  }, [filteredTasks, viewFilteredTasks, columnSort, searchQuery, projectFilter, employeeFilter, dateFrom, dateTo]);
 
   const sortedTableTasks = useMemo(() => sortTasks(filteredTasks, tableSort), [filteredTasks, tableSort]);
-  const boardColumns = isMobileBoard ? columns.filter((column) => column.id === mobileBoardColumn) : columns;
+  const availableBoardColumns = showArchiveColumn ? [...columns, archiveColumn] : columns;
+  const boardColumns = isMobileBoard ? availableBoardColumns.filter((column) => column.id === mobileBoardColumn) : availableBoardColumns;
 
   if (loading)
     return (
@@ -583,7 +617,7 @@ export default function Tasks() {
                   <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
                     <Send className="w-4 h-4 text-amber-700" />
                   </div>
-                  <h3 className="font-bold text-amber-800">درخواست‌های تسک دریافتی ({incomingRequests.length})</h3>
+                  <h3 className="font-bold text-amber-800">درخواست‌های تسک دریافتی ({faNum(incomingRequests.length)})</h3>
                 </div>
               </div>
               <div className="space-y-2">
@@ -670,14 +704,19 @@ export default function Tasks() {
           )}
 
           {layoutMode === "board" ? <>
-            <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-border bg-card p-1 md:hidden" role="group" aria-label="انتخاب ستون تسک">
-              {columns.map((col) => {
-                const ColumnIcon = col.id === "todo" ? Clock : col.id === "in_progress" ? RotateCcw : CheckCircle;
-                return <button key={col.id} onClick={() => setMobileBoardColumn(col.id)} aria-pressed={mobileBoardColumn === col.id} aria-label={`${col.title}، ${columnTasks[col.id].length} تسک`} title={col.title} className={`flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-1.5 py-2 text-xs font-medium transition-colors ${mobileBoardColumn === col.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}><ColumnIcon className="h-4 w-4 shrink-0" /><span className="truncate">{col.title.replace("در ", "")}</span><span className={`rounded-full px-1.5 ${mobileBoardColumn === col.id ? "bg-white/20" : "bg-accent"}`}>{columnTasks[col.id].length}</span></button>;
+            <div className="mb-2 flex justify-end">
+              <button type="button" onClick={() => { setShowArchiveColumn((value) => !value); if (!showArchiveColumn && isMobileBoard) setMobileBoardColumn("archived"); else if (showArchiveColumn && mobileBoardColumn === "archived") setMobileBoardColumn("todo"); }} aria-expanded={showArchiveColumn} className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors ${showArchiveColumn ? "border-amber-300 bg-amber-50 text-amber-800" : "border-border bg-card text-muted-foreground hover:bg-accent"}`}>
+                <Archive className="h-4 w-4" /> {showArchiveColumn ? "پنهان‌کردن آرشیو" : "نمایش آرشیو"} <span className="rounded-full bg-background/70 px-1.5 text-xs">{faNum(columnTasks.archived.length)}</span>
+              </button>
+            </div>
+            <div className={`grid gap-1.5 rounded-xl border border-border bg-card p-1 md:hidden ${showArchiveColumn ? "grid-cols-4" : "grid-cols-3"}`} role="group" aria-label="انتخاب ستون تسک">
+              {availableBoardColumns.map((col) => {
+                const ColumnIcon = col.id === "todo" ? Clock : col.id === "in_progress" ? RotateCcw : col.id === "archived" ? Archive : CheckCircle;
+                return <button key={col.id} onClick={() => setMobileBoardColumn(col.id)} aria-pressed={mobileBoardColumn === col.id} aria-label={`${col.title}، ${faNum(columnTasks[col.id].length)} تسک`} title={col.title} className={`flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-1.5 py-2 text-xs font-medium transition-colors ${mobileBoardColumn === col.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}><ColumnIcon className="h-4 w-4 shrink-0" /><span className="truncate">{col.title.replace("در ", "")}</span><span className={`rounded-full px-1.5 ${mobileBoardColumn === col.id ? "bg-white/20" : "bg-accent"}`}>{faNum(columnTasks[col.id].length)}</span></button>;
               })}
             </div>
             <DragDropContext onDragEnd={onDragEnd}>
-            <div className="flex flex-col gap-3 pb-3 md:flex-row md:overflow-x-auto md:scrollbar-thin">
+            <div className={`grid w-full grid-cols-1 gap-3 pb-3 md:grid-cols-3 ${showArchiveColumn ? "xl:grid-cols-4" : ""}`}>
               {boardColumns.map((col) => {
                 const colTasks = columnTasks[col.id];
                 return (
@@ -686,7 +725,7 @@ export default function Tasks() {
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`snap-start w-full min-w-0 rounded-2xl p-3 min-h-[320px] flex flex-col md:flex-shrink-0 md:w-64 md:max-w-[82vw] md:min-h-[600px] ${
+                      className={`w-full min-w-0 rounded-2xl p-3 min-h-[320px] flex flex-col md:min-h-[600px] ${
                         snapshot.isDraggingOver ? "bg-primary/5" : "bg-card border border-border"
                       }`}
                     >
@@ -696,7 +735,7 @@ export default function Tasks() {
                           <SelectControl aria-label={`مرتب‌سازی ستون ${col.title}`} value={columnSort[col.id]} onChange={(e) => setColumnSort((prev) => ({ ...prev, [col.id]: e.target.value }))} className="h-8 max-w-[150px] text-xs">
                             {sortOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                           </SelectControl>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${col.color}`}>{colTasks.length}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${col.color}`}>{faNum(colTasks.length)}</span>
                         </div>
                       </div>
                       <div className="space-y-2 flex-1">
@@ -767,6 +806,11 @@ export default function Tasks() {
                                     </button>
                                   </div>
                                 </div>
+                                {col.id === "done" && isAdmin && !t.archived && (
+                                  <button type="button" onClick={(e) => { e.stopPropagation(); approveAndArchiveTask(t); }} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-green-50 px-2 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100">
+                                    <CheckCircle className="h-3.5 w-3.5" /> تأیید و انتقال به آرشیو
+                                  </button>
+                                )}
                                 <div className="flex items-start justify-between gap-1">
                                   {t.task_number && (
                                     <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">{t.task_number}</span>

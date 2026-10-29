@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { CheckCircle2, Circle, AlertTriangle, UserPlus, BookOpen, Shield, Calendar, MessageSquare, FileText, Settings } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { getOnboardingCompletedItems } from "@/lib/onboarding-progress";
+import { formatPersianNumber as faNum } from "@/lib/number-format";
 
 const manualItems = new Set(["read_rules", "setup_tools", "security", "calendar"]);
 const defaultOnboardingItems = [
@@ -78,10 +79,10 @@ export default function OnboardingChecklist({ user, isAdmin = false, onComplete 
     <div className="bg-card rounded-2xl border border-border p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-bold text-lg flex items-center gap-2"><BookOpen className="w-5 h-5 text-primary" /> چک‌لیست آنبوردینگ</h2>
-        <div className="text-sm font-medium text-primary">{progressPct}٪</div>
+        <div className="text-sm font-medium text-primary">{faNum(progressPct)}٪</div>
       </div>
       <div className="h-2 bg-accent rounded-full overflow-hidden mb-4"><div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progressPct}%` }} /></div>
-      <p className="text-xs text-muted-foreground mb-4">{doneCount} از {totalCount} مرحله کامل شده؛ تسک، گزارش، جلسه و پروفایل از اطلاعات ثبت‌شده در پنل بررسی می‌شوند.</p>
+      <p className="text-xs text-muted-foreground mb-4">{faNum(doneCount)} از {faNum(totalCount)} مرحله کامل شده؛ تسک، گزارش، جلسه و پروفایل از اطلاعات ثبت‌شده در پنل بررسی می‌شوند.</p>
       <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-thin">
         {items.map((item) => {
           const content = (

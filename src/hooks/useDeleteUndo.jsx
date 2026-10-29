@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { appId } from "@/api/base44Client";
+import { formatPersianNumber as faNum } from "@/lib/number-format";
 
 const toList = (records) => (Array.isArray(records) ? records : records ? [records] : []);
 const recordLabel = (r) => r?.title || r?.name || r?.colleague || "مورد";
@@ -39,7 +40,7 @@ export function useDeleteUndo(entityName, deleteFn, loadFn) {
       const title = opts.title || (count === 1 ? recordLabel(list[0]) : "گزینه");
 
       toast({
-        title: count === 1 ? `«${title}» حذف شد` : `${count} مورد حذف شد`,
+        title: count === 1 ? `«${title}» حذف شد` : `${faNum(count)} مورد حذف شد`,
         description: "شما ۵ ثانیه فرصت دارید تا بازگردانید.",
         duration: 5000,
         action: (
@@ -58,7 +59,7 @@ export function useDeleteUndo(entityName, deleteFn, loadFn) {
                   if (!res.ok) throw new Error("restore failed");
                 }
                 await loadFn?.();
-                toast({ title: count === 1 ? "بازگردانی شد" : `${count} مورد بازگردانی شد` });
+                toast({ title: count === 1 ? "بازگردانی شد" : `${faNum(count)} مورد بازگردانی شد` });
               } catch {
                 console.error("Undo failed");
                 toast({ title: "خطا", description: "بازگردانی ناموفق بود", variant: "destructive" });

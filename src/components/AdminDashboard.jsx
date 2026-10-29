@@ -9,8 +9,7 @@ import PersianDatePicker, { getPersianDate } from "@/components/PersianDatePicke
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { addDaysToKey, persianWeekday, isJalaliLeap } from "@/lib/jalali";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, LineChart, Line } from "recharts";
-
-const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
+import { formatPersianNumber as faNum } from "@/lib/number-format";
 
 export default function AdminDashboard() {
   const [showDateRange, setShowDateRange] = useState(false);
@@ -248,7 +247,7 @@ export default function AdminDashboard() {
               {s.trend !== undefined && (
                 <div className={`flex items-center gap-1 text-xs font-medium ${s.trend > 0 ? "text-green-600" : s.trend < 0 ? "text-red-600" : "text-muted-foreground"}`}>
                   {s.trend > 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : s.trend < 0 ? <ArrowDownRight className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
-                  <span className="hidden sm:inline">{Math.abs(s.trend)}٪</span>
+                  <span className="hidden sm:inline">{faNum(Math.abs(s.trend))}٪</span>
                 </div>
               )}
             </div>
@@ -313,7 +312,7 @@ export default function AdminDashboard() {
             <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <XAxis dataKey="shortDate" tick={{ fontSize: 11, fontFamily: "Vazirmatn" }} />
               <YAxis tick={{ fontSize: 10, fontFamily: "Vazirmatn" }} />
-              <Tooltip formatter={(v) => `${v} تسک`} contentStyle={{ fontFamily: "Vazirmatn", borderRadius: 12, border: "1px solid hsl(var(--border))" }} />
+              <Tooltip formatter={(v) => `${faNum(v)} تسک`} contentStyle={{ fontFamily: "Vazirmatn", borderRadius: 12, border: "1px solid hsl(var(--border))" }} />
               <Bar dataKey="tasksDone" fill="hsl(252 63% 58%)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -328,7 +327,7 @@ export default function AdminDashboard() {
             <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <XAxis dataKey="shortDate" tick={{ fontSize: 11, fontFamily: "Vazirmatn" }} />
               <YAxis tick={{ fontSize: 10, fontFamily: "Vazirmatn" }} />
-              <Tooltip formatter={(v) => `${v} جلسه`} contentStyle={{ fontFamily: "Vazirmatn", borderRadius: 12, border: "1px solid hsl(var(--border))" }} />
+              <Tooltip formatter={(v) => `${faNum(v)} جلسه`} contentStyle={{ fontFamily: "Vazirmatn", borderRadius: 12, border: "1px solid hsl(var(--border))" }} />
               <Line type="monotone" dataKey="meetingsDone" stroke="hsl(197 70% 50%)" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
@@ -450,7 +449,7 @@ function WorkloadChart({ users, tasks, workReports }) {
             </div>
           </div>
           <div className="text-xs text-muted-foreground shrink-0 w-24 text-left">
-            {u.assigned} تسک • {faNum(u.hours)} ساعت
+            {faNum(u.assigned)} تسک • {faNum(u.hours)} ساعت
           </div>
         </div>
       ))}
@@ -494,7 +493,7 @@ function CalendarView({ meetings, tasks, workReports, leaveRequests }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <button onClick={() => setViewDate(prev => { const [y, m] = prev.split("/").map(Number); const nm = m === 1 ? 12 : m - 1; const ny = m === 1 ? y - 1 : y; return `${ny}/${String(nm).padStart(2, "0")}/01`; })} className="p-1 hover:bg-accent rounded-lg"><ChevronRight className="w-5 h-5" /></button>
-        <span className="font-bold text-lg">{persianMonthNames[month - 1]} {year}</span>
+        <span className="font-bold text-lg">{persianMonthNames[month - 1]} {faNum(year)}</span>
         <button onClick={() => setViewDate(prev => { const [y, m] = prev.split("/").map(Number); const nm = m === 12 ? 1 : m + 1; const ny = m === 12 ? y + 1 : y; return `${ny}/${String(nm).padStart(2, "0")}/01`; })} className="p-1 hover:bg-accent rounded-lg"><ChevronLeft className="w-5 h-5" /></button>
       </div>
       <div className="grid grid-cols-7 gap-0.5 text-center text-xs text-muted-foreground py-2 border-b border-border">
@@ -510,9 +509,9 @@ function CalendarView({ meetings, tasks, workReports, leaveRequests }) {
           return (
             <div key={day} className={`relative aspect-square p-1 rounded-lg ${isToday ? "bg-primary/10 ring-2 ring-primary" : "hover:bg-accent/30"}`}>
               <span className={`text-xs sm:text-sm font-medium ${isToday ? "text-primary" : ""}`}>{toPersianDigit(day)}</span>
-              <div className="mt-1 flex gap-0.5 sm:hidden" aria-label={`${events.length} رویداد`}>
+              <div className="mt-1 flex gap-0.5 sm:hidden" aria-label={`${faNum(events.length)} رویداد`}>
                 {events.slice(0, 3).map((event, idx) => <span key={idx} className={`h-1.5 w-1.5 rounded-full ${event.type === "meeting" ? "bg-blue-500" : event.type === "task" ? "bg-amber-500" : event.type === "leave" ? "bg-purple-500" : "bg-green-500"}`} />)}
-                {events.length > 3 && <span className="text-[8px] leading-none text-muted-foreground">+{events.length - 3}</span>}
+                {events.length > 3 && <span className="text-[8px] leading-none text-muted-foreground">+{faNum(events.length - 3)}</span>}
               </div>
               <div className="hidden sm:block space-y-1 mt-1 max-h-20 overflow-y-auto">
                 {events.slice(0, 3).map((e, idx) => (
@@ -521,7 +520,7 @@ function CalendarView({ meetings, tasks, workReports, leaveRequests }) {
                     {e.title}
                   </div>
                 ))}
-                {events.length > 3 && <div className="text-[10px] text-muted-foreground">+{events.length - 3}</div>}
+                {events.length > 3 && <div className="text-[10px] text-muted-foreground">+{faNum(events.length - 3)}</div>}
               </div>
             </div>
           );

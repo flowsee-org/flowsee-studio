@@ -5,6 +5,7 @@ import { Plus, Calendar, User, Check, X, AlertCircle, ChevronLeft, ChevronRight,
 import PersianDatePicker, { getPersianDate } from "@/components/PersianDatePicker";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
+import { formatPersianNumber as faNum } from "@/lib/number-format";
 
 const leaveTypeLabels = {
   vacation: "مرخصی استحقاقی",
@@ -384,7 +385,7 @@ export default function LeaveRequests() {
                           className={`py-3 px-1 border border-border/50 ${isToday ? "bg-primary/10" : ""}`}
                         >
                           <span className={`font-medium ${isToday ? "text-primary" : "text-foreground"}`}>
-                            {day}
+                            {faNum(day)}
                           </span>
                           {leaves.length > 0 && (
                             <div className="mt-1 flex flex-wrap gap-0.5 justify-center">
@@ -399,7 +400,7 @@ export default function LeaveRequests() {
                               ))}
                               {leaves.length > 2 && (
                                 <span className="text-[10px] text-muted-foreground px-1">
-                                  +{leaves.length - 2}
+                                  +{faNum(leaves.length - 2)}
                                 </span>
                               )}
                             </div>

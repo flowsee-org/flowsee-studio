@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { getPersianDate } from "@/components/PersianDatePicker";
 import { CheckCircle, Clock, Calendar, ArrowLeft, ArrowDownUp } from "lucide-react";
 import { Link } from "react-router-dom";
+import { formatPersianNumber as faNum } from "@/lib/number-format";
 
 const priorityLabels = { low: "کم", medium: "متوسط", high: "زیاد" };
 const priorityColors = { low: "bg-slate-100 text-slate-600", medium: "bg-amber-100 text-amber-700", high: "bg-red-100 text-red-700" };
@@ -66,7 +67,7 @@ export default function TodayTasks() {
         <h2 className="font-bold text-sm sm:text-base flex items-center gap-2">
           <Calendar className="w-5 h-5 text-primary" />
           کارهای امروز
-          {sorted.length > 0 && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{sorted.length}</span>}
+          {sorted.length > 0 && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{faNum(sorted.length)}</span>}
         </h2>
         <div className="flex items-center gap-2">
           <div className="relative">

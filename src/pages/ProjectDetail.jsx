@@ -2,13 +2,12 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { ArrowRight, Users, ListTodo, FolderKanban, UserCircle, Flag, File, MessageSquare, DollarSign, CheckSquare, TrendingUp, TrendingDown } from "lucide-react";
+import { formatPersianNumber as faNum } from "@/lib/number-format";
 
 const statusLabels = { active: "فعال", completed: "تکمیل شده", paused: "متوقف شده" };
 const statusColors = { active: "bg-green-100 text-green-700", completed: "bg-blue-100 text-blue-700", paused: "bg-amber-100 text-amber-700" };
 const taskStatusLabels = { todo: "در انتظار", in_progress: "در حال انجام", done: "انجام شده" };
 const taskStatusColors = { todo: "bg-slate-100 text-slate-600", in_progress: "bg-blue-100 text-blue-700", done: "bg-green-100 text-green-700" };
-
-const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
 
 export default function ProjectDetail() {
   const { id } = useParams();
@@ -89,15 +88,15 @@ export default function ProjectDetail() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
           <div className="bg-accent/40 rounded-xl p-3 text-center">
             <p className="text-xs text-muted-foreground">تسک‌ها</p>
-            <p className="text-lg font-bold mt-1">{tasks.length}</p>
+            <p className="text-lg font-bold mt-1">{faNum(tasks.length)}</p>
           </div>
           <div className="bg-accent/40 rounded-xl p-3 text-center">
             <p className="text-xs text-muted-foreground">پرسنل</p>
-            <p className="text-lg font-bold mt-1">{allAssignees.length}</p>
+            <p className="text-lg font-bold mt-1">{faNum(allAssignees.length)}</p>
           </div>
           <div className="bg-accent/40 rounded-xl p-3 text-center">
             <p className="text-xs text-muted-foreground">پیشرفت</p>
-            <p className="text-lg font-bold mt-1">{progress}٪</p>
+            <p className="text-lg font-bold mt-1">{faNum(progress)}٪</p>
           </div>
           <div className="bg-accent/40 rounded-xl p-3 text-center">
             <p className="text-xs text-muted-foreground">نقاط عطف</p>
@@ -132,7 +131,7 @@ export default function ProjectDetail() {
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}
-              {tab.count !== undefined && <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{tab.count}</span>}
+              {tab.count !== undefined && <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{faNum(tab.count)}</span>}
             </button>
           ))}
         </nav>
@@ -209,7 +208,7 @@ export default function ProjectDetail() {
 
             <div className="bg-card rounded-2xl border border-border p-5">
               <h2 className="font-bold mb-4 flex items-center gap-2 text-sm">
-                <Users className="w-5 h-5 text-primary" /> اعضا ({project.members?.length || 0})
+                <Users className="w-5 h-5 text-primary" /> اعضا ({faNum(project.members?.length || 0)})
               </h2>
               {project.members?.length === 0 ? (
                 <p className="text-sm text-muted-foreground">هیچ عضوی اضافه نشده</p>
@@ -422,7 +421,7 @@ export default function ProjectDetail() {
             <div className="bg-card rounded-2xl border border-border p-5">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm text-muted-foreground">استفاده از بودجه</span>
-                <span className="text-sm font-medium">{project.budget > 0 ? Math.round((totalExpenses / project.budget) * 100) : 0}%</span>
+                <span className="text-sm font-medium">{faNum(project.budget > 0 ? Math.round((totalExpenses / project.budget) * 100) : 0)}٪</span>
               </div>
               <div className="h-3 bg-accent rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all" style={{ width: `${project.budget > 0 ? Math.min(100, (totalExpenses / project.budget) * 100) : 0}%`, backgroundColor: totalExpenses > (project.budget || 0) ? "hsl(0 84% 60%)" : color }} />

@@ -778,7 +778,7 @@ function MonthAccordion({ group, expanded, onToggle, children }) {
 
 function periodLabel(period) {
   const [year, month] = period.split("/");
-  return `${months.find((item) => item.value === month)?.label || month} ${year}`;
+  return `${months.find((item) => item.value === month)?.label || faNum(month)} ${faNum(year)}`;
 }
 
 const digitWords = ["صفر", "یک", "دو", "سه", "چهار", "پنج", "شش", "هفت", "هشت", "نه"];
