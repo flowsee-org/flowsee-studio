@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Send, MessageSquare, Reply, Clock } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import { formatPersianNumber as faNum } from "@/lib/number-format";
 
 const getTimeAgo = (dateString) => {
   if (!dateString) return "";
@@ -13,9 +14,9 @@ const getTimeAgo = (dateString) => {
   const diffDays = Math.floor(diffMs / 86400000);
 
   if (diffMins < 1) return "همین الان";
-  if (diffMins < 60) return `${diffMins} دقیقه پیش`;
-  if (diffHours < 24) return `${diffHours} ساعت پیش`;
-  if (diffDays < 7) return `${diffDays} روز پیش`;
+  if (diffMins < 60) return `${faNum(diffMins)} دقیقه پیش`;
+  if (diffHours < 24) return `${faNum(diffHours)} ساعت پیش`;
+  if (diffDays < 7) return `${faNum(diffDays)} روز پیش`;
   return date.toLocaleDateString("fa-IR");
 };
 
@@ -95,7 +96,7 @@ export default function AnnouncementComments({ announcementId }) {
         onClick={(e) => e.stopPropagation()}
         className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
       >
-        <MessageSquare className="w-3.5 h-3.5" /> گفتگو ({comments.length})
+        <MessageSquare className="w-3.5 h-3.5" /> گفتگو ({faNum(comments.length)})
       </button>
 
       {!loading && comments.length === 0 && (

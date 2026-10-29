@@ -7,6 +7,7 @@ import { buildWeeklyFinancialData } from "@/lib/reportData";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { toast } from "@/components/ui/use-toast";
+import { formatPersianNumber as formatFaNum } from "@/lib/number-format";
 
 const enNum = (n) => Number(n || 0).toLocaleString("en-US");
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
@@ -378,7 +379,7 @@ export default function Reports() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">مرز سود</p>
-              <p className="text-2xl font-bold mt-1">{totalIncome > 0 ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100) : 0}%</p>
+              <p className="text-2xl font-bold mt-1">{formatFaNum(totalIncome > 0 ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100) : 0)}٪</p>
             </div>
             <TrendingUp className="w-8 h-8 text-blue-600/30" />
           </div>
@@ -476,7 +477,7 @@ export default function Reports() {
                     <div className="flex justify-between"><span>درآمد:</span> <span className="text-green-600">{faNum(projIncome)}</span></div>
                     <div className="flex justify-between"><span>هزینه:</span> <span className="text-red-600">{faNum(projExpense)}</span></div>
                     <div className="flex justify-between"><span>سود:</span> <span className={projIncome - projExpense >= 0 ? "text-green-600" : "text-red-600"}>{faNum(projIncome - projExpense)}</span></div>
-                    <div className="flex justify-between"><span>اعضا:</span> <span>{members.length}</span></div>
+                    <div className="flex justify-between"><span>اعضا:</span> <span>{formatFaNum(members.length)}</span></div>
                   </div>
                 </div>
               );
@@ -503,8 +504,8 @@ export default function Reports() {
                 <tr key={c.name} className="border-b border-border/50 hover:bg-accent/30">
                   <td className="py-2 font-medium">{c.name}</td>
                   <td className="py-2 text-red-600">{faNum(c.value)}</td>
-                  <td className="py-2">{totalExpense > 0 ? Math.round((c.value / totalExpense) * 100) : 0}%</td>
-                  <td className="py-2 text-muted-foreground">{filteredExpenses.filter(e => e.category === c.name).length}</td>
+                  <td className="py-2">{formatFaNum(totalExpense > 0 ? Math.round((c.value / totalExpense) * 100) : 0)}٪</td>
+                  <td className="py-2 text-muted-foreground">{formatFaNum(filteredExpenses.filter(e => e.category === c.name).length)}</td>
                 </tr>
               ))}
             </tbody>

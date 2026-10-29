@@ -7,6 +7,7 @@ import TaskComments from './TaskComments';
 import PersianDatePicker from '@/components/PersianDatePicker';
 import { loadTeamMembers } from '@/lib/teamMembers';
 import { toast } from '@/components/ui/use-toast';
+import { formatPersianNumber as faNum } from '@/lib/number-format';
 
 const priorityLabels = { low: 'کم', medium: 'متوسط', high: 'زیاد' };
 const priorityColors = { low: 'bg-slate-100 text-slate-600', medium: 'bg-amber-100 text-amber-700', high: 'bg-red-100 text-red-700' };
@@ -23,9 +24,9 @@ const getTimeAgo = (dateString) => {
   const diffDays = Math.floor(diffMs / 86400000);
 
   if (diffMins < 1) return 'همین الان';
-  if (diffMins < 60) return `${diffMins} دقیقه پیش`;
-  if (diffHours < 24) return `${diffHours} ساعت پیش`;
-  if (diffDays < 7) return `${diffDays} روز پیش`;
+  if (diffMins < 60) return `${faNum(diffMins)} دقیقه پیش`;
+  if (diffHours < 24) return `${faNum(diffHours)} ساعت پیش`;
+  if (diffDays < 7) return `${faNum(diffDays)} روز پیش`;
   return date.toLocaleDateString('fa-IR');
 };
 
@@ -100,7 +101,7 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
     setForm({ ...form, time_spent: newTime });
     try {
       await base44.entities.Task.update(task.id, { time_spent: newTime });
-      toast({ title: `${hours} ساعت اضافه شد` });
+      toast({ title: `${faNum(hours)} ساعت اضافه شد` });
     } catch (err) {
       console.error(err);
     }
@@ -152,7 +153,7 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
               >
                 <tab.icon className="w-4 h-4" />
                 {tab.label}
-                {tab.count && <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{tab.count}</span>}
+                {tab.count && <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{faNum(tab.count)}</span>}
               </button>
             ))}
           </nav>

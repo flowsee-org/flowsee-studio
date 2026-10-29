@@ -6,6 +6,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
 import { toast } from "@/components/ui/use-toast";
 import { Plus, Target, Pencil, Trash2, TrendingUp, AlertTriangle, CheckCircle2, Minus } from "lucide-react";
+import { formatPersianNumber as faNum, formatPersianDigits } from "@/lib/number-format";
 
 const statusLabels = {
   on_track: "در مسیر",
@@ -232,7 +233,7 @@ export default function Goals() {
             <Target className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground">کل اهداف</p>
-          <p className="text-base sm:text-2xl font-bold mt-1">{total}</p>
+          <p className="text-base sm:text-2xl font-bold mt-1">{faNum(total)}</p>
         </div>
         <div className="bg-card rounded-2xl p-4 sm:p-6 border border-border">
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-green-100 text-green-600 flex items-center justify-center mb-3 sm:mb-4">
@@ -284,7 +285,7 @@ export default function Goals() {
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
-                        {g.quarter} {g.year}
+                        {formatPersianDigits(g.quarter)} {faNum(g.year)}
                       </span>
                       <span
                         className={`text-xs px-2.5 py-0.5 rounded-full font-medium flex items-center gap-1 ${statusStyles[g.status]}`}
@@ -332,7 +333,7 @@ export default function Goals() {
                 <div className="mb-4">
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="text-muted-foreground">پیشرفت کلی</span>
-                    <span className="font-bold text-primary">{progress}%</span>
+                    <span className="font-bold text-primary">{faNum(progress)}٪</span>
                   </div>
                   <div className="h-2.5 bg-accent rounded-full overflow-hidden">
                     <div
@@ -363,7 +364,7 @@ export default function Goals() {
                               {kr.title || `نتیجه ${idx + 1}`}
                             </span>
                             <span className="text-xs text-muted-foreground shrink-0">
-                              {krProgress}%
+                              {faNum(krProgress)}٪
                             </span>
                           </div>
                           <div className="h-1.5 bg-accent rounded-full overflow-hidden mb-2">

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Clock, User, Plus, CheckCircle, MessageSquare, FileText, Calendar, DollarSign, FolderKanban, Shield, ArrowUpRight } from 'lucide-react';
+import { formatPersianNumber as faNum } from '@/lib/number-format';
 
 const actionIcons = {
   create: { icon: Plus, color: 'text-green-500', bg: 'bg-green-100', label: 'ایجاد' },
@@ -34,9 +35,9 @@ const getTimeAgo = (dateString) => {
   const diffDays = Math.floor(diffMs / 86400000);
 
   if (diffMins < 1) return 'همین الان';
-  if (diffMins < 60) return `${diffMins} دقیقه پیش`;
-  if (diffHours < 24) return `${diffHours} ساعت پیش`;
-  if (diffDays < 7) return `${diffDays} روز پیش`;
+  if (diffMins < 60) return `${faNum(diffMins)} دقیقه پیش`;
+  if (diffHours < 24) return `${faNum(diffHours)} ساعت پیش`;
+  if (diffDays < 7) return `${faNum(diffDays)} روز پیش`;
   return date.toLocaleDateString('fa-IR');
 };
 

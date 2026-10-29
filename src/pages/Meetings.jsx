@@ -11,6 +11,7 @@ import persian_fa from "react-date-object/locales/persian_fa";
 import { loadTeamMembers } from "@/lib/teamMembers";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
+import { formatPersianNumber as faNum } from "@/lib/number-format";
 
 const persianMonthNames = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
 const formatCalendarDate = (year, month, day) => String(year) + "/" + String(month).padStart(2, "0") + "/" + String(day).padStart(2, "0");
@@ -43,7 +44,7 @@ function MeetingsCalendar({ year, month, selectedDate, meetings, approvedLeaves,
             {persianMonthNames.map((name, index) => <option key={name} value={index + 1}>{name}</option>)}
           </select>
           <select aria-label="سال تقویم" value={year} onChange={(event) => onSetYear(Number(event.target.value))} className="min-w-20 rounded-xl border border-input bg-card px-3 py-2 text-sm">
-            {Array.from({ length: 9 }, (_, index) => year - 4 + index).map((value) => <option key={value} value={value}>{value}</option>)}
+            {Array.from({ length: 9 }, (_, index) => year - 4 + index).map((value) => <option key={value} value={value}>{faNum(value)}</option>)}
           </select>
           <button type="button" onClick={() => onMoveMonth(1)} className="rounded-lg p-2 hover:bg-accent" aria-label="ماه بعد"><ChevronLeft className="h-4 w-4" /></button>
         </div>
@@ -354,7 +355,7 @@ export default function Meetings() {
                               <span key={p} className="text-[10px] bg-accent rounded-full px-2 py-0.5">{p}</span>
                             ))}
                             {(m.participants || []).length > 4 && (
-                              <span className="text-[10px] text-muted-foreground">+{(m.participants || []).length - 4} نفر</span>
+                              <span className="text-[10px] text-muted-foreground">+{faNum((m.participants || []).length - 4)} نفر</span>
                             )}
                           </div>
                         )}
@@ -573,7 +574,7 @@ export default function Meetings() {
                 <div className="flex items-center gap-2">
                   <History className="w-5 h-5 text-muted-foreground" />
                   <h2 className="text-lg font-bold">تاریخچه جلسات</h2>
-                  <span className="text-xs bg-accent text-muted-foreground px-2 py-0.5 rounded-full">{filteredHistoryMeetings.length}</span>
+                  <span className="text-xs bg-accent text-muted-foreground px-2 py-0.5 rounded-full">{faNum(filteredHistoryMeetings.length)}</span>
                 </div>
                 {isAdmin && (
                   <div className="flex items-center gap-2 flex-wrap">

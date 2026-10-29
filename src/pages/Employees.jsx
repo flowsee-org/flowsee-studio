@@ -10,6 +10,7 @@ import EmployeeProfile, { availabilityColor, availabilityLabel } from "@/compone
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { inviteUser } from "@/lib/invite";
 import { toast } from "@/components/ui/use-toast";
+import { formatPersianNumber as faNum } from "@/lib/number-format";
 
 const roleFilterOptions = [
   { value: "", label: "همه اعضا" },
@@ -262,7 +263,7 @@ export default function Employees() {
             <div className={`inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded-full ${s.color}`}>
               {s.label}
             </div>
-            <p className="text-2xl font-bold mt-2">{s.value}</p>
+            <p className="text-2xl font-bold mt-2">{faNum(s.value)}</p>
           </div>
         ))}
       </div>
@@ -358,7 +359,7 @@ export default function Employees() {
             <div key={dept}>
               <h2 className="font-bold mb-3 flex items-center gap-2 text-sm text-muted-foreground">
                 <FolderOpen className={`w-4 h-4 ${deptColors[di % deptColors.length]}`} /> {dept}
-                <span className="text-xs bg-accent text-muted-foreground px-2 py-0.5 rounded-full">{list.length}</span>
+                <span className="text-xs bg-accent text-muted-foreground px-2 py-0.5 rounded-full">{faNum(list.length)}</span>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {list.map((e) => (
@@ -426,13 +427,13 @@ export default function Employees() {
               <span className="font-medium text-foreground">{offboardFor.name}</span> غیرفعال می‌شود و دیگر نمی‌تواند وارد شود.
             </p>
             <div className="bg-accent/40 rounded-xl p-3 mb-4">
-              <p className="text-xs font-medium text-muted-foreground mb-2">تسک‌های باز ({offboardTasks.length}):</p>
+              <p className="text-xs font-medium text-muted-foreground mb-2">تسک‌های باز ({faNum(offboardTasks.length)}):</p>
               {offboardTasks.length === 0 ? (
                 <p className="text-xs text-muted-foreground">تسک باز ندارد ✓</p>
               ) : (
                 <div className="space-y-1 max-h-28 overflow-y-auto scrollbar-thin">
                   {offboardTasks.slice(0, 8).map((t) => <p key={t.id} className="text-xs truncate">• {t.title}</p>)}
-                  {offboardTasks.length > 8 && <p className="text-xs text-muted-foreground">+{offboardTasks.length - 8} تسک دیگر</p>}
+                  {offboardTasks.length > 8 && <p className="text-xs text-muted-foreground">+{faNum(offboardTasks.length - 8)} تسک دیگر</p>}
                 </div>
               )}
             </div>

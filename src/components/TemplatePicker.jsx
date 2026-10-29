@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { X, Plus, Pencil, Trash2, FileText, CheckCircle } from "lucide-react";
 import TaskTemplateModal from "@/components/TaskTemplateModal";
+import { formatPersianNumber as faNum } from "@/lib/number-format";
 
 const priorityLabels = { low: "کم", medium: "متوسط", high: "زیاد" };
 const priorityColors = { low: "bg-slate-100 text-slate-600", medium: "bg-amber-100 text-amber-700", high: "bg-red-100 text-red-700" };
@@ -90,10 +91,10 @@ export default function TemplatePicker({ onClose, onUse }) {
                   {t.description && <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{t.description}</p>}
                   <div className="flex items-center gap-2 flex-wrap mb-3">
                     {t.priority && <span className={`text-xs px-1.5 py-0.5 rounded-full ${priorityColors[t.priority]}`}>{priorityLabels[t.priority]}</span>}
-                    {(t.default_assignees || []).length > 0 && <span className="text-xs text-muted-foreground">{t.default_assignees.length} مسئول</span>}
+                    {(t.default_assignees || []).length > 0 && <span className="text-xs text-muted-foreground">{faNum(t.default_assignees.length)} مسئول</span>}
                     {(t.checklist || []).length > 0 && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <CheckCircle className="w-3.5 h-3.5" /> {t.checklist.length} آیتم چک‌لیست
+                        <CheckCircle className="w-3.5 h-3.5" /> {faNum(t.checklist.length)} آیتم چک‌لیست
                       </span>
                     )}
                   </div>
@@ -104,7 +105,7 @@ export default function TemplatePicker({ onClose, onUse }) {
                           <span className="w-1 h-1 rounded-full bg-muted-foreground" /> {item}
                         </div>
                       ))}
-                      {(t.checklist || []).length > 3 && <p className="text-xs text-muted-foreground">+{t.checklist.length - 3} مورد دیگر...</p>}
+                      {(t.checklist || []).length > 3 && <p className="text-xs text-muted-foreground">+{faNum(t.checklist.length - 3)} مورد دیگر...</p>}
                     </div>
                   )}
                   <button

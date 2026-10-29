@@ -8,6 +8,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { getPersianDate } from "@/components/PersianDatePicker";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
 import { sanitizeAnnouncementHtml } from "@/lib/announcementSanitize";
+import { formatPersianNumber as faNum } from "@/lib/number-format";
 
 const isHtml = (text) => /<\/?[a-z][\s\S]*>/i.test(text || "");
 
@@ -133,7 +134,7 @@ export default function Announcements() {
               onClick={markAllRead}
               className="border border-input px-4 py-2.5 rounded-xl font-medium text-sm text-muted-foreground hover:text-primary hover:border-primary/40 flex items-center gap-2 transition-colors"
             >
-              <CheckCheck className="w-4 h-4" /> علامت‌گذاری همه ({unreadCount})
+              <CheckCheck className="w-4 h-4" /> علامت‌گذاری همه ({faNum(unreadCount)})
             </button>
           )}
           {isAdmin && (

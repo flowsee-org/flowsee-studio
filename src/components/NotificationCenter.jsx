@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bell, Check, MessageSquare, Calendar, ClipboardList, DollarSign, User, FileText } from 'lucide-react';
 import { useNotifications } from '@/lib/NotificationContext';
+import { formatPersianNumber as faNum } from '@/lib/number-format';
 
 const typeIcons = {
   task_assigned: { icon: ClipboardList, color: 'text-blue-500', bg: 'bg-blue-100' },
@@ -97,9 +98,9 @@ export default function NotificationCenter() {
     const diffDays = Math.floor(diffMs / 86400000);
 
     if (diffMins < 1) return 'همین الان';
-    if (diffMins < 60) return `${diffMins} دقیقه پیش`;
-    if (diffHours < 24) return `${diffHours} ساعت پیش`;
-    if (diffDays < 7) return `${diffDays} روز پیش`;
+    if (diffMins < 60) return `${faNum(diffMins)} دقیقه پیش`;
+    if (diffHours < 24) return `${faNum(diffHours)} ساعت پیش`;
+    if (diffDays < 7) return `${faNum(diffDays)} روز پیش`;
     return date.toLocaleDateString('fa-IR');
   };
 
@@ -113,7 +114,7 @@ export default function NotificationCenter() {
         <Bell className="w-5 h-5 text-muted-foreground" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-            {unreadCount > 9 ? '9+' : unreadCount}
+            {unreadCount > 9 ? `${faNum(9)}+` : faNum(unreadCount)}
           </span>
         )}
       </button>
@@ -129,7 +130,7 @@ export default function NotificationCenter() {
               <Bell className="w-5 h-5 text-primary" />
               <h3 className="font-bold">اعلان‌ها</h3>
               {unreadCount > 0 && (
-                <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">{unreadCount} خوانده نشده</span>
+                <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">{faNum(unreadCount)} خوانده نشده</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -145,7 +146,7 @@ export default function NotificationCenter() {
           </div>
 
           <div className="grid grid-cols-2 border-b border-border p-2" role="tablist" aria-label="وضعیت اعلان‌ها">
-            <button type="button" role="tab" aria-selected={tab === "new"} onClick={() => setTab("new")} className={`rounded-lg px-3 py-2 text-sm ${tab === "new" ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-accent"}`}>جدید ({unreadCount})</button>
+            <button type="button" role="tab" aria-selected={tab === "new"} onClick={() => setTab("new")} className={`rounded-lg px-3 py-2 text-sm ${tab === "new" ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-accent"}`}>جدید ({faNum(unreadCount)})</button>
             <button type="button" role="tab" aria-selected={tab === "archived"} onClick={() => setTab("archived")} className={`rounded-lg px-3 py-2 text-sm ${tab === "archived" ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-accent"}`}>بایگانی</button>
           </div>
 
