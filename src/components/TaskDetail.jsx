@@ -132,8 +132,8 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-card rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-border">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <span className={`text-xs px-2 py-1 rounded-full ${statusColors[task?.status] || statusColors.todo}`}>
               {statusLabels[task?.status] || task?.status}
             </span>
@@ -147,6 +147,9 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
                 {priorityLabels[task.priority]}
               </span>
             )}
+            {(Array.isArray(task?.tags) ? task.tags : []).map((tag) => (
+              <span key={tag} className="max-w-32 truncate rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">{tag}</span>
+            ))}
           </div>
           <div className="flex items-center gap-2">
             <button onClick={onClose} className="p-2 hover:bg-accent rounded-lg">

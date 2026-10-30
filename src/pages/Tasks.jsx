@@ -825,6 +825,10 @@ export default function Tasks() {
                                   {t.priority && (
                                     <span className={`text-xs px-1.5 py-0.5 rounded-full ${priorityColors[t.priority]}`}>{priorityLabels[t.priority]}</span>
                                   )}
+                                  {(Array.isArray(t.tags) ? t.tags : []).slice(0, 3).map((tag) => (
+                                    <span key={tag} className="max-w-24 truncate rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{tag}</span>
+                                  ))}
+                                  {Array.isArray(t.tags) && t.tags.length > 3 && <span className="text-xs text-muted-foreground">+{faNum(t.tags.length - 3)}</span>}
                                   {t.project_name && (
                                     <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full truncate max-w-[90px]">{t.project_name}</span>
                                   )}
