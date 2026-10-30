@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Inbox, Loader2, RefreshCw, Search } from "lucide-react";
+import { AlertCircle, Archive, Inbox, Loader2, RefreshCw, RotateCcw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/lib/AuthContext";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MAIN_API_URL } from "@/lib/mainApi";
@@ -36,6 +37,8 @@ export default function WebsiteMessages() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMutating, setIsMutating] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -76,6 +79,7 @@ export default function WebsiteMessages() {
         setCounts(result.counts || {});
         setStatuses(result.statuses || {});
         setServices(result.services || {});
+        setSelectedIds([]);
       } catch (requestError) {
         if (requestError.name !== "AbortError") setError(requestError.message || "ارتباط با سرور برقرار نشد.");
       } finally {
@@ -88,6 +92,38 @@ export default function WebsiteMessages() {
 
   const countCards = useMemo(() => Object.entries(statuses), [statuses]);
   const reconnect = () => window.location.assign("/login");
+  const allVisibleSelected = messages.length > 0 && messages.every((message) => selectedIds.includes(message.id));
+
+  const updateMessageStatus = async (ids, nextStatus) => {
+    if (!ids.length) return;
+    setIsMutating(true);
+    setError("");
+    try {
+      const token = localStorage.getItem("base44_access_token");
+      const isBulk = ids.length > 1;
+      const response = await fetch(isBulk ? `${API_URL}/bulk-status` : `${API_URL}/${ids[0]}`, {
+        method: isBulk ? "POST" : "PUT",
+        headers: {
+          Authorization: "Bearer " + token,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(isBulk ? { ids, status: nextStatus } : { status: nextStatus }),
+      });
+      if (response.status === 401) throw new Error("نشست Studio منقضی شده است؛ دوباره وارد شوید.");
+      if (response.status === 403) throw new Error("فقط ادمین اصلی اجازهٔ مدیریت پیام‌ها را دارد.");
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.message || "به‌روزرسانی پیام‌ها ناموفق بود.");
+      }
+      setSelectedIds([]);
+      setRefreshKey((value) => value + 1);
+    } catch (requestError) {
+      setError(requestError.message || "ارتباط با سرور برقرار نشد.");
+    } finally {
+      setIsMutating(false);
+    }
+  };
 
   if (!isSuperadmin) {
     return (
@@ -117,12 +153,13 @@ export default function WebsiteMessages() {
         <div className="relative min-w-[220px] flex-1"><Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="جست‌وجو در نام، تماس یا توضیحات" className="pr-9" aria-label="جست‌وجوی پیام‌ها" /></div>
         <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="h-9 min-w-[150px] rounded-md border border-input bg-background px-3 text-sm" aria-label="فیلتر وضعیت"><option value="">همهٔ وضعیت‌ها</option>{Object.entries(statuses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
         <select value={service} onChange={(event) => { setService(event.target.value); setPage(1); }} className="h-9 min-w-[180px] rounded-md border border-input bg-background px-3 text-sm" aria-label="فیلتر خدمت"><option value="">همهٔ خدمات</option>{Object.entries(services).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
+        {selectedIds.length > 0 && <div className="flex w-full flex-wrap items-center justify-between gap-2 border-t border-border pt-3 sm:w-auto sm:border-0 sm:pt-0"><span className="text-sm text-muted-foreground">{selectedIds.length.toLocaleString("fa-IR")} پیام انتخاب شد</span><Button variant="outline" size="sm" disabled={isMutating} onClick={() => updateMessageStatus(selectedIds, status === "archived" ? "new" : "archived")}>{status === "archived" ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}{status === "archived" ? "بازگردانی انتخاب‌شده‌ها" : "بایگانی انتخاب‌شده‌ها"}</Button></div>}
       </div>
 
       {error && <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive" role="alert"><span className="flex items-center gap-2"><AlertCircle className="h-4 w-4" />{error}</span><Button variant="outline" size="sm" onClick={reconnect}>ورود دوباره به Studio</Button></div>}
 
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        {isLoading ? <div className="flex min-h-48 items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /> در حال دریافت پیام‌ها…</div> : messages.length === 0 ? <div className="flex min-h-48 flex-col items-center justify-center gap-2 p-8 text-center"><Inbox className="h-8 w-8 text-muted-foreground/60" /><p className="font-medium">پیامی با این فیلتر پیدا نشد</p><p className="text-sm text-muted-foreground">فیلتر وضعیت یا عبارت جست‌وجو را تغییر بده.</p></div> : <><div className="overflow-x-auto"><table className="w-full min-w-[800px] text-sm"><thead className="bg-muted/50 text-right text-muted-foreground"><tr><th className="px-4 py-3 font-medium">نام و راه تماس</th><th className="px-4 py-3 font-medium">خدمت</th><th className="px-4 py-3 font-medium">خلاصهٔ درخواست</th><th className="px-4 py-3 font-medium">وضعیت</th><th className="px-4 py-3 font-medium">تاریخ ثبت</th><th className="px-4 py-3 font-medium">جزئیات</th></tr></thead><tbody className="divide-y divide-border">{messages.map((message) => <tr key={message.id} className="align-top hover:bg-muted/20"><td className="px-4 py-3"><div className="font-medium">{message.name}</div><a href={"tel:" + message.phone} dir="ltr" className="mt-1 inline-block text-muted-foreground hover:text-primary">{message.phone}</a>{message.email && <a href={"mailto:" + message.email} dir="ltr" className="block text-xs text-muted-foreground hover:text-primary">{message.email}</a>}</td><td className="px-4 py-3">{services[message.service] || message.service}</td><td className="max-w-[320px] px-4 py-3 text-muted-foreground"><p className="line-clamp-2 whitespace-pre-line">{message.details}</p></td><td className="px-4 py-3"><span className={"inline-flex rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset " + (statusStyles[message.status] || statusStyles.new)}>{statuses[message.status] || message.status}</span></td><td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(message.created_at)}</td><td className="px-4 py-3"><Button variant="outline" size="sm" onClick={() => setSelectedMessage(message)}>مشاهده</Button></td></tr>)}</tbody></table></div><footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm text-muted-foreground"><span>{Number(meta.total || 0).toLocaleString("fa-IR")} پیام · صفحهٔ {Number(meta.current_page || 1).toLocaleString("fa-IR")} از {Number(meta.last_page || 1).toLocaleString("fa-IR")}</span><div className="flex gap-2"><Button variant="outline" size="sm" disabled={page <= 1 || isLoading} onClick={() => setPage((value) => Math.max(1, value - 1))}>قبلی</Button><Button variant="outline" size="sm" disabled={page >= meta.last_page || isLoading} onClick={() => setPage((value) => value + 1)}>بعدی</Button></div></footer></>}
+        {isLoading ? <div className="flex min-h-48 items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /> در حال دریافت پیام‌ها…</div> : messages.length === 0 ? <div className="flex min-h-48 flex-col items-center justify-center gap-2 p-8 text-center"><Inbox className="h-8 w-8 text-muted-foreground/60" /><p className="font-medium">پیامی با این فیلتر پیدا نشد</p><p className="text-sm text-muted-foreground">فیلتر وضعیت یا عبارت جست‌وجو را تغییر بده.</p></div> : <><div className="overflow-x-auto"><table className="w-full min-w-[860px] text-sm"><thead className="bg-muted/50 text-right text-muted-foreground"><tr><th className="w-12 px-4 py-3 font-medium"><Checkbox aria-label="انتخاب همهٔ پیام‌های این صفحه" checked={allVisibleSelected ? true : selectedIds.length ? "indeterminate" : false} onCheckedChange={(checked) => setSelectedIds(checked ? messages.map((message) => message.id) : [])} /></th><th className="px-4 py-3 font-medium">نام و راه تماس</th><th className="px-4 py-3 font-medium">خدمت</th><th className="px-4 py-3 font-medium">خلاصهٔ درخواست</th><th className="px-4 py-3 font-medium">وضعیت</th><th className="px-4 py-3 font-medium">تاریخ ثبت</th><th className="px-4 py-3 font-medium">عملیات</th></tr></thead><tbody className="divide-y divide-border">{messages.map((message) => <tr key={message.id} className="align-top hover:bg-muted/20"><td className="px-4 py-3"><Checkbox aria-label={`انتخاب پیام ${message.name}`} checked={selectedIds.includes(message.id)} onCheckedChange={(checked) => setSelectedIds((current) => checked ? [...current, message.id] : current.filter((id) => id !== message.id))} /></td><td className="px-4 py-3"><div className="font-medium">{message.name}</div><a href={"tel:" + message.phone} dir="ltr" className="mt-1 inline-block text-muted-foreground hover:text-primary">{message.phone}</a>{message.email && <a href={"mailto:" + message.email} dir="ltr" className="block text-xs text-muted-foreground hover:text-primary">{message.email}</a>}</td><td className="px-4 py-3">{services[message.service] || message.service}</td><td className="max-w-[320px] px-4 py-3 text-muted-foreground"><p className="line-clamp-2 whitespace-pre-line">{message.details}</p></td><td className="px-4 py-3"><span className={"inline-flex rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset " + (statusStyles[message.status] || statusStyles.new)}>{statuses[message.status] || message.status}</span></td><td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(message.created_at)}</td><td className="px-4 py-3"><div className="flex items-center gap-2"><Button variant="outline" size="sm" onClick={() => setSelectedMessage(message)}>مشاهده</Button><Button variant="ghost" size="icon" aria-label={message.status === "archived" ? "بازگردانی پیام از بایگانی" : "بایگانی پیام"} title={message.status === "archived" ? "بازگردانی از بایگانی" : "بایگانی"} disabled={isMutating} onClick={() => updateMessageStatus([message.id], message.status === "archived" ? "new" : "archived")}>{message.status === "archived" ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</Button></div></td></tr>)}</tbody></table></div><footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm text-muted-foreground"><span>{Number(meta.total || 0).toLocaleString("fa-IR")} پیام · صفحهٔ {Number(meta.current_page || 1).toLocaleString("fa-IR")} از {Number(meta.last_page || 1).toLocaleString("fa-IR")}</span><div className="flex gap-2"><Button variant="outline" size="sm" disabled={page <= 1 || isLoading} onClick={() => setPage((value) => Math.max(1, value - 1))}>قبلی</Button><Button variant="outline" size="sm" disabled={page >= meta.last_page || isLoading} onClick={() => setPage((value) => value + 1)}>بعدی</Button></div></footer></>}
       </div>
 
       <Dialog open={Boolean(selectedMessage)} onOpenChange={(open) => { if (!open) setSelectedMessage(null); }}><DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl" dir="rtl">{selectedMessage && <><DialogHeader className="text-right"><DialogTitle>{selectedMessage.name}</DialogTitle><DialogDescription>{services[selectedMessage.service] || selectedMessage.service} · {formatDate(selectedMessage.created_at)}</DialogDescription></DialogHeader><div className="space-y-4 text-sm"><div className="flex flex-wrap gap-x-5 gap-y-2"><a href={"tel:" + selectedMessage.phone} dir="ltr" className="text-primary hover:underline">{selectedMessage.phone}</a>{selectedMessage.email && <a href={"mailto:" + selectedMessage.email} dir="ltr" className="text-primary hover:underline">{selectedMessage.email}</a>}</div><div className="rounded-xl bg-muted/40 p-4 leading-7 whitespace-pre-wrap">{selectedMessage.details}</div><div><span className="text-muted-foreground">وضعیت پیگیری: </span>{statuses[selectedMessage.status] || selectedMessage.status}</div></div></>}</DialogContent></Dialog>

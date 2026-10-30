@@ -42,16 +42,37 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
 
   useEffect(() => {
     loadTeamMembers().then(setEmployees);
-    loadActivities();
+    setActivities([]);
+    let cancelled = false;
+    loadActivities(task, (items) => {
+      if (!cancelled) setActivities(items);
+    });
+    return () => { cancelled = true; };
   }, [task?.id]);
 
-  const loadActivities = async () => {
-    if (!task?.id) return;
+  const loadActivities = async (currentTask, commit) => {
+    if (!currentTask?.id) return;
     try {
-      const data = await base44.entities.ActivityLog.list({ q: JSON.stringify({ entity_type: 'Task', entity_id: task.id }) });
-      setActivities(data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+      // The hosted SDK can ignore the filter, so always enforce entity and id locally.
+      const data = await base44.entities.ActivityLog.list('-created_date', 500);
+      const taskId = String(currentTask.id);
+      const projectId = String(currentTask.project_id ?? currentTask.project?.id ?? '');
+      const normalizeType = (value) => String(value ?? '').trim().toLocaleLowerCase().replace(/s$/, '');
+      const taskIds = new Set([taskId, String(currentTask.task_id ?? '')].filter(Boolean));
+      const projectIds = new Set([projectId, String(currentTask.project?.id ?? '')].filter(Boolean));
+      const scopedActivities = data.filter((activity) => {
+        const type = normalizeType(activity.entity_type ?? activity.entity ?? activity.resource_type);
+        const entityId = String(activity.entity_id ?? activity.entityId ?? activity.record_id ?? activity.recordId ?? '');
+        const relatedTaskId = String(activity.task_id ?? activity.taskId ?? '');
+        const relatedProjectId = String(activity.project_id ?? activity.projectId ?? '');
+        if (type === 'task') return taskIds.has(entityId) || taskIds.has(relatedTaskId);
+        if (type === 'project' && projectIds.size) return projectIds.has(entityId) || projectIds.has(relatedProjectId);
+        return false;
+      });
+      commit(scopedActivities.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
     } catch (err) {
       console.error('Failed to load activities:', err);
+      commit([]);
     }
   };
 
