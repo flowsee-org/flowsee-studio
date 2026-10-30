@@ -31,7 +31,7 @@ export async function loadTeamMembers() {
 
   // First pass: add all users
   users.forEach((u) => {
-    const name = String(u.full_name || u.email || "").trim();
+    const name = String(u.full_name || u.fullName || u.name || u.email || "").trim();
     const emailKey = normalizeKey(u.email);
     const nameKey = normalizeKey(name);
     const key = emailKey || nameKey;
@@ -45,19 +45,20 @@ export async function loadTeamMembers() {
   // Second pass: add employees, but try to match with existing users by email
   employees.forEach((e) => {
     const emailKey = normalizeKey(e.email);
-    const nameKey = normalizeKey(e.name);
+    const employeeName = String(e.name || e.full_name || e.fullName || e.display_name || "").trim();
+    const nameKey = normalizeKey(employeeName);
 
     // Check if there's already a user with this email
     const existingByEmail = emailKey && seenEmails.has(emailKey);
     // Check if there's already a user with this name
     const existingByName = nameKey && seenNames.has(nameKey);
 
-    if (e.name && !existingByEmail && !existingByName) {
+    if (employeeName && !existingByEmail && !existingByName) {
       // Add as new entry
       if (emailKey) seenEmails.add(emailKey);
       seenNames.add(nameKey);
-      merged.push({ id: e.id, name: e.name, email: e.email });
-    } else if (e.name && emailKey && existingByEmail) {
+      merged.push({ id: e.id, name: employeeName, email: e.email });
+    } else if (employeeName && emailKey && existingByEmail) {
       // Update the existing entry with employee info if needed
       const existing = merged.find((m) => normalizeKey(m.email) === emailKey);
       if (existing) {

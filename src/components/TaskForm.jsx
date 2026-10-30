@@ -23,9 +23,9 @@ const priorityOptions = [
 ];
 const suggestedTags = ["طراحی", "توسعه", "محتوا", "بازاریابی", "پشتیبانی", "فوری"];
 
-function PropertyChip({ icon: Icon, label, value, children, contentClassName = "" }) {
+function PropertyChip({ icon: Icon, label, value, children, contentClassName = "", open, onOpenChange }) {
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <Button type="button" variant="outline" size="sm" className="h-8 max-w-full justify-start gap-2 rounded-lg border-border bg-background px-2.5 font-normal text-muted-foreground hover:text-foreground">
           {Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}
@@ -64,10 +64,17 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
   const [generatingDescription, setGeneratingDescription] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [openProperty, setOpenProperty] = useState(null);
+  const [membersLoading, setMembersLoading] = useState(true);
   const showRecurring = !!form.recurring_config;
 
   useEffect(() => {
-    loadTeamMembers().then(setEmployees);
+    let active = true;
+    loadTeamMembers()
+      .then((members) => { if (active) setEmployees(members); })
+      .catch((error) => { console.error("Could not load task assignees", error); if (active) setEmployees([]); })
+      .finally(() => { if (active) setMembersLoading(false); });
+    return () => { active = false; };
   }, []);
 
   const toggleAssignee = (name) => {
@@ -164,7 +171,12 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
   const selectedProject = projects.find((project) => String(project.id) === String(form.project_id));
   const selectedStatus = statusOptions.find((option) => option.value === form.status) || statusOptions[0];
   const selectedPriority = priorityOptions.find((option) => option.value === form.priority) || priorityOptions[1];
-  const normalizedEmployees = [...new Map(employees.filter((employee) => employee.name).map((employee) => [employee.name.trim(), employee])).values()];
+  const normalizedEmployees = [...new Map(
+    [...employees, ...(userName ? [{ name: userName, id: "current-user" }] : [])]
+      .filter((employee) => employee.name)
+      .map((employee) => [employee.name.trim(), employee])
+  ).values()];
+  const setPropertyOpen = (key, open) => setOpenProperty((current) => open ? key : current === key ? null : current);
   const selectedTags = Array.isArray(form.tags) ? form.tags : [];
 
   const setTags = (tags) => setForm((current) => ({ ...current, tags: [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))] }));
@@ -189,15 +201,15 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
-          <Input autoFocus aria-label="عنوان تسک" placeholder="عنوان تسک" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="h-auto border-0 bg-transparent px-0 py-1 text-xl font-semibold shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-0 sm:text-2xl" />
-          <div className="mt-3">
+          <Input autoFocus aria-label="عنوان تسک" placeholder="عنوان تسک" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="h-12 rounded-xl border border-border bg-background px-4 py-3 text-xl font-semibold shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30 sm:text-2xl" />
+          <div className="mt-5">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs text-muted-foreground">توضیحات</span>
               <Button type="button" variant="ghost" size="sm" onClick={generateTaskDescription} disabled={generatingDescription || !String(form.title || "").trim()} className="h-7 px-2 text-xs text-muted-foreground">
                 <Sparkles className="h-3.5 w-3.5" />{generatingDescription ? "در حال تولید…" : "پیشنهاد با هوش مصنوعی"}
               </Button>
             </div>
-            <textarea aria-label="توضیحات تسک" value={form.description || ""} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={4} placeholder="توضیحات را بنویسید…" className="w-full resize-y rounded-lg border-0 bg-transparent p-0 text-sm leading-7 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-0" />
+            <textarea aria-label="توضیحات تسک" value={form.description || ""} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={5} placeholder="توضیحات را بنویسید…" className="w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-sm leading-7 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/30" />
           </div>
 
           {selectedTags.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{selectedTags.map((tag) => <span key={tag} className="inline-flex items-center gap-1 rounded-md bg-primary-subtle px-2 py-1 text-xs text-primary-subtle-foreground">{tag}<button type="button" onClick={() => toggleTag(tag)} aria-label={`حذف برچسب ${tag}`} className="rounded-sm hover:text-destructive"><X className="h-3 w-3" /></button></span>)}</div>}
@@ -205,26 +217,26 @@ export default function TaskForm({ projects, userName, editTask, onClose, onSave
 
           <div className="mt-6 border-t border-border pt-4">
             <div className="flex flex-wrap items-center gap-2">
-              <PropertyChip icon={selectedStatus.Icon} label="وضعیت" value={selectedStatus.label}>
+              <PropertyChip open={openProperty === "status"} onOpenChange={(open) => setPropertyOpen("status", open)} icon={selectedStatus.Icon} label="وضعیت" value={selectedStatus.label}>
                 <Command dir="rtl"><CommandInput placeholder="جست‌وجوی وضعیت…" /><CommandList><CommandEmpty>وضعیتی پیدا نشد</CommandEmpty><CommandGroup>{statusOptions.map(({ value, label, Icon }) => <CommandItem key={value} value={label} onSelect={() => setForm((current) => ({ ...current, status: value }))}><Icon className="h-4 w-4 text-muted-foreground" /><span>{label}</span>{form.status === value && <Check className="ms-auto h-4 w-4 text-primary" />}</CommandItem>)}</CommandGroup></CommandList></Command>
               </PropertyChip>
-              <PropertyChip icon={Flag} label="اولویت" value={selectedPriority.label}>
+              <PropertyChip open={openProperty === "priority"} onOpenChange={(open) => setPropertyOpen("priority", open)} icon={Flag} label="اولویت" value={selectedPriority.label}>
                 <Command dir="rtl"><CommandInput placeholder="جست‌وجوی اولویت…" /><CommandList><CommandEmpty>اولویتی پیدا نشد</CommandEmpty><CommandGroup>{priorityOptions.map((option) => <CommandItem key={option.value} value={option.label} onSelect={() => setForm((current) => ({ ...current, priority: option.value }))}><Flag className="h-4 w-4 text-muted-foreground" /><span>{option.label}</span>{form.priority === option.value && <Check className="ms-auto h-4 w-4 text-primary" />}</CommandItem>)}</CommandGroup></CommandList></Command>
               </PropertyChip>
-              <PropertyChip icon={UserRound} label="مسئول" value={selectedAssignees.length ? (selectedAssignees.length === 1 ? selectedAssignees[0] : `${selectedAssignees[0]} و ${selectedAssignees.length - 1} نفر`) : "بدون مسئول"}>
-                <Command dir="rtl"><CommandInput placeholder="جست‌وجوی اعضا…" /><CommandList><CommandEmpty>عضوی پیدا نشد</CommandEmpty><CommandGroup>{normalizedEmployees.map((employee) => <CommandItem key={employee.id || employee.name} value={`${employee.name} ${employee.email || ""}`} onSelect={() => toggleAssignee(employee.name)}><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">{employee.name.slice(0, 1)}</span><span className="min-w-0 flex-1 truncate">{employee.name}</span>{selectedAssignees.includes(employee.name) && <Check className="h-4 w-4 text-primary" />}</CommandItem>)}</CommandGroup></CommandList></Command>
+              <PropertyChip open={openProperty === "assignee"} onOpenChange={(open) => setPropertyOpen("assignee", open)} icon={UserRound} label="مسئول" value={selectedAssignees.length ? (selectedAssignees.length === 1 ? selectedAssignees[0] : `${selectedAssignees[0]} و ${selectedAssignees.length - 1} نفر`) : "بدون مسئول"}>
+                <Command dir="rtl" filter={(value, search) => value.toLocaleLowerCase("fa-IR").includes(search.toLocaleLowerCase("fa-IR")) ? 1 : 0}><CommandInput placeholder="جست‌وجوی اعضا…" /><CommandList>{membersLoading ? <div className="py-6 text-center text-sm text-muted-foreground">در حال بارگذاری اعضا…</div> : normalizedEmployees.length === 0 ? <div className="py-6 text-center text-sm text-muted-foreground">عضوی برای انتخاب در دسترس نیست</div> : <><CommandEmpty>عضوی با این عبارت پیدا نشد</CommandEmpty><CommandGroup>{normalizedEmployees.map((employee) => <CommandItem key={employee.id || employee.name} value={`${employee.name} ${employee.email || ""}`} onSelect={() => toggleAssignee(employee.name)}><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">{employee.name.slice(0, 1)}</span><span className="min-w-0 flex-1 truncate">{employee.name}</span>{selectedAssignees.includes(employee.name) && <Check className="h-4 w-4 text-primary" />}</CommandItem>)}</CommandGroup></>}</CommandList></Command>
               </PropertyChip>
-              <PropertyChip icon={FolderKanban} label="پروژه" value={selectedProject?.name || "بدون پروژه"}>
+              <PropertyChip open={openProperty === "project"} onOpenChange={(open) => setPropertyOpen("project", open)} icon={FolderKanban} label="پروژه" value={selectedProject?.name || "بدون پروژه"}>
                 <Command dir="rtl"><CommandInput placeholder="جست‌وجوی پروژه…" /><CommandList><CommandEmpty>پروژه‌ای پیدا نشد</CommandEmpty><CommandGroup><CommandItem value="بدون پروژه" onSelect={() => setForm((current) => ({ ...current, project_id: "", project_name: "" }))}><FolderKanban className="h-4 w-4 text-muted-foreground" /><span className="flex-1">بدون پروژه</span>{!form.project_id && <Check className="h-4 w-4 text-primary" />}</CommandItem>{projects.map((project) => <CommandItem key={project.id} value={project.name} onSelect={() => setForm((current) => ({ ...current, project_id: project.id, project_name: project.name }))}><FolderKanban className="h-4 w-4 text-muted-foreground" /><span className="min-w-0 flex-1 truncate">{project.name}</span>{String(form.project_id) === String(project.id) && <Check className="h-4 w-4 text-primary" />}</CommandItem>)}</CommandGroup></CommandList></Command>
               </PropertyChip>
-              <PropertyChip icon={Tag} label="برچسب" value={selectedTags.length ? `${selectedTags.length} برچسب` : "برچسب‌ها"}>
+              <PropertyChip open={openProperty === "tags"} onOpenChange={(open) => setPropertyOpen("tags", open)} icon={Tag} label="برچسب" value={selectedTags.length ? `${selectedTags.length} برچسب` : "برچسب‌ها"}>
                 <div className="space-y-2 p-2">
                   <form onSubmit={(event) => { event.preventDefault(); addTag(); }} className="flex items-center gap-2"><Input autoFocus value={tagInput} onChange={(event) => setTagInput(event.target.value)} placeholder="افزودن برچسب…" className="h-9" /><Button type="submit" size="icon" aria-label="افزودن برچسب" disabled={!tagInput.trim()}><Plus className="h-4 w-4" /></Button></form>
                   <p className="px-1 text-xs text-muted-foreground">پیشنهادها</p>
                   <div className="flex flex-wrap gap-1.5">{[...new Set([...suggestedTags, ...selectedTags])].map((tag) => <Button type="button" key={tag} variant={selectedTags.includes(tag) ? "secondary" : "outline"} size="sm" onClick={() => toggleTag(tag)} className="h-7 px-2 text-xs">{selectedTags.includes(tag) && <Check className="h-3 w-3" />}{tag}</Button>)}</div>
                 </div>
               </PropertyChip>
-              <PropertyChip icon={CalendarDays} label="موعد" value={form.due_date || "موعد سررسید"} contentClassName="w-72">
+              <PropertyChip open={openProperty === "dueDate"} onOpenChange={(open) => setPropertyOpen("dueDate", open)} icon={CalendarDays} label="موعد" value={form.due_date || "موعد سررسید"} contentClassName="w-72">
                 <div className="space-y-2 p-2"><span className="block text-xs font-medium">موعد سررسید</span><PersianDatePicker value={form.due_date || ""} onChange={(value) => setForm((current) => ({ ...current, due_date: value }))} placeholder="انتخاب تاریخ" /><Button type="button" variant="ghost" size="sm" onClick={() => setForm((current) => ({ ...current, due_date: "" }))}>پاک کردن تاریخ</Button></div>
               </PropertyChip>
               <Button type="button" variant="ghost" size="sm" onClick={() => setAdvancedOpen((open) => !open)} className="h-8 px-2 text-muted-foreground"><MoreHorizontal className="h-4 w-4" />{advancedOpen ? "بستن تنظیمات" : "بیشتر"}</Button>
