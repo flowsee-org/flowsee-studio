@@ -48,8 +48,17 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
   const loadActivities = async () => {
     if (!task?.id) return;
     try {
-      const data = await base44.entities.ActivityLog.list({ q: JSON.stringify({ entity_type: 'Task', entity_id: task.id }) });
-      setActivities(data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+      // ActivityLog's q filter is not consistently enforced by the hosted SDK.
+      // Scope the returned feed locally so this tab never shows unrelated records.
+      const data = await base44.entities.ActivityLog.list('-created_date', 500);
+      const taskId = String(task.id);
+      const projectId = task.project_id ? String(task.project_id) : '';
+      const scopedActivities = data.filter((activity) => {
+        const entityId = String(activity.entity_id ?? '');
+        return (activity.entity_type === 'Task' && entityId === taskId)
+          || (projectId && activity.entity_type === 'Project' && entityId === projectId);
+      });
+      setActivities(scopedActivities.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
     } catch (err) {
       console.error('Failed to load activities:', err);
     }
