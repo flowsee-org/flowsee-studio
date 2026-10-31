@@ -39,14 +39,19 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const isPublicAuthPage = ['/login', '/register', '/forgot-password', '/reset-password']
+    .includes(window.location.pathname.replace(/\/$/, '') || '/');
 
   // When the backend reports auth is required, redirect to the login page.
   // Done in an effect (not during render) because it performs a navigation.
   useEffect(() => {
-    if (authError?.type === 'auth_required') {
+    // Auth pages must remain reachable when the app's public-settings endpoint
+    // reports that authentication is required. Redirecting from /login back to
+    // /login makes the SDK nest from_url repeatedly until nginx returns 414.
+    if (authError?.type === 'auth_required' && !isPublicAuthPage) {
       navigateToLogin();
     }
-  }, [authError, navigateToLogin]);
+  }, [authError, isPublicAuthPage, navigateToLogin]);
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
@@ -61,7 +66,7 @@ const AuthenticatedApp = () => {
   if (authError) {
     if (authError.type === 'user_not_registered' || authError.type === 'user_deactivated') {
       return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
+    } else if (authError.type === 'auth_required' && !isPublicAuthPage) {
       // The redirect effect above handles this case; await it.
       return null;
     }
