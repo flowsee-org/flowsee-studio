@@ -729,13 +729,12 @@ export default function Tasks() {
                         snapshot.isDraggingOver ? "bg-primary/5" : "bg-card border border-border"
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-3 px-1">
-                        <h3 className="font-bold text-sm">{col.title}</h3>
-                        <div className="flex items-center gap-2">
-                          <SelectControl aria-label={`مرتب‌سازی ستون ${col.title}`} value={columnSort[col.id]} onChange={(e) => setColumnSort((prev) => ({ ...prev, [col.id]: e.target.value }))} className="h-8 max-w-[150px] text-xs">
+                      <div className="mb-3 flex flex-col items-stretch gap-2 px-1">
+                        <div className="flex items-center justify-between gap-2"><h3 className="font-bold text-sm">{col.title}</h3><span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${col.color}`}>{faNum(colTasks.length)}</span></div>
+                        <div className="min-w-0">
+                          <SelectControl aria-label={`مرتب‌سازی ستون ${col.title}`} value={columnSort[col.id]} onChange={(e) => setColumnSort((prev) => ({ ...prev, [col.id]: e.target.value }))} className="h-9 w-full min-w-0 text-xs">
                             {sortOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                           </SelectControl>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${col.color}`}>{faNum(colTasks.length)}</span>
                         </div>
                       </div>
                       <div className="space-y-2 flex-1">

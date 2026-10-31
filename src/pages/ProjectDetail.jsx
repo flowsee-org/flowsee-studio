@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { ArrowRight, Users, ListTodo, FolderKanban, UserCircle, Flag, File, MessageSquare, DollarSign, CheckSquare, TrendingUp, TrendingDown } from "lucide-react";
 import { formatPersianNumber as faNum } from "@/lib/number-format";
+import TaskDetail from "@/components/TaskDetail";
 
 const statusLabels = { active: "فعال", completed: "تکمیل شده", paused: "متوقف شده" };
 const statusColors = { active: "bg-green-100 text-green-700", completed: "bg-blue-100 text-blue-700", paused: "bg-amber-100 text-amber-700" };
@@ -16,6 +17,7 @@ export default function ProjectDetail() {
   const [tasks, setTasks] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [incomes, setIncomes] = useState([]);
+  const [selectedTask, setSelectedTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview'); // overview, tasks, milestones, files, updates, budget
 
@@ -59,9 +61,6 @@ export default function ProjectDetail() {
   const totalIncomes = incomes.reduce((s, i) => s + (i.amount || 0), 0);
   const netProfit = totalIncomes - totalExpenses;
 
-  const completedMilestones = project.milestones?.filter(m => m.completed).length || 0;
-  const totalMilestones = project.milestones?.length || 0;
-
   return (
     <div className="max-w-6xl mx-auto space-y-5">
       <button onClick={() => navigate("/projects")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -85,7 +84,7 @@ export default function ProjectDetail() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
           <div className="bg-accent/40 rounded-xl p-3 text-center">
             <p className="text-xs text-muted-foreground">تسک‌ها</p>
             <p className="text-lg font-bold mt-1">{faNum(tasks.length)}</p>
@@ -97,10 +96,6 @@ export default function ProjectDetail() {
           <div className="bg-accent/40 rounded-xl p-3 text-center">
             <p className="text-xs text-muted-foreground">پیشرفت</p>
             <p className="text-lg font-bold mt-1">{faNum(progress)}٪</p>
-          </div>
-          <div className="bg-accent/40 rounded-xl p-3 text-center">
-            <p className="text-xs text-muted-foreground">نقاط عطف</p>
-            <p className="text-lg font-bold mt-1">{completedMilestones}/{totalMilestones}</p>
           </div>
         </div>
 
@@ -115,7 +110,6 @@ export default function ProjectDetail() {
           {[
             { id: 'overview', label: 'نمای کلی', icon: FolderKanban },
             { id: 'tasks', label: 'تسک‌ها', icon: ListTodo, count: tasks.length },
-            { id: 'milestones', label: 'نقاط عطف', icon: Flag, count: totalMilestones },
             { id: 'files', label: 'فایل‌ها', icon: File, count: project.files?.length || 0 },
             { id: 'updates', label: 'به‌روزرسانی‌ها', icon: MessageSquare, count: project.status_updates?.length || 0 },
             { id: 'budget', label: 'بودجه', icon: DollarSign },
@@ -260,7 +254,7 @@ export default function ProjectDetail() {
               {tasks.map((t) => {
                 const assigneeList = t.assignees || (t.assignee ? [t.assignee] : []);
                 return (
-                  <div key={t.id} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
+                  <button key={t.id} type="button" onClick={() => setSelectedTask(t)} className="flex w-full items-center justify-between gap-3 rounded-xl border-b border-border px-3 py-3 text-right transition-colors last:border-0 hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-primary/30">
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{t.title}</p>
                       <div className="flex items-center gap-1 mt-1">
@@ -277,45 +271,9 @@ export default function ProjectDetail() {
                         {taskStatusLabels[t.status] || taskStatusLabels.todo}
                       </span>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'milestones' && (
-        <div className="space-y-3">
-          {(project.milestones || []).length === 0 ? (
-            <div className="text-center py-8">
-              <Flag className="w-12 h-12 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="text-muted-foreground">هیچ نقطه عطفی تعریف نشده</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {project.milestones.map((m, i) => (
-                <div key={i} className={`flex items-center justify-between p-4 rounded-xl ${m.completed ? "bg-green-50 border border-green-200" : "bg-card border border-border"}`}>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <input
-                      type="checkbox"
-                      checked={m.completed}
-                      onChange={() => {
-                        const updated = [...(project.milestones || [])];
-                        updated[i] = { ...updated[i], completed: !updated[i].completed };
-                        base44.entities.Project.update(project.id, { milestones: updated });
-                        setProject({ ...project, milestones: updated });
-                      }}
-                      className="w-5 h-5 accent-primary"
-                    />
-                    <div className="min-w-0">
-                      <p className={`font-medium text-sm ${m.completed ? "line-through text-muted-foreground" : ""}`}>{m.name}</p>
-                      <p className="text-xs text-muted-foreground">تاریخ: {m.date}</p>
-                    </div>
-                  </div>
-                  {m.completed && <CheckSquare className="w-5 h-5 text-green-500" />}
-                </div>
-              ))}
             </div>
           )}
         </div>
@@ -472,6 +430,16 @@ export default function ProjectDetail() {
           </div>
         </div>
       )}
+
+      {selectedTask && <TaskDetail
+        task={selectedTask}
+        projects={[project]}
+        onClose={() => setSelectedTask(null)}
+        onSaved={async () => {
+          const updatedTasks = await base44.entities.Task.list();
+          setTasks((updatedTasks || []).filter((task) => String(task.project_id) === String(id)));
+        }}
+      />}
 
       {/* Completion Checklist */}
       <div className="bg-card rounded-2xl border border-border p-5 mt-4">

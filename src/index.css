@@ -46,24 +46,24 @@
 
   .dark {
     color-scheme: dark;
-    --background: 30 20% 6%;
+    --background: 210 28% 5.5%;
     --foreground: 0 0% 98%;
-    --card: 30 20% 8%;
+    --card: 210 24% 8%;
     --card-foreground: 0 0% 98%;
-    --popover: 30 20% 8%;
+    --popover: 210 24% 8%;
     --popover-foreground: 0 0% 98%;
     --primary: 20 100% 55%;
     --primary-foreground: 30 20% 10%;
-    --secondary: 30 20% 14%;
+    --secondary: 210 18% 12%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 30 20% 14%;
+    --muted: 210 18% 12%;
     --muted-foreground: 0 0% 64%;
-    --accent: 20 30% 16%;
+    --accent: 210 16% 15%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62% 40%;
     --destructive-foreground: 0 0% 98%;
-    --border: 30 20% 16%;
-    --input: 30 20% 16%;
+    --border: 210 14% 17%;
+    --input: 210 14% 17%;
     --ring: 20 100% 55%;
   }
 }
@@ -85,7 +85,7 @@
   .dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
   .dark select,
   .dark textarea {
-    background-color: hsl(30 15% 20%);
+    background-color: hsl(var(--secondary));
   }
 }
 
