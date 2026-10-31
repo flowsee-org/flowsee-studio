@@ -69,13 +69,13 @@ export default function TemplatePicker({ onClose, onUse }) {
               <p className="text-sm text-muted-foreground">هنوز قالبی ساخته نشده</p>
             </div>
           ) : (
-            <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               {templates.map((t) => (
-                <div key={t.id} className="bg-accent/30 rounded-xl p-4 border border-border">
-                  <div className="flex items-start justify-between gap-2 mb-2">
+                <article key={t.id} className="flex min-w-0 flex-col rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="font-bold text-sm">{t.title}</h3>
-                      {t.project_name && <p className="text-xs text-primary mt-0.5">{t.project_name}</p>}
+                      <h3 className="font-bold text-sm leading-6">{t.title}</h3>
+                      {t.project_name && <p className="mt-1 text-xs text-primary">پروژه: {t.project_name}</p>}
                     </div>
                     <div className="flex gap-1 shrink-0">
                       {t.id?.startsWith("builtin:") ? <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] text-primary">پیش‌فرض</span> : <>
@@ -88,33 +88,29 @@ export default function TemplatePicker({ onClose, onUse }) {
                       </>}
                     </div>
                   </div>
-                  {t.description && <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{t.description}</p>}
-                  <div className="flex items-center gap-2 flex-wrap mb-3">
-                    {t.priority && <span className={`text-xs px-1.5 py-0.5 rounded-full ${priorityColors[t.priority]}`}>{priorityLabels[t.priority]}</span>}
-                    {(t.default_assignees || []).length > 0 && <span className="text-xs text-muted-foreground">{faNum(t.default_assignees.length)} مسئول</span>}
+                  {t.description && <p className="mt-2 line-clamp-2 text-xs leading-6 text-muted-foreground">{t.description}</p>}
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {t.priority && <span className={`rounded-full px-2 py-1 text-xs ${priorityColors[t.priority]}`}>اولویت {priorityLabels[t.priority]}</span>}
+                    {(t.default_assignees || []).length > 0 && <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">{faNum(t.default_assignees.length)} مسئول پیش‌فرض</span>}
                     {(t.checklist || []).length > 0 && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <CheckCircle className="w-3.5 h-3.5" /> {faNum(t.checklist.length)} آیتم چک‌لیست
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+                        <CheckCircle className="h-3.5 w-3.5" /> چک‌لیست {faNum(t.checklist.length)} مرحله
                       </span>
                     )}
                   </div>
                   {(t.checklist || []).length > 0 && (
-                    <div className="space-y-1 mb-3">
-                      {(t.checklist || []).slice(0, 3).map((item, i) => (
-                        <div key={i} className="text-xs text-muted-foreground flex items-center gap-1.5">
-                          <span className="w-1 h-1 rounded-full bg-muted-foreground" /> {item}
-                        </div>
-                      ))}
-                      {(t.checklist || []).length > 3 && <p className="text-xs text-muted-foreground">+{faNum(t.checklist.length - 3)} مورد دیگر...</p>}
-                    </div>
+                    <details className="mt-3 rounded-xl bg-muted/50 px-3 py-2">
+                      <summary className="cursor-pointer text-xs font-medium text-muted-foreground">نمایش مراحل ضروری</summary>
+                      <ul className="mt-2 space-y-1.5">{t.checklist.map((item, i) => <li key={i} className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"><span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-primary" />{item}</li>)}</ul>
+                    </details>
                   )}
                   <button
                     onClick={() => onUse(t)}
-                    className="w-full bg-primary text-primary-foreground py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                    className="mt-4 w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
                   >
-                    استفاده از این قالب
+                    ساخت تسک از قالب
                   </button>
-                </div>
+                </article>
               ))}
             </div>
           )}

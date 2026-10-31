@@ -41,7 +41,7 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
   const [activeTab, setActiveTab] = useState('details'); // details, comments, activity
 
   useEffect(() => {
-    loadTeamMembers().then(setEmployees);
+    loadTeamMembers().then((members) => setEmployees(members.filter((member) => !/\(ادمین\)/i.test(member.name || ''))));
     setActivities([]);
     let cancelled = false;
     loadActivities(task, (items) => {
@@ -58,15 +58,16 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
       const taskId = String(currentTask.id);
       const projectId = String(currentTask.project_id ?? currentTask.project?.id ?? '');
       const normalizeType = (value) => String(value ?? '').trim().toLocaleLowerCase().replace(/s$/, '');
-      const taskIds = new Set([taskId, String(currentTask.task_id ?? '')].filter(Boolean));
-      const projectIds = new Set([projectId, String(currentTask.project?.id ?? '')].filter(Boolean));
+      const taskTitle = String(currentTask.title || '').trim().toLocaleLowerCase();
       const scopedActivities = data.filter((activity) => {
         const type = normalizeType(activity.entity_type ?? activity.entity ?? activity.resource_type);
         const entityId = String(activity.entity_id ?? activity.entityId ?? activity.record_id ?? activity.recordId ?? '');
         const relatedTaskId = String(activity.task_id ?? activity.taskId ?? '');
         const relatedProjectId = String(activity.project_id ?? activity.projectId ?? '');
-        if (type === 'task') return taskIds.has(entityId) || taskIds.has(relatedTaskId);
-        if (type === 'project' && projectIds.size) return projectIds.has(entityId) || projectIds.has(relatedProjectId);
+        const details = String(activity.details ?? activity.description ?? '').toLocaleLowerCase();
+        if (type === 'task') return entityId === taskId || relatedTaskId === taskId || (!entityId && !relatedTaskId && taskTitle.length >= 6 && details.includes(taskTitle));
+        if (type === 'project' && projectId) return entityId === projectId || relatedProjectId === projectId;
+        if (!type && !entityId && !relatedTaskId && !relatedProjectId && taskTitle.length >= 6) return details.includes(taskTitle);
         return false;
       });
       commit(scopedActivities.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
@@ -95,18 +96,23 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
   };
 
   const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const result = await base44.integrations.Core.UploadFile({ file });
+      const file_url = typeof result === 'string' ? result : result?.file_url || result?.url || result?.data?.file_url;
+      if (!file_url) throw new Error('نشانی فایل از سرویس آپلود دریافت نشد.');
       const attachments = form.attachments || [];
-      setForm({ ...form, attachments: [...attachments, { name: file.name, url: file_url, type: file.type }] });
+      setForm((current) => ({ ...current, attachments: [...(current.attachments || attachments), { name: file.name, url: file_url, type: file.type }] }));
     } catch (err) {
       console.error('Upload failed', err);
-      toast({ title: 'خطا در آپلود', variant: 'destructive' });
+      toast({ title: 'آپلود فایل انجام نشد', description: err?.message || 'فضای ذخیره‌سازی یا اتصال سرویس آپلود را بررسی کنید.', variant: 'destructive' });
+    } finally {
+      input.value = '';
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const removeAttachment = (index) => {
@@ -129,8 +135,8 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-card rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3" onClick={onClose}>
+      <div className="flex h-[min(calc(100dvh-1.5rem),52rem)] max-h-[min(calc(100dvh-1.5rem),52rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-overlay" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-border">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -184,7 +190,7 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
         </div>
 
         {/* Content */}
-        <div className="p-4 overflow-y-auto max-h-[calc(90vh-160px)]">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
           {activeTab === 'details' && (
             <div className="space-y-4">
               <div>
@@ -343,8 +349,8 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
                 <textarea
                   value={form.description || ''}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  rows={4}
-                  className="w-full border border-input rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  rows={8}
+                  className="min-h-52 w-full resize-y rounded-xl border border-input px-4 py-3 text-sm leading-7 focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
             </div>
