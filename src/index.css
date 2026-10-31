@@ -82,6 +82,16 @@
     color: hsl(var(--foreground));
   }
 
+  select option,
+  select optgroup {
+    background-color: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
+  }
+
+  .dark select {
+    color-scheme: dark;
+  }
+
   .dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
   .dark select,
   .dark textarea {
