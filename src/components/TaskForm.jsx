@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { CalendarDays, Check, CheckCircle2, Circle, CircleDot, Clock3, Flag, FolderKanban, ListChecks, MoreHorizontal, Paperclip, Plus, Repeat2, Tag, UserRound, X } from "lucide-react";
+import { CalendarDays, Check, CheckCircle2, Circle, CircleDot, Clock3, Flag, FolderKanban, ListChecks, MoreHorizontal, Plus, Repeat2, Tag, UserRound, X } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import { loadTeamMembers } from "@/lib/teamMembers";
 import SubtaskList from "./SubtaskList";
@@ -55,13 +55,11 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
       due_date: "",
       subtasks: [],
       time_spent: 0,
-      attachments: [],
       recurring_config: null,
       tags: [],
     }
   ));
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [projectInput, setProjectInput] = useState("");
@@ -89,34 +87,6 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
 
   const handleSubtaskChange = (newSubtasks) => {
     setForm({ ...form, subtasks: newSubtasks });
-  };
-
-  const handleFileUpload = async (e) => {
-    const input = e.currentTarget;
-    const file = input.files?.[0];
-    if (!file) return;
-    if (file.size > 3 * 1024 * 1024) {
-      toast({ title: "حجم فایل زیاد است", description: "برای جلوگیری از خطای ذخیره‌سازی، فایل تسک باید حداکثر ۳ مگابایت باشد.", variant: "destructive" });
-      input.value = "";
-      return;
-    }
-    setUploading(true);
-    try {
-      const result = await base44.integrations.Core.UploadFile({ file });
-      const fileUrl = typeof result === "string" ? result : result?.file_url || result?.url || result?.data?.file_url;
-      if (!fileUrl) throw new Error("نشانی فایل از سرویس آپلود دریافت نشد.");
-      setForm((current) => ({ ...current, attachments: [...(current.attachments || []), { name: file.name, url: fileUrl, type: file.type }] }));
-    } catch (err) {
-      console.error("Upload failed", err);
-      toast({ title: "آپلود فایل انجام نشد", description: err?.message || "فضای ذخیره‌سازی یا اتصال سرویس آپلود را بررسی کنید.", variant: "destructive" });
-    } finally {
-      input.value = "";
-      setUploading(false);
-    }
-  };
-
-  const removeAttachment = (index) => {
-    setForm({ ...form, attachments: (form.attachments || []).filter((_, i) => i !== index) });
   };
 
   const handleRecurringChange = (config) => {
@@ -168,7 +138,8 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
     setSaving(true);
     try {
       const proj = [...projects, ...createdProjects].find((p) => String(p.id) === String(form.project_id));
-      const data = { ...form, project_name: proj?.name || form.project_name || "" };
+      const taskFields = { ...form };
+      const data = { ...taskFields, project_name: proj?.name || form.project_name || "" };
       if (editTask?.id) {
         await base44.entities.Task.update(editTask.id, data);
       } else {
@@ -228,8 +199,6 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
           </div>
 
           {selectedTags.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{selectedTags.map((tag) => <span key={tag} className="inline-flex items-center gap-1 rounded-md bg-primary-subtle px-2 py-1 text-xs text-primary-subtle-foreground">{tag}<button type="button" onClick={() => toggleTag(tag)} aria-label={`حذف برچسب ${tag}`} className="rounded-sm hover:text-destructive"><X className="h-3 w-3" /></button></span>)}</div>}
-          {(form.attachments || []).length > 0 && <div className="mt-3 space-y-1.5">{form.attachments.map((attachment, index) => <div key={`${attachment.url || attachment.name}-${index}`} className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-sm"><span className="flex min-w-0 items-center gap-2 truncate"><Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />{attachment.name}</span><Button type="button" variant="ghost" size="sm" onClick={() => removeAttachment(index)} className="text-muted-foreground">حذف</Button></div>)}</div>}
-
           <div className="mt-6 border-t border-border pt-4">
             <div className="flex flex-wrap items-center gap-2">
               <PropertyChip open={openProperty === "status"} onOpenChange={(open) => setPropertyOpen("status", open)} icon={selectedStatus.Icon} label="وضعیت" value={selectedStatus.label}>
@@ -273,10 +242,7 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
         </div>
 
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-card px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-muted"><Paperclip className="h-4 w-4" /><span>{uploading ? "در حال آپلود…" : "پیوست"}</span><input type="file" className="sr-only" onChange={handleFileUpload} disabled={uploading} /></label>
-            {(form.attachments || []).length > 0 && <span className="text-xs text-muted-foreground">{form.attachments.length} فایل</span>}
-          </div>
+          <span />
           <Button type="button" onClick={handleSave} disabled={saving || !String(form.title || "").trim()} className="min-w-32">{saving ? "در حال ثبت…" : editTask?.id ? "ذخیره تغییرات" : "ثبت تسک"}</Button>
         </footer>
       </section>

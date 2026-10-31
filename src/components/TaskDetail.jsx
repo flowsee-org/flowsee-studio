@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { X, Paperclip, Clock, Download, ArrowUpRight, MessageSquare, FileText } from 'lucide-react';
+import { X, Clock, ArrowUpRight, MessageSquare, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import SubtaskList from './SubtaskList';
 import TaskComments from './TaskComments';
@@ -37,7 +37,6 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
   const [form, setForm] = useState({ ...task });
   const [activities, setActivities] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState('details'); // details, comments, activity
 
   useEffect(() => {
@@ -82,7 +81,8 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
     setSaving(true);
     try {
       const proj = projects.find((p) => p.id === form.project_id);
-      const data = { ...form, project_name: proj?.name || form.project_name || '' };
+      const taskFields = { ...form };
+      const data = { ...taskFields, project_name: proj?.name || form.project_name || '' };
       await base44.entities.Task.update(task.id, data);
       toast({ title: 'تسک بروزرسانی شد' });
       onSaved();
@@ -93,35 +93,6 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleFileUpload = async (e) => {
-    const input = e.currentTarget;
-    const file = input.files?.[0];
-    if (!file) return;
-    if (file.size > 3 * 1024 * 1024) {
-      toast({ title: 'حجم فایل زیاد است', description: 'برای جلوگیری از خطای ذخیره‌سازی، فایل تسک باید حداکثر ۳ مگابایت باشد.', variant: 'destructive' });
-      input.value = '';
-      return;
-    }
-    setUploading(true);
-    try {
-      const result = await base44.integrations.Core.UploadFile({ file });
-      const file_url = typeof result === 'string' ? result : result?.file_url || result?.url || result?.data?.file_url;
-      if (!file_url) throw new Error('نشانی فایل از سرویس آپلود دریافت نشد.');
-      const attachments = form.attachments || [];
-      setForm((current) => ({ ...current, attachments: [...(current.attachments || attachments), { name: file.name, url: file_url, type: file.type }] }));
-    } catch (err) {
-      console.error('Upload failed', err);
-      toast({ title: 'آپلود فایل انجام نشد', description: err?.message || 'فضای ذخیره‌سازی یا اتصال سرویس آپلود را بررسی کنید.', variant: 'destructive' });
-    } finally {
-      input.value = '';
-      setUploading(false);
-    }
-  };
-
-  const removeAttachment = (index) => {
-    setForm({ ...form, attachments: (form.attachments || []).filter((_, i) => i !== index) });
   };
 
   const handleSubtaskChange = (newSubtasks) => {
@@ -318,35 +289,6 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
               <div>
                 <label className="text-sm font-medium block mb-1.5">زیرتسک‌ها</label>
                 <SubtaskList subtasks={form.subtasks || []} onChange={handleSubtaskChange} />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium block mb-1.5">پیوست‌ها</label>
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="flex-1 border border-dashed border-input rounded-xl px-4 py-2.5 text-sm text-muted-foreground cursor-pointer hover:bg-accent/30 flex items-center gap-2">
-                    <Paperclip className="w-4 h-4" />
-                    {uploading ? 'در حال آپلود...' : 'آپلود فایل'}
-                    <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploading} />
-                  </label>
-                </div>
-                {(form.attachments || []).length > 0 && (
-                  <div className="space-y-2">
-                    {form.attachments.map((att, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-2 bg-accent/40 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Paperclip className="w-5 h-5 text-muted-foreground" />
-                          <span className="text-sm truncate max-w-[200px]">{att.name}</span>
-                        </div>
-                        <div className="flex gap-1">
-                          <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
-                            <Download className="w-3.5 h-3.5" /> دانلود
-                          </a>
-                          <button onClick={() => removeAttachment(idx)} className="text-xs text-red-500 hover:underline">حذف</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
               <div>
