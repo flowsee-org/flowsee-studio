@@ -45,8 +45,8 @@ export default function TemplatePicker({ onClose, onUse }) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-        <div className="bg-card rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto scrollbar-thin" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4" onClick={onClose}>
+        <div className="flex h-[min(calc(100dvh-1.5rem),52rem)] max-h-[min(calc(100dvh-1.5rem),52rem)] w-full max-w-3xl flex-col overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-overlay sm:p-6" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-bold text-lg">قالب‌های تسک</h2>
             <button onClick={onClose} className="p-2 hover:bg-accent rounded-lg">

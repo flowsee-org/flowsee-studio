@@ -95,6 +95,11 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
     const input = e.currentTarget;
     const file = input.files?.[0];
     if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      toast({ title: "حجم فایل زیاد است", description: "برای جلوگیری از خطای ذخیره‌سازی، فایل تسک باید حداکثر ۳ مگابایت باشد.", variant: "destructive" });
+      input.value = "";
+      return;
+    }
     setUploading(true);
     try {
       const result = await base44.integrations.Core.UploadFile({ file });
