@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Outlet, NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { ChevronDown, LayoutDashboard, Wallet, BarChart3, Calendar, Users, FolderKanban, ClipboardList, ListTodo, Menu, Shield, LogOut, UserCircle, Sun, Moon, Megaphone, Flag, Target, CalendarDays, Settings, AlertTriangle, X, RefreshCw, Send, Inbox, PanelRightClose, PanelRightOpen, BriefcaseBusiness, FileText } from "lucide-react";
+import { ChevronDown, LayoutDashboard, Wallet, BarChart3, Calendar, Users, FolderKanban, ClipboardList, ListTodo, Menu, Shield, LogOut, UserCircle, Sun, Moon, Megaphone, Flag, CalendarDays, Settings, AlertTriangle, X, RefreshCw, Send, Inbox, PanelRightClose, PanelRightOpen, BriefcaseBusiness, FileText } from "lucide-react";
 import { roleLabel } from "@/lib/roles";
 import NotificationCenter from "@/components/NotificationCenter";
 import { toast } from "@/components/ui/use-toast";
@@ -19,7 +19,6 @@ const allNavItems = [
   { to: "/work-reports", label: "گزارش کار", icon: ClipboardList, adminOnly: false, module: "work-reports" },
   { to: "/employees", label: "کارکنان", icon: Users, adminOnly: true, module: "employees" },
   { to: "/sprints", label: "اسپرینت", icon: Flag, adminOnly: false, module: "sprints" },
-  { to: "/goals", label: "اهداف", icon: Target, adminOnly: true, module: "goals" },
   { to: "/leave-requests", label: "مرخصی", icon: CalendarDays, adminOnly: false, module: "leave-requests" },
   { to: "/settings", label: "تنظیمات", icon: Settings, adminOnly: true, module: "settings" },
   { to: "/admin", label: "پنل ادمین", icon: Shield, adminOnly: true, module: "admin" },
@@ -30,7 +29,7 @@ const allNavItems = [
 
 const navGroups = [
   { label: "محتوا و وب‌سایت", routes: ["/site-content", "/blog-content", "/website-messages", "/announcements"] },
-  { label: "پروژه و برنامه‌ریزی", routes: ["/projects", "/tasks", "/sprints", "/goals", "/meetings", "/work-reports"] },
+  { label: "پروژه و برنامه‌ریزی", routes: ["/projects", "/tasks", "/sprints", "/meetings", "/work-reports"] },
   { label: "مالی و گزارش‌ها", routes: ["/accounting", "/reports"] },
   { label: "مدیریت و تیم", routes: ["/employees", "/leave-requests", "/admin", "/settings"] },
 ];
