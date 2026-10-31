@@ -31,7 +31,6 @@ import Profile from '@/pages/Profile';
 import ProjectDetail from '@/pages/ProjectDetail';
 import Announcements from '@/pages/Announcements';
 import Sprints from '@/pages/Sprints';
-import Goals from '@/pages/Goals';
 import LeaveRequests from '@/pages/LeaveRequests';
 import AppSettings from '@/pages/AppSettings';
 import DailyReportReminder from '@/hooks/useDailyReportReminder.jsx';
@@ -96,7 +95,6 @@ const AuthenticatedApp = () => {
             <Route path="/projects/:id" element={<ProjectDetail />} />
             <Route path="/announcements" element={<Announcements />} />
             <Route path="/sprints" element={<Sprints />} />
-            <Route path="/goals" element={<Goals />} />
             <Route path="/leave-requests" element={<LeaveRequests />} />
             <Route path="/settings" element={<AppSettings />} />
             <Route element={<AdminRoute />}>

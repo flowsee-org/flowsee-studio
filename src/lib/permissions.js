@@ -9,7 +9,6 @@ export const MODULES = [
   { id: "work-reports", label: "گزارش کار", path: "/work-reports" },
   { id: "employees", label: "کارکنان", path: "/employees", adminOnly: true },
   { id: "sprints", label: "اسپرینت", path: "/sprints" },
-  { id: "goals", label: "اهداف", path: "/goals", adminOnly: true },
   { id: "leave-requests", label: "مرخصی", path: "/leave-requests" },
   { id: "settings", label: "تنظیمات", path: "/settings", adminOnly: true },
   { id: "admin", label: "پنل ادمین", path: "/admin", adminOnly: true },
