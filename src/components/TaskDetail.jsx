@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
+import { studio } from '@/api/studioClient';
 import { X, Clock, ArrowUpRight, MessageSquare, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import SubtaskList from './SubtaskList';
@@ -62,7 +62,7 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
     if (!currentTask?.id) return;
     try {
       // The hosted SDK can ignore the filter, so always enforce entity and id locally.
-      const data = await base44.entities.ActivityLog.list('-created_date', 500);
+      const data = await studio.entities.ActivityLog.list('-created_date', 500);
       const taskId = String(currentTask.id);
       const projectId = String(currentTask.project_id ?? currentTask.project?.id ?? '');
       const normalizeType = (value) => String(value ?? '').trim().toLocaleLowerCase().replace(/s$/, '');
@@ -92,7 +92,7 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
       const proj = projects.find((p) => p.id === form.project_id);
       const taskFields = { ...form };
       const data = { ...taskFields, project_name: proj?.name || form.project_name || '' };
-      await base44.entities.Task.update(task.id, data);
+      await studio.entities.Task.update(task.id, data);
       toast({ title: 'تسک بروزرسانی شد' });
       onSaved();
       onClose();
@@ -112,7 +112,7 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
     const newTime = (form.time_spent || 0) + hours;
     setForm({ ...form, time_spent: newTime });
     try {
-      await base44.entities.Task.update(task.id, { time_spent: newTime });
+      await studio.entities.Task.update(task.id, { time_spent: newTime });
       toast({ title: `${faNum(hours)} ساعت اضافه شد` });
     } catch (err) {
       console.error(err);

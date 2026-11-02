@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { toast } from "@/components/ui/use-toast";
-import { appId } from "@/api/base44Client";
+import { appId } from "@/api/studioClient";
 import { formatPersianNumber as faNum } from "@/lib/number-format";
 
 const toList = (records) => (Array.isArray(records) ? records : records ? [records] : []);
@@ -47,7 +47,7 @@ export function useDeleteUndo(entityName, deleteFn, loadFn) {
           <button
             onClick={async () => {
               try {
-                const token = localStorage.getItem("base44_access_token");
+                const token = localStorage.getItem("studio_access_token");
                 for (const r of list) {
                   const res = await fetch(
                     `/api/apps/${appId}/entities/${entityName}/${r.id}/restore`,

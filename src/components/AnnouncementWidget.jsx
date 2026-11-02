@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Megaphone, Pin, ArrowLeft, Paperclip } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -14,12 +14,12 @@ export default function AnnouncementWidget() {
 
   useEffect(() => {
     load();
-    const unsub = base44.entities.Announcement.subscribe(() => load());
+    const unsub = studio.entities.Announcement.subscribe(() => load());
     return unsub;
   }, []);
 
   const load = async () => {
-    const data = await base44.entities.Announcement.list("-created_date");
+    const data = await studio.entities.Announcement.list("-created_date");
     setAnnouncements(data);
     setLoading(false);
   };
@@ -37,7 +37,7 @@ export default function AnnouncementWidget() {
   const markRead = async (a) => {
     const readBy = a.read_by || [];
     if (readBy.includes(user?.id)) return;
-    await base44.entities.Announcement.update(a.id, { read_by: [...readBy, user?.id] });
+    await studio.entities.Announcement.update(a.id, { read_by: [...readBy, user?.id] });
     load();
   };
 

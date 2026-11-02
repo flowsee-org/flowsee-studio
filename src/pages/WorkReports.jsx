@@ -1,5 +1,6 @@
+import { toast } from '@/components/ui/use-toast';
 import { useEffect, useMemo, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Plus, Trash2, Sparkles, Clock, User, Pencil, Filter, X, ChevronDown } from "lucide-react";
 import ReportForm from "@/components/ReportForm";
@@ -38,9 +39,9 @@ export default function WorkReports() {
   const load = async () => {
     setLoading(true);
     const [r, t, p] = await Promise.all([
-      base44.entities.WorkReport.list("-created_date"),
-      base44.entities.Task.list(),
-      base44.entities.Project.list(),
+      studio.entities.WorkReport.list("-created_date"),
+      studio.entities.Task.list(),
+      studio.entities.Project.list(),
     ]);
     setReports(r);
     setTasks(t);
@@ -48,7 +49,7 @@ export default function WorkReports() {
     setLoading(false);
   };
 
-  const { deleteWithUndo } = useDeleteUndo("WorkReport", (id) => base44.entities.WorkReport.delete(id), load);
+  const { deleteWithUndo } = useDeleteUndo("WorkReport", (id) => studio.entities.WorkReport.delete(id), load);
 
   // Users only see their own reports; admin + superadmin see everyone's.
   const visibleReports = isAdmin ? reports : reports.filter((r) => r.created_by_id === user?.id);
@@ -139,10 +140,10 @@ export default function WorkReports() {
     const historySummary = history.map((item) => `${item.date || "بدون تاریخ"}: ${item.hours || 0} ساعت؛ ${item.description || ""}`).join("\n");
     setAnalyzing(report.id);
     try {
-      const res = await base44.integrations.Core.InvokeLLM({
+      const res = await studio.integrations.Core.InvokeLLM({
         prompt: `شما تحلیل‌گر عملکرد تیم هستید. گزارش زیر را به فارسی، مستند و منصفانه تحلیل کنید. خروجی را در بخش‌های «خروجی‌های تحویل‌شده»، «پیشرفت تسک‌ها و زیرتسک‌ها»، «روند عملکرد نسبت به گزارش‌های قبلی»، «ریسک‌ها و موانع» و «اقدام بعدی پیشنهادی» ارائه دهید. از حدس‌زدن خروجی تحویل‌شده یا قضاوت درباره فرد بدون شواهد خودداری کنید؛ اطلاعات ناموجود را صریحاً مشخص کنید.\n\nکارمند: ${report.employee_name}\nتاریخ: ${report.date || "نامشخص"}\nپروژه: ${report.project_name || "نامشخص"}\nتسک‌های گزارش‌شده: ${taskTitles.join("، ") || "ذکر نشده"}\nجزئیات تسک و زیرتسک: ${taskBreakdown || "اطلاعات تکمیلی تسک در دسترس نیست"}\nخروجی‌های تحویل‌شده (در صورت ثبت): ${report.deliverables || report.outputs || report.completed_outputs || "در گزارش جداگانه مشخص نشده"}\nساعت کار: ${report.hours || 0}\nشرح گزارش: ${report.description || "ندارد"}\nگزارش‌های اخیر همین کارمند برای مقایسه روند: ${historySummary || "سابقه دیگری موجود نیست"}`,
       });
-      await base44.entities.WorkReport.update(report.id, { ai_analysis: res });
+      await studio.entities.WorkReport.update(report.id, { ai_analysis: res });
       await load();
     } catch (err) {
       console.error(err);

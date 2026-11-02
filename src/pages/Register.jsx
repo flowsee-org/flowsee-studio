@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserPlus, Mail, Lock, Loader2 } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import AuthLayout from "@/components/AuthLayout";
-import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
 import { safeReturnTo } from "@/lib/authReturnTo";
 
@@ -29,13 +28,13 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      const result = await base44.auth.register({ email, password });
+      const result = await studio.auth.register({ email, password });
       // Local dev backend returns an access_token on register (no OTP email).
       // If one is present, log in immediately; otherwise fall back to the
       // OTP verification screen.
       const token = result?.data?.access_token;
       if (token) {
-        base44.auth.setToken(token);
+        studio.auth.setToken(token);
         window.location.href = safeReturnTo();
         return;
       }
@@ -51,9 +50,9 @@ export default function Register() {
     setError("");
     setLoading(true);
     try {
-      await base44.auth.verifyOtp({ email, otpCode });
+      await studio.auth.verifyOtp({ email, otpCode });
       // After OTP verification, log in to get the access token
-      const { access_token } = await base44.auth.loginViaEmailPassword(email, password);
+      const { access_token } = await studio.auth.loginViaEmailPassword(email, password);
       if (access_token) {
         // loginViaEmailPassword already calls setToken internally
         window.location.href = safeReturnTo();
@@ -68,7 +67,7 @@ export default function Register() {
   const handleResend = async () => {
     setError("");
     try {
-      await base44.auth.resendOtp(email);
+      await studio.auth.resendOtp(email);
       toast({
         title: "کد ارسال شد",
         description: "ایمیل خود را برای کد جدید بررسی کنید.",
@@ -78,9 +77,7 @@ export default function Register() {
     }
   };
 
-  const handleGoogle = () => {
-    base44.auth.loginWithProvider("google", safeReturnTo());
-  };
+
 
   if (showOtp) {
     return (
@@ -153,14 +150,7 @@ export default function Register() {
         </>
       }
     >
-      <Button
-        variant="outline"
-        className="w-full h-12 text-sm font-medium mb-6"
-        onClick={handleGoogle}
-      >
-        <GoogleIcon className="w-5 h-5 ml-2" />
-        ورود با گوگل
-      </Button>
+
 
       <div className="relative mb-6">
         <div className="absolute inset-0 flex items-center">

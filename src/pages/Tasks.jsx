@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Plus, Trash2, Pencil, ArrowDownUp, LayoutTemplate, Filter, X, Send, CheckCircle, Clock, Search, Archive, Eye, RotateCcw, Table2, Columns3, GanttChart, UserRound, SquarePen, UsersRound } from "lucide-react";
@@ -178,8 +178,8 @@ export default function Tasks() {
   const load = async () => {
     setLoading(true);
     const [t, p] = await Promise.all([
-      base44.entities.Task.list("-created_date"),
-      base44.entities.Project.list(),
+      studio.entities.Task.list("-created_date"),
+      studio.entities.Project.list(),
     ]);
     setTasks(t);
     setProjects(p);
@@ -252,7 +252,7 @@ export default function Tasks() {
   }, [tasks, userName]);
 
   const handleAcceptRequest = async (request) => {
-    await base44.entities.Task.update(request.id, {
+    await studio.entities.Task.update(request.id, {
       request_status: "accepted",
       kind: "task",
       status: "todo",
@@ -261,14 +261,14 @@ export default function Tasks() {
   };
 
   const handleRejectRequest = async (request) => {
-    await base44.entities.Task.update(request.id, {
+    await studio.entities.Task.update(request.id, {
       request_status: "rejected",
     });
     load();
   };
 
   const handleDelayRequest = async (request) => {
-    await base44.entities.Task.update(request.id, {
+    await studio.entities.Task.update(request.id, {
       request_status: "delayed",
     });
     load();
@@ -288,12 +288,12 @@ export default function Tasks() {
       ? { status: "done", completion_approved: true, archived: true }
       : { status: newStatus, ...(task.archived ? { archived: false, completion_approved: false } : {}) };
     setTasks((prev) => prev.map((item) => item.id === taskId ? { ...item, ...update } : item));
-    await base44.entities.Task.update(taskId, update);
+    await studio.entities.Task.update(taskId, update);
   };
 
   const handleDelete = async (id) => {
     try {
-      await base44.entities.Task.delete(id);
+      await studio.entities.Task.delete(id);
       setSelectedTasks(prev => {
         const next = new Set(prev);
         next.delete(id);
@@ -315,7 +315,7 @@ export default function Tasks() {
 
   const toggleArchiveTask = async (task) => {
     try {
-      await base44.entities.Task.update(task.id, { archived: !task.archived });
+      await studio.entities.Task.update(task.id, { archived: !task.archived });
       await load();
       toast({ title: task.archived ? "تسک از بایگانی خارج شد" : "تسک بایگانی شد" });
     } catch (err) {
@@ -325,7 +325,7 @@ export default function Tasks() {
 
   const approveAndArchiveTask = async (task) => {
     try {
-      await base44.entities.Task.update(task.id, { status: "done", completion_approved: true, archived: true });
+      await studio.entities.Task.update(task.id, { status: "done", completion_approved: true, archived: true });
       await load();
       toast({ title: "تسک تأیید و به آرشیو منتقل شد" });
     } catch (err) {
@@ -335,7 +335,7 @@ export default function Tasks() {
 
   const handleBulkDelete = async () => {
     for (const id of selectedTasks) {
-      await base44.entities.Task.delete(id);
+      await studio.entities.Task.delete(id);
     }
     setSelectedTasks(new Set());
     load();
@@ -346,7 +346,7 @@ export default function Tasks() {
     const count = selectedTasks.size;
     try {
       for (const id of selectedTasks) {
-        await base44.entities.Task.update(id, { archived: !showArchived });
+        await studio.entities.Task.update(id, { archived: !showArchived });
       }
       setSelectedTasks(new Set());
       await load();
@@ -358,7 +358,7 @@ export default function Tasks() {
 
   const handleBulkStatusChange = async (status) => {
     for (const id of selectedTasks) {
-      await base44.entities.Task.update(id, { status });
+      await studio.entities.Task.update(id, { status });
     }
     setSelectedTasks(new Set());
     load();
@@ -367,7 +367,7 @@ export default function Tasks() {
 
   const handleBulkAssign = async (assignee) => {
     for (const id of selectedTasks) {
-      await base44.entities.Task.update(id, { assignees: [assignee], assignee });
+      await studio.entities.Task.update(id, { assignees: [assignee], assignee });
     }
     setSelectedTasks(new Set());
     load();
@@ -881,7 +881,7 @@ export default function Tasks() {
                 <tbody className="divide-y divide-border">
                   {sortedTableTasks.map((task) => <tr key={task.id} className="hover:bg-accent/20">
                     <td className="p-3"><button onClick={() => handleViewDetail(task)} className="text-right font-medium hover:text-primary">{task.title}</button>{task.task_number && <div className="text-xs text-muted-foreground mt-1">{task.task_number}</div>}</td>
-                    <td className="p-3"><SelectControl aria-label={`وضعیت ${task.title}`} value={task.status} onChange={async (e) => { await base44.entities.Task.update(task.id, { status: e.target.value }); await load(); }} className="h-8">{columns.map((column) => <option key={column.id} value={column.id}>{column.title}</option>)}</SelectControl></td>
+                    <td className="p-3"><SelectControl aria-label={`وضعیت ${task.title}`} value={task.status} onChange={async (e) => { await studio.entities.Task.update(task.id, { status: e.target.value }); await load(); }} className="h-8">{columns.map((column) => <option key={column.id} value={column.id}>{column.title}</option>)}</SelectControl></td>
                     <td className="p-3"><span className={`rounded-full px-2 py-1 text-xs ${priorityColors[task.priority]}`}>{priorityLabels[task.priority]}</span></td>
                     <td className="p-3">{(task.assignees || (task.assignee ? [task.assignee] : [])).join("، ") || "—"}</td>
                     <td className="p-3">{task.due_date || "—"}</td>

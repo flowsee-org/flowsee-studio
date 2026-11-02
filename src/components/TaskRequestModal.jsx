@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { X, Send, AlertCircle } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
@@ -35,7 +35,7 @@ export default function TaskRequestModal({ projects, onClose, onSaved }) {
     setSaving(true);
     setError("");
     try {
-      await base44.entities.Task.create({
+      await studio.entities.Task.create({
         title: form.title.trim(),
         description: form.description.trim(),
         project_id: form.project_id,

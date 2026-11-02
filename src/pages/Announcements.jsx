@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Plus, Pin, Trash2, Pencil, Megaphone, Paperclip, Users, CheckCheck, Clock, MessageSquare } from "lucide-react";
 import AnnouncementModal from "@/components/AnnouncementModal";
@@ -24,14 +24,14 @@ export default function Announcements() {
 
   useEffect(() => {
     load();
-    const unsub = base44.entities.Announcement.subscribe(() => load());
+    const unsub = studio.entities.Announcement.subscribe(() => load());
     return unsub;
   }, []);
 
   const load = async () => {
     const [data, comments] = await Promise.all([
-      base44.entities.Announcement.list("-created_date"),
-      base44.entities.Comment.list(),
+      studio.entities.Announcement.list("-created_date"),
+      studio.entities.Comment.list(),
     ]);
     const counts = {};
     comments.forEach((c) => {
@@ -41,7 +41,7 @@ export default function Announcements() {
     setLoading(false);
   };
 
-  const { deleteWithUndo } = useDeleteUndo("Announcement", (id) => base44.entities.Announcement.delete(id), load);
+  const { deleteWithUndo } = useDeleteUndo("Announcement", (id) => studio.entities.Announcement.delete(id), load);
 
   const today = getPersianDate(0);
 
@@ -63,7 +63,7 @@ export default function Announcements() {
   const markRead = async (a) => {
     const readBy = a.read_by || [];
     if (readBy.includes(user?.id)) return;
-    await base44.entities.Announcement.update(a.id, { read_by: [...readBy, user?.id] });
+    await studio.entities.Announcement.update(a.id, { read_by: [...readBy, user?.id] });
     load();
   };
 
@@ -71,14 +71,14 @@ export default function Announcements() {
     for (const a of visibleAnnouncements) {
       const readBy = a.read_by || [];
       if (!readBy.includes(user?.id)) {
-        await base44.entities.Announcement.update(a.id, { read_by: [...readBy, user?.id] });
+        await studio.entities.Announcement.update(a.id, { read_by: [...readBy, user?.id] });
       }
     }
     load();
   };
 
   const togglePin = async (a) => {
-    await base44.entities.Announcement.update(a.id, { pinned: !a.pinned });
+    await studio.entities.Announcement.update(a.id, { pinned: !a.pinned });
     load();
   };
 

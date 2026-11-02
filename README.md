@@ -1,88 +1,33 @@
-# Base44 Project
+# Flowsee Studio
 
-Use this repository to run and edit the app locally, then publish changes back through Base44.
+Self-hosted React frontend and Node backend. No hosted application SDK, remote authentication platform, or hosted entity API is required.
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+## Run locally
 
-## Prerequisites
+Use Node 22.12+ and npm. Run `npm ci`, copy `.env.example` to `.env`, and set a unique administrator email and password (at least 12 characters). Run `npm run dev` and open the Vite URL. Vite loads `.env`; the backend reads server settings through the configuration below. Alternatively set environment variables in your shell.
 
-1. Clone the repository using the project's Git URL.
-2. Navigate to the project directory.
-3. Install dependencies: `npm install`.
-4. Install the Base44 CLI: `npm install -g base44@latest`.
+For the standalone application: `npm run build`, then `npm start`. Open http://127.0.0.1:3000. This serves both the compiled frontend and `/api` from one process. `npm run preview` is only a static frontend preview and does not run the API.
 
-See the [Base44 CLI docs](https://docs.base44.com/developers/references/cli/get-started/overview) if you want to run Base44 commands directly.
+The administrator is created only when the database is empty. Registration is disabled by default; administrators can invite members and set their initial password. There are no demo accounts or Google login impersonation. Google OAuth is not implemented in this standalone version; use local email/password accounts.
 
-## Run Locally
+## Storage and integrations
 
-Run the full local development environment from the project root:
+- `STUDIO_DATA_DIR` defaults to `.local` in the project. It contains the atomically written database, session signing secret, and private mail outbox. Keep it outside public web roots, back it up, and run only one backend process against it. Do not commit it. A corrupt database fails startup instead of silently erasing data.
+- Sessions expire after 30 days. Logout and password reset invalidate previous sessions. Existing hosted tokens do not work; use local accounts.
+- File uploads are stored as data URLs in local entity records (3 MB per file). Existing remote attachments must be downloaded and their record URLs replaced before the source service is disconnected. The bundled logo is local.
+- Subscriptions poll the local API every three seconds and stop on unmount.
+- Email defaults to `.local/mail-outbox.jsonl`; reset links and verification codes also appear in the private OTP inbox. Set SMTP variables to deliver real email using your own mail server.
+- AI analysis uses a local Ollama-compatible `/api/generate` endpoint. Install a model on your host, set `STUDIO_LLM_MODEL`, and start the model service. Missing models/services produce an error, never fabricated analysis.
+- SiteContent, BlogContent, WebsiteMessages and editor media use the separate Flowsee main-site API (`VITE_MAIN_API_URL`). That service is a separate repository and must accept the local Studio identity or be integrated separately. These panels are not implemented by this repository's entity backend.
 
-```bash
-base44 dev
-```
+## Deployment
 
-`base44 dev` starts the local Base44 development backend and, when this app is configured for it, also starts the frontend dev server for you. Use the frontend URL printed by the command.
+Build and run the standalone server behind your HTTPS reverse proxy. Proxy the entire Studio origin to `127.0.0.1:3000` (including `/api`). Set `STUDIO_PUBLIC_URL` to the public origin for reset links and use a persistent `STUDIO_DATA_DIR` outside release directories. Restrict permissions on that directory and `.env` to the service account.
 
-For example, when the Base44 project config includes a `serveCommand`, `base44 dev` can launch the frontend too:
+The existing deploy-preview script publishes static assets only. It does not install or start this new server. Do not switch production to this build until the API process and reverse proxy are configured. No production deployment or data migration is performed by pushing this branch.
 
-```json5
-{
-  "site": {
-    "serveCommand": "npm run dev"
-  }
-}
-```
+Existing data is not fetched automatically. Back up the old service, export its entities, and use the administrator restore endpoint to import an `{ "entities": { "Task": [], ... } }` JSON document. User passwords cannot be imported from hosted authentication; create local accounts and remap user IDs in imported records. Test imports on an isolated data directory first. Never import an old development database containing demo users into production.
 
-In a Base44 project this lives in `base44/config.jsonc`.
+## Checks
 
-## Run Only The Frontend
-
-If you only want to work on the frontend against the hosted Base44 backend, run:
-
-```bash
-npm run dev
-```
-
-Open the local URL printed by Vite.
-
-## Use The Hosted Backend
-
-For frontend-only development, create or update `.env.local` in the project root:
-
-```bash
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=https://your-app.base44.app
-```
-
-`VITE_BASE44_APP_ID` identifies the Base44 app.
-
-`VITE_BASE44_APP_BASE_URL` tells the Base44 Vite plugin where to send local `/api` requests. Point it at your deployed Base44 app URL when you want the local frontend to use the hosted backend.
-
-When you use `base44 dev`, the command injects the local Base44 values for you, so `.env.local` is mainly needed for frontend-only workflows.
-
-## Publish Your Changes
-
-After pushing your changes to git, open the Base44 dashboard and publish the app:
-
-```bash
-base44 dashboard open
-```
-
-## Deploy to the Flowsee Server
-
-Pushes to `main` can publish the self-hosted Studio frontend to `studio.flowsee.ir` with the GitHub Actions workflow in `.github/workflows/deploy.yml`. The workflow connects to the server and runs the existing atomic deployment script, which builds the latest `main`, checks the site, and restores the previous release if the health check fails.
-
-The workflow connects to `root@46.34.163.250`. Configure these GitHub Actions repository secrets before enabling production deploys:
-
-- `STUDIO_DEPLOY_KEY`: an SSH private key authorized for root on the server.
-- `STUDIO_DEPLOY_KNOWN_HOSTS`: the server host key entry, verified out of band.
-
-Optionally configure the repository variable `STUDIO_DEPLOY_PORT` (defaults to `22`). The matching public key must be authorized for root on the server. The workflow will fail clearly if a required secret is missing; it never learns the server host key automatically.
-
-## Docs & Support
-
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
-
-Base44 CLI command reference: [https://docs.base44.com/developers/references/cli/commands/introduction](https://docs.base44.com/developers/references/cli/commands/introduction)
-
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+`npm test`, `npm run test:backend`, `npm run lint`, `npm run build`, `npm run typecheck`.

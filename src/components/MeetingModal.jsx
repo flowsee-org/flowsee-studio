@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { X, Plus, Flame, AlertCircle, Clock } from "lucide-react";
 import PersianDatePicker, { getPersianDate } from "@/components/PersianDatePicker";
@@ -50,7 +50,7 @@ export default function MeetingModal({ onClose, onSaved }) {
     let active = true;
     Promise.all([
       loadTeamMembers(),
-      base44.entities.Meeting.list("-created_date").catch(() => []),
+      studio.entities.Meeting.list("-created_date").catch(() => []),
     ]).then(([all, history]) => {
       if (!active) return;
       setMembers(all.filter((m) => m.email !== user?.email && m.name !== (user?.full_name || user?.email)));
@@ -115,7 +115,7 @@ export default function MeetingModal({ onClose, onSaved }) {
         participants: isGroup ? participants : [],
       };
 
-      await base44.entities.Meeting.create(meetingData);
+      await studio.entities.Meeting.create(meetingData);
       toast({ title: "جلسه ثبت شد", description: isGroup ? "جلسه گروهی برای شرکت‌کنندگان ارسال گردید." : "درخواست جلسه به همکار ارسال گردید." });
       setSaving(false);
       onSaved();

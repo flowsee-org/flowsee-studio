@@ -1,23 +1,13 @@
-import base44 from "@base44/vite-plugin"
-import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
-import { localBackendPlugin } from './backend/local-backend.mjs'
+import react from '@vitejs/plugin-react';
+import { defineConfig, loadEnv } from 'vite';
+import { fileURLToPath } from 'node:url';
 
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [
-    base44({
-      // Support for legacy code that imports the base44 SDK with @/integrations, @/entities, etc.
-      // can be removed if the code has been updated to use the new SDK imports from @base44/sdk
-      legacySDKImports: process.env.BASE44_LEGACY_SDK_IMPORTS === 'true',
-      hmrNotifier: true,
-      navigationNotifier: true,
-      analyticsTracker: true,
-      visualEditAgent: true
-    }),
-    react(),
-    // Self-hosted local backend (serves /api/*) so the app runs without
-    // Base44 credentials. Dev-only — see backend/local-backend.mjs.
-    localBackendPlugin(),
-  ]
+export default defineConfig(async ({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  for (const [key, value] of Object.entries(env)) if (key.startsWith("STUDIO_") || key.startsWith("SMTP_")) process.env[key] ??= value;
+  const { localBackendPlugin } = await import("./backend/local-backend.mjs");
+  return {
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  plugins: [react(), localBackendPlugin()],
+};
 });

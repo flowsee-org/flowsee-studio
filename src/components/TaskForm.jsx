@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { CalendarDays, Check, CheckCircle2, Circle, CircleDot, Clock3, Flag, FolderKanban, ListChecks, MoreHorizontal, Plus, Repeat2, Tag, UserRound, X } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import { loadTeamMembers } from "@/lib/teamMembers";
@@ -121,7 +121,7 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
     if (!name || creatingProject) return;
     setCreatingProject(true);
     try {
-      const project = await base44.entities.Project.create({
+      const project = await studio.entities.Project.create({
         name,
         description: "",
         color: "#FE5400",
@@ -155,9 +155,9 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
       const taskFields = { ...form };
       const data = { ...taskFields, project_name: proj?.name || form.project_name || "" };
       if (editTask?.id) {
-        await base44.entities.Task.update(editTask.id, data);
+        await studio.entities.Task.update(editTask.id, data);
       } else {
-        await base44.entities.Task.create(data);
+        await studio.entities.Task.create(data);
       }
       toast({ title: editTask?.id ? "تسک بروزرسانی شد" : "تسک ثبت شد" });
       onSaved();

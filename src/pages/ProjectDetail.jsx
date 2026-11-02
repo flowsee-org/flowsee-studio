@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { ArrowRight, Users, ListTodo, FolderKanban, UserCircle, Flag, File, MessageSquare, DollarSign, CheckSquare, TrendingUp, TrendingDown } from "lucide-react";
 import { formatPersianNumber as faNum } from "@/lib/number-format";
 import TaskDetail from "@/components/TaskDetail";
@@ -24,10 +24,10 @@ export default function ProjectDetail() {
   useEffect(() => {
     (async () => {
       const [allProjects, allTasks, allExpenses, allIncomes] = await Promise.all([
-        base44.entities.Project.list(),
-        base44.entities.Task.list(),
-        base44.entities.Expense.list(),
-        base44.entities.Income.list(),
+        studio.entities.Project.list(),
+        studio.entities.Task.list(),
+        studio.entities.Expense.list(),
+        studio.entities.Income.list(),
       ]);
       setProject(allProjects.find((p) => p.id === id));
       setTasks(allTasks.filter((t) => t.project_id === id));
@@ -436,7 +436,7 @@ export default function ProjectDetail() {
         projects={[project]}
         onClose={() => setSelectedTask(null)}
         onSaved={async () => {
-          const updatedTasks = await base44.entities.Task.list();
+          const updatedTasks = await studio.entities.Task.list();
           setTasks((updatedTasks || []).filter((task) => String(task.project_id) === String(id)));
         }}
       />}
@@ -458,7 +458,7 @@ export default function ProjectDetail() {
                   onChange={() => {
                     const updated = [...(project.completion_checklist || [])];
                     updated[i] = { ...updated[i], done: !updated[i].done };
-                    base44.entities.Project.update(project.id, { completion_checklist: updated });
+                    studio.entities.Project.update(project.id, { completion_checklist: updated });
                     setProject({ ...project, completion_checklist: updated });
                   }}
                   className="w-4 h-4 accent-primary"

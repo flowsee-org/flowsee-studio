@@ -1,7 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
-import { appParams } from '@/lib/app-params';
-import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
+import { studio } from '@/api/studioClient';
 
 const AuthContext = createContext();
 
@@ -26,83 +24,16 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const checkAppState = async () => {
-    try {
-      setIsLoadingPublicSettings(true);
-      setAuthError(null);
-      
-      // First, check app public settings (with token if available)
-      // This will tell us if auth is required, user not registered, etc.
-      const appClient = createAxiosClient({
-        baseURL: `/api/apps/public`,
-        headers: {
-          'X-App-Id': appParams.appId
-        },
-        token: appParams.token, // Include token if available
-        interceptResponses: true
-      });
-      
-      try {
-        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
-        setAppPublicSettings(publicSettings);
-        
-        // If we got the app public settings successfully, check if user is authenticated
-        if (appParams.token) {
-          await checkUserAuth();
-        } else {
-          setIsLoadingAuth(false);
-          setIsAuthenticated(false);
-          setAuthChecked(true);
-        }
-        setIsLoadingPublicSettings(false);
-      } catch (appError) {
-        console.error('App state check failed:', appError);
-
-        // Handle app-level errors
-        let errorType = 'unknown';
-        let errorMessage = appError.message || 'Failed to load app';
-        if (appError.status === 403 && appError.data?.extra_data?.reason) {
-          const reason = appError.data.extra_data.reason;
-          if (reason === 'auth_required') {
-            errorType = 'auth_required';
-            errorMessage = 'Authentication required';
-          } else if (reason === 'user_not_registered') {
-            errorType = 'user_not_registered';
-            errorMessage = 'User not registered for this app';
-          } else {
-            errorType = reason;
-          }
-        }
-        setAuthError({ type: errorType, message: errorMessage });
-        setIsLoadingPublicSettings(false);
-
-        // The public-settings probe is auxiliary — a stored token may still be
-        // valid even if it failed (e.g. a transient error or a missing /api
-        // proxy during local dev). Verify the session so a failure here can't
-        // strand an authenticated user on the login page. Only skip when the
-        // app explicitly reported the user isn't registered.
-        if (appParams.token && errorType !== 'user_not_registered') {
-          await checkUserAuth();
-        } else {
-          setIsLoadingAuth(false);
-          setAuthChecked(true);
-        }
-      }
-    } catch (error) {
-      console.error('Unexpected error:', error);
-      setAuthError({
-        type: 'unknown',
-        message: error.message || 'An unexpected error occurred'
-      });
-      setIsLoadingPublicSettings(false);
-      setIsLoadingAuth(false);
-    }
+    setAppPublicSettings({ id: 'studio', public_settings: {} });
+    setIsLoadingPublicSettings(false);
+    await checkUserAuth();
   };
 
   const checkUserAuth = async () => {
     try {
       // Now check if the user is authenticated
       setIsLoadingAuth(true);
-      const currentUser = await base44.auth.me();
+      const currentUser = await studio.auth.me();
 
       // Check if user is deactivated
       if (currentUser.is_active === false) {
@@ -141,23 +72,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = (shouldRedirect = true) => {
+  const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
     setAuthError(null);
     setAuthChecked(true);
-
-    // The SDK's logout always runs a full-page server round-trip (it clears
-    // HTTP-only cookies server-side and then redirects back to `from_url`), so
-    // `shouldRedirect` picks the landing URL rather than whether to navigate:
-    // back to the current page, or straight to the login page.
-    base44.auth.logout(shouldRedirect ? window.location.href : "/login");
+    return studio.auth.logout();
   };
 
-  const navigateToLogin = () => {
-    // Use the SDK's redirectToLogin method
-    base44.auth.redirectToLogin(window.location.href);
-  };
+  const navigateToLogin = () => studio.auth.redirectToLogin();
 
   // Role helpers for the rest of the app. Superadmin satisfies "admin" checks
   // too, so admin-only sections stay accessible to the CEO.

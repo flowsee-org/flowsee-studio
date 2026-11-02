@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { studio } from '@/api/studioClient';
 import { Send, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { formatPersianNumber as faNum } from '@/lib/number-format';
@@ -29,13 +29,13 @@ export default function TaskComments({ taskId }) {
 
   useEffect(() => {
     loadComments();
-    const unsub = base44.entities.Comment.subscribe(() => loadComments());
+    const unsub = studio.entities.Comment.subscribe(() => loadComments());
     return unsub;
   }, [taskId]);
 
   const loadComments = async () => {
     try {
-      const data = await base44.entities.Comment.list({ q: JSON.stringify({ entity_type: 'task', entity_id: taskId }) });
+      const data = await studio.entities.Comment.list({ q: JSON.stringify({ entity_type: 'task', entity_id: taskId }) });
       setComments(data.sort((a, b) => new Date(a.created_date) - new Date(b.created_date)));
     } catch (err) {
       console.error('Failed to load comments:', err);
@@ -48,7 +48,7 @@ export default function TaskComments({ taskId }) {
     if (!newComment.trim() || sending) return;
     setSending(true);
     try {
-      await base44.entities.Comment.create({
+      await studio.entities.Comment.create({
         entity_type: 'task',
         entity_id: taskId,
         author_name: user?.full_name || user?.email || 'کاربر',

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { studio } from '@/api/studioClient';
 
 const NotificationContext = createContext();
 
@@ -29,7 +29,7 @@ export const NotificationProvider = ({ children }) => {
 
   const loadNotifications = async () => {
     try {
-      const data = await base44.entities.Notification.list("-created_date", 100);
+      const data = await studio.entities.Notification.list("-created_date", 100);
       const items = dedupeNotifications(data);
       setNotifications(items);
       setUnreadCount(items.filter((notification) => !notification.read).length);
@@ -43,7 +43,7 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     loadNotifications();
     // Subscribe to real-time updates
-    const unsub = base44.entities.Notification.subscribe(() => loadNotifications());
+    const unsub = studio.entities.Notification.subscribe(() => loadNotifications());
     return unsub;
   }, []);
 
@@ -52,7 +52,7 @@ export const NotificationProvider = ({ children }) => {
     if (!notification || notification.read) return;
 
     try {
-      await base44.entities.Notification.update(notificationId, { read: true });
+      await studio.entities.Notification.update(notificationId, { read: true });
       // Keep the record available in the archived tab after it has been shown.
       setNotifications((prev) => prev.map((item) => item.id === notificationId ? { ...item, read: true } : item));
       setUnreadCount((prev) => Math.max(0, prev - 1));
@@ -63,12 +63,12 @@ export const NotificationProvider = ({ children }) => {
 
   const markAllAsRead = async () => {
     try {
-      const endpoint = "/api/apps/" + base44.appId + "/notification/mark-all-read";
+      const endpoint = "/api/apps/" + studio.appId + "/notification/mark-all-read";
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer " + (localStorage.getItem("base44_access_token") || ""),
+          Authorization: "Bearer " + (localStorage.getItem("studio_access_token") || ""),
         },
       });
       if (!response.ok) throw new Error("درخواست علامت‌گذاری اعلان‌ها ناموفق بود (" + response.status + ").");

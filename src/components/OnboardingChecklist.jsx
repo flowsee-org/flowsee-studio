@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { CheckCircle2, Circle, AlertTriangle, UserPlus, BookOpen, Shield, Calendar, MessageSquare, FileText, Settings } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { getOnboardingCompletedItems } from "@/lib/onboarding-progress";
@@ -28,10 +28,10 @@ export default function OnboardingChecklist({ user, isAdmin = false, onComplete 
       setLoading(true);
       try {
         const [profile, tasks, reports, meetings] = await Promise.all([
-          base44.entities.User.get(user.id),
-          base44.entities.Task.list("-created_date"),
-          base44.entities.WorkReport.list("-created_date"),
-          base44.entities.Meeting.list("-created_date"),
+          studio.entities.User.get(user.id),
+          studio.entities.Task.list("-created_date"),
+          studio.entities.WorkReport.list("-created_date"),
+          studio.entities.Meeting.list("-created_date"),
         ]);
         const completed = getOnboardingCompletedItems({ profile, tasks, reports, meetings, user });
         const storedManualProgress = new Set((profile?.onboarding_confirmations || []).filter((id) => manualItems.has(id)));
@@ -61,7 +61,7 @@ export default function OnboardingChecklist({ user, isAdmin = false, onComplete 
       .filter((current) => current.kind === "manual" && (current.id === item.id ? nextDone : current.done))
       .map((current) => current.id);
     try {
-      await base44.entities.User.update(user.id, { onboarding_confirmations: nextProgress });
+      await studio.entities.User.update(user.id, { onboarding_confirmations: nextProgress });
       setItems((previous) => previous.map((current) => current.id === item.id ? { ...current, done: nextDone } : current));
       if (nextDone && items.every((current) => current.done || current.id === item.id)) onComplete?.();
     } catch (error) {

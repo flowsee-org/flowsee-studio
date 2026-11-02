@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
 import { Plus, User, Mail, Phone, Search, Users, ShieldCheck, Upload, FolderOpen, Network, UserMinus, IdCard } from "lucide-react";
@@ -42,9 +42,9 @@ export default function Employees() {
     try {
       // Directory = auth user store (User) merged with Employee extra profile records by email.
       const [users, employeeRecords, taskList] = await Promise.all([
-        base44.entities.User.list(),
-        base44.entities.Employee.list().catch(() => []),
-        base44.entities.Task.list().catch(() => []),
+        studio.entities.User.list(),
+        studio.entities.Employee.list().catch(() => []),
+        studio.entities.Task.list().catch(() => []),
       ]);
       const byEmail = new Map();
       employeeRecords.forEach((e) => { if (e.email) byEmail.set(String(e.email).toLowerCase(), e); });
@@ -75,7 +75,7 @@ export default function Employees() {
     setLoading(false);
   };
 
-  const { deleteWithUndo } = useDeleteUndo("User", (id) => base44.entities.User.delete(id), load);
+  const { deleteWithUndo } = useDeleteUndo("User", (id) => studio.entities.User.delete(id), load);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -149,7 +149,7 @@ export default function Employees() {
         // not possible here without id; store them for now via Employee entity by creating
         // an employee record keyed by email (fields live on Employee too).
         try {
-          await base44.entities.Employee.create({
+          await studio.entities.Employee.create({
             name: full_name || row.email,
             email: row.email,
             department: row.department || "",
@@ -189,14 +189,14 @@ export default function Employees() {
           const assignees = t.assignees || (t.assignee ? [t.assignee] : []);
           const next = assignees.filter((a) => a !== offboardFor.name);
           next.push(reassignTo);
-          await base44.entities.Task.update(t.id, { assignees: next });
+          await studio.entities.Task.update(t.id, { assignees: next });
         }
       }
-      const res = await fetch(`/api/apps/${(await import("@/api/base44Client")).appId}/entities/User/${offboardFor.id}/deactivate`, {
+      const res = await fetch(`/api/apps/${(await import("@/api/studioClient")).appId}/entities/User/${offboardFor.id}/deactivate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("base44_access_token")}`,
+          "Authorization": `Bearer ${localStorage.getItem("studio_access_token")}`,
         },
       });
       if (!res.ok) {

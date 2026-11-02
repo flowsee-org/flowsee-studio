@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { CalendarClock, Video, X } from "lucide-react";
 import { getPersianDate } from "@/components/PersianDatePicker";
@@ -26,7 +26,7 @@ export default function MeetingReminders() {
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await base44.entities.Meeting.list("-created_date");
+        const data = await studio.entities.Meeting.list("-created_date");
         setMeetings(data);
       } catch {
         setMeetings([]);
@@ -34,7 +34,7 @@ export default function MeetingReminders() {
       setLoading(false);
     };
     load();
-    const unsub = base44.entities.Meeting.subscribe(load);
+    const unsub = studio.entities.Meeting.subscribe(load);
     return unsub;
   }, []);
 

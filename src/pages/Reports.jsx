@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { BarChart3, Calendar, FileText, TrendingUp, TrendingDown, Trash2 } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
@@ -49,9 +49,9 @@ export default function Reports() {
   useEffect(() => {
     (async () => {
       const [e, i, p] = await Promise.all([
-        base44.entities.Expense.list(),
-        base44.entities.Income.list(),
-        base44.entities.Project.list(),
+        studio.entities.Expense.list(),
+        studio.entities.Income.list(),
+        studio.entities.Project.list(),
       ]);
       setExpenses(e);
       setIncomes(i);
@@ -172,8 +172,8 @@ export default function Reports() {
   const exportToCSV = async (entityName) => {
     setExportingCsv(entityName);
     try {
-      const token = window.localStorage.getItem("base44_access_token");
-      const response = await fetch(`/api/apps/${base44.appId}/export/${entityName}`, {
+      const token = window.localStorage.getItem("studio_access_token");
+      const response = await fetch(`/api/apps/${studio.appId}/export/${entityName}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!response.ok) {

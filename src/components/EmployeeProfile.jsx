@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, User, Calendar, Briefcase, BookOpen, CircleDot, Camera } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import { toast } from "@/components/ui/use-toast";
 import { imageFileToDataUrl } from "@/lib/image-file";
@@ -34,7 +34,7 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
     setSaving(true);
     setError("");
     try {
-      await base44.entities.User.update(employee.id, {
+      await studio.entities.User.update(employee.id, {
         full_name: form.full_name.trim(),
         phone: form.phone.trim(),
         profile_image: form.profile_image,

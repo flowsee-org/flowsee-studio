@@ -5,7 +5,7 @@ import { ChevronDown, LayoutDashboard, Wallet, BarChart3, Calendar, Users, Folde
 import { roleLabel } from "@/lib/roles";
 import NotificationCenter from "@/components/NotificationCenter";
 import { toast } from "@/components/ui/use-toast";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { canAccessModule } from "@/lib/permissions";
 
 const allNavItems = [
@@ -68,16 +68,14 @@ export default function Layout() {
     }
   }, [darkMode]);
 
-  // The SDK's logout() does a full-page server round-trip that lands the user
-  // back on the login page (see AuthContext.logout), so no router call here.
   const handleLogout = () => {
-    logout(false);
+    logout();
   };
 
   const handleResendVerification = async () => {
     setResendingVerification(true);
     try {
-      await base44.auth.resendOtp(user.email);
+      await studio.auth.resendOtp(user.email);
       toast({
         title: "ایمیل تایید ارسال شد",
         description: "کد تایید به ایمیل شما ارسال شد. ایمیل خود را بررسی کنید.",
@@ -103,7 +101,7 @@ export default function Layout() {
         <div className="p-6 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl overflow-hidden flex items-center justify-center shadow-lg shadow-primary/20 bg-black">
-              <img src="https://media.base44.com/images/public/6a97d5f57663dc264577980c/a953bd16d_Property1TransparentColorOrange22x.png" alt="فلوسی" className="w-7 h-7 object-contain" />
+              <img src="/flowsee.png" alt="فلوسی" className="w-7 h-7 object-contain" />
             </div>
             <div>
               <h1 className="font-bold text-base leading-tight">استودیو فلوسی</h1>

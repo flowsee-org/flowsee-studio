@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Shield, UserPlus, Mail, Users, TrendingUp, TrendingDown, LogOut, RotateCcw, Key, Activity, ShieldCheck, UserX, Upload, Plus, Trash2 } from "lucide-react";
 import { roleLabel, roleColor } from "@/lib/roles";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { appId } from "@/api/base44Client";
+import { appId } from "@/api/studioClient";
 import EmployeeForm from "@/components/EmployeeForm";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
 import { formatPersianNumber as formatFaNum } from "@/lib/number-format";
@@ -39,9 +39,9 @@ export default function Admin() {
   const load = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
     const [u, e, i] = await Promise.all([
-      base44.entities.User.list(),
-      base44.entities.Expense.list(),
-      base44.entities.Income.list(),
+      studio.entities.User.list(),
+      studio.entities.Expense.list(),
+      studio.entities.Income.list(),
     ]);
     setUsers(u);
     setExpenses(e);
@@ -51,7 +51,7 @@ export default function Admin() {
 
   const { deleteWithUndo } = useDeleteUndo(
     "User",
-    (id) => base44.entities.User.delete(id),
+    (id) => studio.entities.User.delete(id),
     load
   );
 
@@ -67,7 +67,7 @@ export default function Admin() {
     setInviting(true);
     setInviteMsg("");
     try {
-      await base44.users.inviteUser(inviteEmail, inviteRole);
+      await studio.users.inviteUser(inviteEmail, inviteRole);
       setInviteMsg("دعوت‌نامه با موفقیت ارسال شد");
       setInviteEmail("");
       load();
@@ -79,7 +79,7 @@ export default function Admin() {
 
   const handleRoleChange = async (userId, newRole) => {
     try {
-      await base44.entities.User.update(userId, { role: newRole });
+      await studio.entities.User.update(userId, { role: newRole });
       load();
     } catch (err) {
       console.error(err);
@@ -93,7 +93,7 @@ export default function Admin() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("base44_access_token")}`,
+          "Authorization": `Bearer ${localStorage.getItem("studio_access_token")}`,
         },
       });
       if (res.ok) {
@@ -111,7 +111,7 @@ export default function Admin() {
 
   const handleForceLogout = async (targetUser) => {
     try {
-      await base44.entities.User.update(targetUser.id, { force_logout: true });
+      await studio.entities.User.update(targetUser.id, { force_logout: true });
       load();
     } catch (err) {
       console.error(err);
@@ -121,7 +121,7 @@ export default function Admin() {
 
   const handleResetPassword = async (targetUser) => {
     try {
-      await base44.auth.resetPasswordRequest(targetUser.email);
+      await studio.auth.resetPasswordRequest(targetUser.email);
       alert("لینک بازیابی رمز برای " + targetUser.email + " ارسال شد");
     } catch (err) {
       console.error(err);
@@ -136,7 +136,7 @@ export default function Admin() {
     setRestoring(true);
     setRestoreMsg("");
     try {
-      const token = localStorage.getItem("base44_access_token");
+      const token = localStorage.getItem("studio_access_token");
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch(`/api/apps/${appId}/restore`, {
@@ -161,7 +161,7 @@ export default function Admin() {
     setSendingDigest(true);
     setDigestMsg("");
     try {
-      const token = localStorage.getItem("base44_access_token");
+      const token = localStorage.getItem("studio_access_token");
       const res = await fetch(`/api/apps/${appId}/announcement/digest`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -173,6 +173,20 @@ export default function Admin() {
       setDigestMsg("❌ ارسال ناموفق بود");
     }
     setSendingDigest(false);
+  };
+
+  const downloadExport = async (event, path) => {
+    event.preventDefault();
+    try {
+      const response = await fetch(path, { headers: { Authorization: `Bearer ${localStorage.getItem('studio_access_token') || ''}` } });
+      if (!response.ok) throw new Error('دریافت فایل ناموفق بود');
+      const url = URL.createObjectURL(await response.blob());
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = path.endsWith('/backup') ? 'studio-backup.json' : `${path.split('/').pop()}.csv`;
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) { setRestoreMsg(err.message); }
   };
 
   const totalExpense = expenses.reduce((s, e) => s + (e.amount || 0), 0);
@@ -491,24 +505,28 @@ export default function Admin() {
         <div className="flex gap-3 flex-wrap">
           <a
             href={`/api/apps/${appId}/backup`}
+              onClick={(event) => downloadExport(event, `/api/apps/${appId}/backup`)}
             className="bg-primary text-primary-foreground px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
           >
             <RotateCcw className="w-5 h-5" /> دانلود بکاپ JSON
           </a>
           <a
             href={`/api/apps/${appId}/export/User`}
+              onClick={(event) => downloadExport(event, `/api/apps/${appId}/export/User`)}
             className="bg-green-600 text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
           >
             <Users className="w-5 h-5" /> اکسپورت کاربران (CSV)
           </a>
           <a
             href={`/api/apps/${appId}/export/Task`}
+              onClick={(event) => downloadExport(event, `/api/apps/${appId}/export/Task`)}
             className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
           >
             <Shield className="w-5 h-5" /> اکسپورت تسک‌ها (CSV)
           </a>
           <a
             href={`/api/apps/${appId}/export/Expense`}
+              onClick={(event) => downloadExport(event, `/api/apps/${appId}/export/Expense`)}
             className="bg-amber-600 text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
           >
             <TrendingDown className="w-5 h-5" /> اکسپورت هزینه‌ها (CSV)

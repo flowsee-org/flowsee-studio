@@ -10,7 +10,7 @@ export async function uploadEditorImage(file) {
   body.append('image', file);
   const response = await fetch(`${MAIN_API_URL}/api/studio/site-content/images`, {
     method: 'POST', body,
-    headers: { Authorization: `Bearer ${localStorage.getItem('base44_access_token') || ''}`, Accept: 'application/json' },
+    headers: { Authorization: `Bearer ${localStorage.getItem('studio_access_token') || ''}`, Accept: 'application/json' },
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok || !result.path) throw new Error(result.message || 'آپلود تصویر انجام نشد؛ دوباره تلاش کنید.');

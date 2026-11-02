@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { getPersianDate } from "@/components/PersianDatePicker";
 import { CheckCircle, Clock, Calendar, ArrowLeft, ArrowDownUp } from "lucide-react";
@@ -26,12 +26,12 @@ export default function TodayTasks() {
 
   useEffect(() => {
     load();
-    const unsub = base44.entities.Task.subscribe(() => load());
+    const unsub = studio.entities.Task.subscribe(() => load());
     return unsub;
   }, []);
 
   const load = async () => {
-    const data = await base44.entities.Task.list("-created_date");
+    const data = await studio.entities.Task.list("-created_date");
     setTasks(data);
     setLoading(false);
   };
@@ -53,12 +53,12 @@ export default function TodayTasks() {
 
   const markDone = async (id) => {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: "done" } : t)));
-    await base44.entities.Task.update(id, { status: "done" });
+    await studio.entities.Task.update(id, { status: "done" });
   };
 
   const defer = async (id) => {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, due_date: tomorrow } : t)));
-    await base44.entities.Task.update(id, { due_date: tomorrow });
+    await studio.entities.Task.update(id, { due_date: tomorrow });
   };
 
   return (

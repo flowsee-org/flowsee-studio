@@ -1,80 +1,27 @@
-// Self-contained local backend for the Flowsee Studio app (no Base44 needed).
-//
-// This is a dependency-free Node HTTP middleware that implements the wire
-// contract the `@base44/sdk` client expects, so the existing app code
-// (`base44.auth.*`, `base44.entities.*`, integrations) works unchanged against
-// a fully local backend:
-//
-//   - Email/password auth: register -> OTP verify -> login, password reset,
-//     logout.
-//   - Signed session tokens (HMAC, ~30d), scrypt-hashed passwords.
-//   - OTP / reset codes can't be emailed without a mail service, so they are
-//     printed to the console and appended to `.local/otp-inbox.log`.
-//   - Entity CRUD (list/get/create/update/delete) with sorting, persisted to
-//     `.local/db.json`.
-//   - The "continue with Google" button signs you in as a seeded demo admin
-//     (no OAuth credentials to wire up).
-//   - Seeded accounts for instant access (see the banner printed on startup).
-//
-// It is a development backend. It does not attempt to replicate Base44's
-// production features (real OAuth providers, email delivery, SSO, realtime).
-
 import {
   createHmac,
   randomBytes,
   scryptSync,
   timingSafeEqual,
 } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync, existsSync, appendFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, existsSync, appendFileSync, renameSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import nodemailer from "nodemailer";
 
-// Create reusable transporter with Ethereal (fake SMTP for dev)
-let emailTransporter = null;
-let etherealAccount = null;
-
-async function getEmailTransporter() {
-  if (emailTransporter) return { transporter: emailTransporter, account: etherealAccount };
-
-  // Create test account on Ethereal
-  etherealAccount = await nodemailer.createTestAccount();
-
-  emailTransporter = nodemailer.createTransport({
-    host: "smtp.ethereal.email",
-    port: 587,
-    secure: false,
-    auth: {
-      user: etherealAccount.user,
-      pass: etherealAccount.pass,
-    },
-  });
-
-  console.log(`\n[local-email] 📧 Ethereal SMTP ready: ${etherealAccount.user}`);
-  console.log(`[local-email] 🔗 Preview URL will appear after sending emails\n`);
-
-  return { transporter: emailTransporter, account: etherealAccount };
-}
-
+// SMTP is optional; without it messages stay in the private local outbox.
 async function sendEmail(to, subject, html) {
-  try {
-    const { transporter, account } = await getEmailTransporter();
-    const info = await transporter.sendMail({
-      from: '"FlowSee Studio" <noreply@flowsee.local>',
-      to,
-      subject,
-      html,
-    });
-
-    console.log(`\n[local-email] ✅ Email sent to ${to}`);
-    console.log(`[local-email] 🔗 Preview URL: ${nodemailer.getTestMessageUrl(info)}\n`);
-
-    return info;
-  } catch (err) {
-    console.error(`[local-email] ❌ Failed to send email to ${to}:`, err.message);
-    // Fallback to console log
-    console.log(`\n[local-email] 📧 Email (fallback) to ${to}: ${subject}\n`);
+  if (!process.env.SMTP_HOST) {
+    mkdirSync(DATA_DIR, { recursive: true });
+    appendFileSync(join(DATA_DIR, 'mail-outbox.jsonl'), JSON.stringify({ to, subject, html }) + '\n', { mode: 0o600 });
+    return { local: true };
   }
+  const transport = nodemailer.createTransport({
+    host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587),
+    secure: process.env.SMTP_SECURE === 'true',
+    ...(process.env.SMTP_USER ? { auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } } : {}),
+  });
+  return transport.sendMail({ from: process.env.SMTP_FROM || 'Flowsee <noreply@localhost>', to, subject, html });
 }
 
 // --- Announcement email digest -------------------------------------------
@@ -139,7 +86,7 @@ async function purgeDeleted(entityName, olderThanDays = 30) {
 }
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const DATA_DIR = join(ROOT, ".local");
+const DATA_DIR = process.env.STUDIO_DATA_DIR || join(ROOT, ".local");
 const DB_FILE = join(DATA_DIR, "db.json");
 const OTP_INBOX = join(DATA_DIR, "otp-inbox.log");
 const KNOWN_ENTITIES = [
@@ -164,14 +111,10 @@ const KNOWN_ENTITIES = [
   "WorkReport",
 ];
 
-// Big write batches can arrive as a single dialog; debounce the JSON write.
-let saveTimer = null;
 function saveDb() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    mkdirSync(DATA_DIR, { recursive: true });
-    writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
-  }, 200);
+  mkdirSync(DATA_DIR, { recursive: true });
+  writeFileSync(DB_FILE + '.tmp', JSON.stringify(db, null, 2), { mode: 0o600 });
+  renameSync(DB_FILE + '.tmp', DB_FILE);
 }
 function loadDb() {
   const fresh = () => ({
@@ -182,12 +125,12 @@ function loadDb() {
   if (!existsSync(DB_FILE)) return fresh();
   try {
     const parsed = JSON.parse(readFileSync(DB_FILE, "utf8"));
-    if (!parsed?.secret || !Array.isArray(parsed.users)) return fresh();
+    if (!parsed?.secret || !Array.isArray(parsed.users)) throw new Error('Invalid database structure');
     parsed.entities ||= {};
     for (const name of KNOWN_ENTITIES) parsed.entities[name] ||= [];
     return parsed;
-  } catch {
-    return fresh();
+  } catch (err) {
+    throw new Error(`Cannot read database: ${err.message}`);
   }
 }
 const db = loadDb();
@@ -220,7 +163,7 @@ function verifyToken(token) {
   if (parts.length !== 3) return null;
   const [header, body, sig] = parts;
   const expect = createHmac("sha256", db.secret).update(`${header}.${body}`).digest("base64url");
-  if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expect))) return null;
+  if (sig.length !== expect.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expect))) return null;
   try {
     const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
     if (payload.exp && Date.now() > payload.exp) return null;
@@ -232,7 +175,7 @@ function verifyToken(token) {
 const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 function issueToken(user) {
   const now = Date.now();
-  return signToken({ sub: user.id, email: user.email, iat: now, exp: now + TOKEN_TTL_MS });
+  return signToken({ sub: user.id, email: user.email, iat: now, version: user.session_version || 0, exp: now + TOKEN_TTL_MS });
 }
 
 // ----------------------------------------------------------------- users & OTP
@@ -252,53 +195,17 @@ function findUserByEmail(email) {
     || matches.find((u) => !u.deleted_at)
     || matches[0];
 }
-function seedUsers() {
-  const seed = (email, password, role, full_name) => {
-    if (findUserByEmail(email)) return;
-    const now = new Date().toISOString();
-    const user = {
-      id: randomId("u"),
-      email,
-      password_hash: hashPassword(password),
-      full_name,
-      phone: "",
-      profile_image: "",
-      role,
-      is_verified: true,
-      created_date: now,
-      updated_date: now,
-    };
-    db.users.push(user);
-    saveDb();
-  };
-  seed("ceo@flowsee.local", "ceo12345", "superadmin", "مدیرعامل");
-  seed("admin@flowsee.local", "admin12345", "admin", "مدیر سیستم");
-  seed("staff@flowsee.local", "staff12345", "user", "پرسنل نمونه");
-  seed("google.demo@flowsee.local", randomBytes(18).toString("hex"), "superadmin", "کاربر گوگل");
+function bootstrapAdmin() {
+  if (db.users.length || !process.env.STUDIO_ADMIN_EMAIL) return;
+  const password = process.env.STUDIO_ADMIN_PASSWORD || '';
+  if (password.length < 12) throw new Error('STUDIO_ADMIN_PASSWORD must contain at least 12 characters');
+  const now = new Date().toISOString();
+  db.users.push({ id: randomId('u'), email: process.env.STUDIO_ADMIN_EMAIL.toLowerCase(),
+    password_hash: hashPassword(password), full_name: 'مدیر سیستم', role: 'superadmin',
+    is_verified: true, is_active: true, created_date: now, updated_date: now });
+  saveDb();
 }
-seedUsers();
-banner();
-
-function banner() {
-  console.log(
-    `
-==============================================================
-  Local Base44 backend (self-hosted) — ${
-      db.users.filter((u) => u.role === "superadmin").length
-    } superadmin(s), ${
-      db.users.filter((u) => u.role === "admin").length
-    } admin(s), ${db.users.length} user(s)
---------------------------------------------------------------
-  CEO/مدیرعامل : ceo@flowsee.local      / ceo12345
-  Admin/مدیر   : admin@flowsee.local    / admin12345
-  Staff/پرسنل  : staff@flowsee.local    / staff12345
-  Google button signs you in as google.demo@flowsee.local (superadmin)
-  OTP/reset codes logged to  .local/otp-inbox.log
---------------------------------------------------------------
-  Data persists in .local/db.json. Delete it to reset everything.
-==============================================================
-`);
-}
+bootstrapAdmin();
 
 const otps = new Map(); // email -> { code, expiresAt }
 const resets = new Map(); // token -> { email, expiresAt }
@@ -340,7 +247,7 @@ async function deliverOtp(email, code) {
 }
 
 async function deliverReset(email, token) {
-  const resetUrl = `http://localhost:5173/reset-password?token=${token}`;
+  const resetUrl = `${process.env.STUDIO_PUBLIC_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
 
   // Print to console
   console.log(`\n[local-auth] Password reset for ${email} -> ${resetUrl}\n`);
@@ -377,7 +284,8 @@ async function deliverReset(email, token) {
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    req.on("data", (c) => chunks.push(c));
+    let size = 0;
+    req.on("data", (c) => { size += c.length; if (size > 12 * 1024 * 1024) { reject(Object.assign(new Error('Body too large'), { status: 413 })); } else chunks.push(c); });
     req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
@@ -387,7 +295,7 @@ function parseMultipart(body, contentType) {
   const m = /boundary=([^;]+)/.exec(contentType || "");
   if (!m) return [];
   let boundary = m[1].trim().replace(/^"|"$/g, "");
-  if (!boundary.startsWith("--")) boundary = "--" + boundary;
+  boundary = "--" + boundary;
   const buf = Buffer.from(body);
   const search = Buffer.from(boundary);
   let pos = buf.indexOf(search);
@@ -433,7 +341,9 @@ function getAuthUser(req) {
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
   const payload = verifyToken(token);
   if (!payload) return null;
-  return findUserByEmail(payload.email) || null;
+  const user = db.users.find(u => u.id === payload.sub);
+  if (!user || user.deleted_at || user.is_active === false || user.force_logout || (user.session_version || 0) !== (payload.version || 0)) return null;
+  return user;
 }
 function requireUser(res, u, api) {
   if (!u) {
@@ -450,13 +360,22 @@ const pathStartsWith = (path, prefix) => {
 
 // Main handler. `req.url` arrives without the "/api" mount prefix from
 // connect-style middlewares, but we tolerate either form here.
-async function handleRequest(req, res) {
+const authAttempts = new Map();
+export async function handleRequest(req, res) {
   const url = new URL(req.url || "/", "http://local");
   let path = decodeURIComponent(url.pathname);
   if (pathStartsWith(path, "/api")) path = path.slice("/api".length) || "/";
   const method = String(req.method || "GET").toUpperCase();
 
   try {
+    if (method === 'POST' && /\/auth\//.test(path)) {
+      const now = Date.now();
+      for (const [key, value] of authAttempts) if (value.until < now) authAttempts.delete(key);
+      const key = req.socket.remoteAddress || 'local';
+      const entry = authAttempts.get(key) || { count: 0, until: now + 60000 };
+      entry.count++; authAttempts.set(key, entry);
+      if (entry.count > 30) return error(res, 429, 'Too many attempts; try again in a minute');
+    }
     // --- App public settings (platform contract) --------------------------
     if (method === "GET" && /^\/apps\/public\/prod\/public-settings\/by-id\/[^/]+$/.test(path)) {
       return sendJson(res, 200, { id: url.pathname.split("/").pop(), public_settings: {} });
@@ -470,6 +389,7 @@ async function handleRequest(req, res) {
       if (!email || !password) return error(res, 400, "Email and password are required");
       if (password.length < 6) return error(res, 400, "Password must be at least 6 characters");
       if (findUserByEmail(email)) return error(res, 409, "An account with this email already exists");
+      if (process.env.STUDIO_ALLOW_REGISTRATION !== 'true') return error(res, 403, 'Registration is disabled; ask an administrator for an invitation');
       const now = new Date().toISOString();
       const user = {
         id: randomId("u"),
@@ -480,7 +400,7 @@ async function handleRequest(req, res) {
         profile_image: "",
         role: "user",
         // Local dev backend: verify immediately so the user can get in without
-        // an email round-trip. Real Base44 would require OTP verification here.
+        // an email round-trip. Hosted services would require OTP verification here.
         is_verified: true,
         created_date: now,
         updated_date: now,
@@ -521,9 +441,10 @@ async function handleRequest(req, res) {
       const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
       const email = String(body.email || "").trim().toLowerCase();
       const user = findUserByEmail(email);
-      if (!user || !verifyPassword(String(body.password || ""), user.password_hash))
+      if (!user || user.deleted_at || user.is_active === false || !verifyPassword(String(body.password || ""), user.password_hash))
         return error(res, 401, "ایمیل یا رمز عبور نامعتبر است");
-      user.is_verified = true;
+      user.force_logout = false;
+      user.last_login = new Date().toISOString();
       saveDb();
       return sendJson(res, 200, { access_token: issueToken(user), user: publicUser(user) });
     }
@@ -552,33 +473,16 @@ async function handleRequest(req, res) {
       const pw = String(body.new_password || "");
       if (pw.length < 6) return error(res, 400, "Password must be at least 6 characters");
       user.password_hash = hashPassword(pw);
+      user.session_version = (user.session_version || 0) + 1;
       user.updated_date = new Date().toISOString();
       resets.delete(token);
       saveDb();
       return sendJson(res, 200, { success: true });
     }
 
-    // --- "Continue with Google" simulation ---------------------------------
-    if (method === "GET" && path === "/apps/auth/login") {
-      const fromUrl = url.searchParams.get("from_url") || "/";
-      const demo = findUserByEmail("google.demo@flowsee.local");
-      const token = issueToken(demo);
-      const sep = fromUrl.includes("?") ? "&" : "?";
-      res.statusCode = 302;
-      res.setHeader("Location", `${fromUrl}${sep}access_token=${encodeURIComponent(token)}`);
-      res.setHeader("Content-Type", "text/plain");
-      return res.end("Redirecting to the app…");
-    }
-
-    // --- Logout (SDK does a full GET to this URL, no appId in path) ---------
-    if (method === "GET" && path === "/apps/auth/logout") {
-      const fromUrl = url.searchParams.get("from_url") || "/";
-      res.statusCode = 302;
-      res.setHeader("Location", fromUrl);
-      res.setHeader("Content-Type", "text/plain");
-      return res.end("Logged out.");
-    }
     if (method === "POST" && path === "/apps/auth/logout") {
+      const user = getAuthUser(req);
+      if (user) { user.session_version = (user.session_version || 0) + 1; saveDb(); }
       return sendJson(res, 200, { success: true });
     }
 
@@ -635,9 +539,12 @@ async function handleRequest(req, res) {
       };
       db.users.push(user);
       saveDb();
-      console.log(`[local-auth] invited ${email} (role: ${role})`);
-      if (initialPassword)
-        console.log(`[local-auth] initial password for ${email}: ${initialPassword}`);
+      if (!initialPassword) {
+        const token = randomBytes(24).toString('hex');
+        resets.set(token, { email, expiresAt: Date.now() + 60 * 60 * 1000 });
+        await deliverReset(email, token);
+      }
+
       return sendJson(res, 200, { success: true, user: publicUser(user) });
     }
 
@@ -671,10 +578,15 @@ async function handleRequest(req, res) {
       if (!requireUser(res, u, "restore")) return undefined;
       const entityName = restoreMatch[1];
       const recordId = restoreMatch[2];
+      if (!KNOWN_ENTITIES.includes(entityName) && entityName !== "User") return error(res, 404, "Unknown entity");
       const isUserEntity = entityName === "User";
+      const manager = ['admin', 'superadmin'].includes(u.role);
+      if (['Expense', 'Income', 'Salary', 'AccountingPeriodLock', 'Employee', 'AppSettings'].includes(entityName) && !manager && (entityName !== 'AppSettings' || method !== 'GET')) return error(res, 403, 'Forbidden');
       const store = isUserEntity ? db.users : (db.entities[entityName] ||= []);
       const rec = store.find((r) => r.id === recordId);
       if (!rec) return error(res, 404, `${entityName} not found`);
+      if (isUserEntity && u.role !== 'superadmin' && (u.role !== 'admin' || rec.role !== 'user')) return error(res, 403, 'Forbidden');
+      if (!isUserEntity && rec.created_by_id !== u.id && !['admin', 'superadmin'].includes(u.role)) return error(res, 403, 'Forbidden');
       if (!rec.deleted_at) return error(res, 400, "Record is not deleted");
       delete rec.deleted_at;
       delete rec.deleted_by;
@@ -708,17 +620,22 @@ async function handleRequest(req, res) {
       // accounts are the directory that meeting/task pickers, the employees
       // page and the admin user list read from. password_hash is always
       // stripped on output.
+      if (!KNOWN_ENTITIES.includes(entityName) && entityName !== "User") return error(res, 404, "Unknown entity");
       const isUserEntity = entityName === "User";
+      const manager = ['admin', 'superadmin'].includes(u.role);
+      if (['Expense', 'Income', 'Salary', 'AccountingPeriodLock', 'Employee', 'AppSettings'].includes(entityName) && !manager && (entityName !== 'AppSettings' || method !== 'GET')) return error(res, 403, 'Forbidden');
       const store = isUserEntity ? db.users : (db.entities[entityName] ||= []);
 
+      const sanitize = isUserEntity ? publicUser : (r) => r;
       if (method === "GET") {
-        const sanitize = isUserEntity ? publicUser : (r) => r;
         if (recordId) {
           const rec = store.find((r) => r.id === recordId && !r.deleted_at);
           if (!rec) return error(res, 404, `${entityName} not found`);
+          if (!manager && ['WorkReport', 'LeaveRequest', 'Notification'].includes(entityName) && rec.created_by_id !== u.id && rec.user_id !== u.id && rec.employee_id !== u.id) return error(res, 403, 'Forbidden');
           return sendJson(res, 200, sanitize(rec));
         }
         let out = [...store];
+        if (!manager && ['WorkReport', 'LeaveRequest', 'Notification'].includes(entityName)) out = out.filter(r => r.created_by_id === u.id || r.user_id === u.id || r.employee_id === u.id);
         // Soft-deleted records are hidden from normal reads (delete undo keeps
         // them in the store; see the restore endpoint below).
         if (url.searchParams.get("includeDeleted") !== "1")
@@ -764,6 +681,7 @@ async function handleRequest(req, res) {
       }
 
       if (method === "POST") {
+        if (isUserEntity) return error(res, 403, "Use the invite endpoint to create users");
         const raw = (await readBody(req)).toString("utf8");
         const body = JSON.parse(raw || "{}");
         if (typeof body !== "object" || body === null || Array.isArray(body))
@@ -833,25 +751,20 @@ async function handleRequest(req, res) {
         const body = JSON.parse(raw || "{}");
         const rec = store.find((r) => r.id === recordId && !r.deleted_at);
         if (!rec) return error(res, 404, `${entityName} not found`);
+        if (!manager && !isUserEntity && ['WorkReport', 'LeaveRequest', 'Notification', 'Announcement'].includes(entityName) && rec.created_by_id !== u.id && rec.user_id !== u.id) return error(res, 403, 'Forbidden');
         // Never let a document overwrite its own identity or audit fields.
         const { id: _id, created_date: _cd, created_by_id: _cbi, ...rest } = body;
         if (isUserEntity) {
-          // Only owners or admins/superadmins may update a user record, and
-          // only admins/superadmins may change another user's role.
-          const isSelf = rec.id === u.id;
-          const isManager = u.role === "superadmin" || u.role === "admin";
-          if (!isSelf && !isManager) return error(res, 403, "You can only update your own profile");
-          if (!isSelf && (body.role !== undefined) && !isManager)
-            return error(res, 403, "Only admins can change roles");
-          // Superadmin protection: cannot demote a superadmin, cannot demote self
-          if (body.role && body.role !== rec.role) {
-            if (rec.role === "superadmin") return error(res, 403, "Cannot change the role of a superadmin");
-            const superadminCount = db.users.filter((x) => x.role === "superadmin").length;
-            if (superadminCount === 1 && u.role === "superadmin" && body.role !== "superadmin")
-              return error(res, 403, "Cannot demote the only superadmin");
-            if (isSelf && body.role !== "superadmin") return error(res, 403, "Superadmin cannot demote themselves");
+          const manager = u.role === 'admin' || u.role === 'superadmin';
+          if (rec.id !== u.id && !manager) return error(res, 403, 'Forbidden');
+          if (rec.role === 'superadmin' && rec.id !== u.id && u.role !== 'superadmin') return error(res, 403, 'Forbidden');
+          if (body.role !== undefined && body.role !== rec.role) {
+            if (!manager || rec.id === u.id || rec.role === 'superadmin' || (body.role === 'superadmin' && u.role !== 'superadmin')) return error(res, 403, 'Cannot change role');
+            if (!['user', 'admin', 'superadmin'].includes(body.role)) return error(res, 400, 'Invalid role');
           }
-          if (body.password_hash) delete rest.password_hash;
+          const allowed = manager ? ['full_name', 'phone', 'profile_image', 'role', 'is_active', 'module_access', 'force_logout'] : ['full_name', 'phone', 'profile_image'];
+          for (const key of Object.keys(rest)) if (!allowed.includes(key)) delete rest[key];
+          if (rest.force_logout) rec.session_version = (rec.session_version || 0) + 1;
         }
 
         // Track what changed for activity log
@@ -892,6 +805,7 @@ async function handleRequest(req, res) {
         const i = store.findIndex((r) => r.id === recordId);
         if (i === -1) return error(res, 404, `${entityName} not found`);
         const deleted = store[i];
+        if (!manager && !isUserEntity && deleted.created_by_id !== u.id) return error(res, 403, 'Forbidden');
         if (isUserEntity) {
           if (deleted.id === u.id) return error(res, 400, "Cannot delete your own account");
           if (deleted.role === "superadmin") return error(res, 403, "Cannot delete a superadmin");
@@ -942,7 +856,8 @@ async function handleRequest(req, res) {
       const u = getAuthUser(req);
       if (!requireUser(res, u, "export")) return undefined;
       const entityName = path.match(/\/export\/([^/]+)$/)[1];
-      const store = db.entities[entityName] || [];
+      if (!['admin', 'superadmin'].includes(u.role)) return error(res, 403, 'Forbidden');
+      const store = entityName === 'User' ? db.users.map(publicUser) : db.entities[entityName] || [];
       if (store.length === 0) {
         res.setHeader("Content-Type", "text/csv");
         res.setHeader("Content-Disposition", `attachment; filename="${entityName}.csv"`);
@@ -968,7 +883,7 @@ async function handleRequest(req, res) {
       const u = getAuthUser(req);
       if (!requireUser(res, u, "backup")) return undefined;
       if (u.role !== "superadmin") return error(res, 403, "Only superadmin can backup");
-      const exportData = { ...db, users: db.users.map((u) => { const { password_hash, ...rest } = u; return rest; }) };
+      const exportData = { entities: db.entities, users: db.users.map((u) => { const { password_hash, ...rest } = u; return rest; }) };
       res.setHeader("Content-Type", "application/json");
       res.setHeader("Content-Disposition", `attachment; filename="flowsee-backup-${new Date().toISOString().slice(0,10)}.json"`);
       return res.end(JSON.stringify(exportData, null, 2));
@@ -977,8 +892,11 @@ async function handleRequest(req, res) {
       const u = getAuthUser(req);
       if (!requireUser(res, u, "restore")) return undefined;
       if (u.role !== "superadmin") return error(res, 403, "Only superadmin can restore");
-      const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
-      if (body.entities) {
+      const raw = await readBody(req);
+      const payload = String(req.headers['content-type'] || '').includes('multipart/form-data') ? parseMultipart(raw, req.headers['content-type']).find(p => p.filename)?.data : raw;
+      if (!payload) return error(res, 400, 'No backup file');
+      const body = JSON.parse(payload.toString('utf8'));
+      if (body.entities && typeof body.entities === 'object' && Object.entries(body.entities).every(([key, value]) => KNOWN_ENTITIES.includes(key) && key !== 'User' && Array.isArray(value))) {
         Object.assign(db.entities, body.entities);
         saveDb();
         return sendJson(res, 200, { success: true, message: "Database restored" });
@@ -1043,17 +961,18 @@ async function handleRequest(req, res) {
       const u = getAuthUser(req);
       if (!requireUser(res, u, "llm")) return undefined;
       const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
-      const prompt = String(body.prompt || "");
-      const feedback =
-        prompt.includes("تسک") || prompt.trim()
-          ? "بازخورد: خروجی کار امروز قابل قبول است. کیفیت کار خوب، بهره‌وری در حد انتظار بود. پیشنهاد: برای فردا هدف‌های خود را شفاف‌تر تعریف کنید و در گزارش، نتایج دقیق‌تری ذکر کنید."
-          : "تحلیل: عملکرد کلی خوب است. برای بهبود، دقت در تکمیل جزئیات گزارش‌ها را افزایش دهید.";
-      // The app renders `ai_analysis` directly as text, so return a JSON string.
-      return sendJson(res, 200, feedback);
+      const endpoint = process.env.STUDIO_LLM_URL || 'http://127.0.0.1:11434/api/generate';
+      const response = await fetch(endpoint, { method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: process.env.STUDIO_LLM_MODEL || 'qwen2.5:7b', prompt: String(body.prompt || ''), stream: false }),
+        signal: AbortSignal.timeout(120000) });
+      if (!response.ok) return error(res, 503, 'Local language model is unavailable');
+      const result = await response.json();
+      return sendJson(res, 200, result.response);
     }
   } catch (err) {
     console.error("[local-backend] handler error:", err);
-    return error(res, 500, "Internal server error");
+    return error(res, err.status || (err instanceof SyntaxError ? 400 : 500), err.status ? err.message : "Request failed");
   }
 
   return error(res, 404, "Not found");
