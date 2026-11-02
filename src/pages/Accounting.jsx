@@ -38,7 +38,7 @@ function ExpenseRow({ expense, isLocked, onDelete, onEdit }) {
   );
 }
 
-function SalaryRow({ salary, isLocked, onDelete, onEdit }) {
+function SalaryRow({ salary, isLocked, onDelete, onEdit, onViewSlip }) {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ status: salary.status });
 
