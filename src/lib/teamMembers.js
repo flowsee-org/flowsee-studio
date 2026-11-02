@@ -51,7 +51,7 @@ export async function loadTeamMembers() {
     if (name && !seenEmails.has(key) && !seenNames.has(nameKey)) {
       seenEmails.add(key);
       seenNames.add(nameKey);
-      merged.push({ id: u.id, name, email: u.email });
+      merged.push({ id: u.id, name, email: u.email, profile_image: u.profile_image || u.extra?.profile_image || "" });
     }
   });
 
@@ -71,11 +71,12 @@ export async function loadTeamMembers() {
       // Add as new entry
       if (emailKey) seenEmails.add(emailKey);
       seenNames.add(nameKey);
-      merged.push({ id: e.id, name: employeeName, email: e.email });
+      merged.push({ id: e.id, name: employeeName, email: e.email, profile_image: e.profile_image || e.extra?.profile_image || "" });
     } else if (employeeName && emailKey && existingByEmail) {
       // Update the existing entry with employee info if needed
       const existing = merged.find((m) => normalizeKey(m.email) === emailKey);
       if (existing) {
+        existing.profile_image ||= e.profile_image || e.extra?.profile_image || "";
         // Keep the user's name (full_name) as primary
         // We don't override the name from employee
       }

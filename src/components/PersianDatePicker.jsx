@@ -42,6 +42,7 @@ export default function PersianDatePicker({
   format = undefined,
   restrictToToday = false,
   disabled = false,
+  closeOnSelect = false,
 }) {
   const ref = useRef();
   const wrapperRef = useRef(null);
@@ -72,16 +73,19 @@ export default function PersianDatePicker({
   const handleChange = (dateObject) => {
     if (!dateObject) {
       onChange("");
+      if (closeOnSelect) ref.current?.closeCalendar?.();
       return;
     }
     if (range && Array.isArray(dateObject)) {
       const formatted = dateObject.map((d) => toLatinDigits(d.format("YYYY/MM/DD"))).join(" ~ ");
       onChange(formatted);
+      if (closeOnSelect && dateObject.length >= 2 && dateObject.every(Boolean)) ref.current?.closeCalendar?.();
       return;
     }
     const nextValue = toLatinDigits(dateObject.format(dateFormat));
     if (restrictToToday && nextValue.slice(0, 10) !== today) return;
     onChange(nextValue);
+    if (closeOnSelect) ref.current?.closeCalendar?.();
   };
 
   let datePickerValue;
@@ -147,7 +151,10 @@ export default function PersianDatePicker({
             <button
               key={btn.label}
               type="button"
-              onClick={() => onChange(btn.value)}
+              onClick={() => {
+                onChange(btn.value);
+                if (closeOnSelect) ref.current?.closeCalendar?.();
+              }}
               className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
                 value === btn.value
                   ? "bg-primary text-primary-foreground"
