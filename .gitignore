@@ -30,7 +30,6 @@ dist-ssr
 
 .env
 .vite
-base44/.app.jsonc
 
 # Local self-hosted backend database (never commit user data)
 .local/

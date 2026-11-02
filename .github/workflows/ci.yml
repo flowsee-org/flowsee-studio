@@ -30,11 +30,11 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Run unit tests
         run: npm test
+      - name: Test local backend
+        run: npm run test:backend
       - name: Check lint
         run: npm run lint
       - name: Build production frontend
         env:
-          VITE_BASE44_APP_ID: flowsee-ci
-          VITE_BASE44_APP_BASE_URL: https://studio.flowsee.ir
           VITE_MAIN_API_URL: https://flowsee.ir
         run: npm run build

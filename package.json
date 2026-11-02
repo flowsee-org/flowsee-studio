@@ -1,5 +1,5 @@
 {
-  "name": "base44-app",
+  "name": "flowsee-studio",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,11 +12,11 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
     "dig:sync": "node ops/sync-dig-theme.mjs",
-    "dig:health": "dig export-health --json"
+    "dig:health": "dig export-health --json",
+    "start": "node --env-file-if-exists=.env backend/server.mjs",
+    "test:backend": "node --test backend/*.test.mjs"
   },
   "dependencies": {
-    "@base44/sdk": "^0.8.46",
-    "@base44/vite-plugin": "^1.0.35",
     "@hello-pangea/dnd": "^17.0.0",
     "@hookform/resolvers": "^4.1.2",
     "@radix-ui/react-accordion": "^1.2.3",

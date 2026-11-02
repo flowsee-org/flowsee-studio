@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { studio } from '@/api/studioClient';
 import { Clock, User, Plus, CheckCircle, MessageSquare, FileText, Calendar, DollarSign, FolderKanban, Shield, ArrowUpRight } from 'lucide-react';
 import { formatPersianNumber as faNum } from '@/lib/number-format';
 
@@ -47,13 +47,13 @@ export default function ActivityFeed({ limit = 20 }) {
 
   useEffect(() => {
     loadActivities();
-    const unsub = base44.entities.ActivityLog.subscribe(() => loadActivities());
+    const unsub = studio.entities.ActivityLog.subscribe(() => loadActivities());
     return unsub;
   }, []);
 
   const loadActivities = async () => {
     try {
-      const data = await base44.entities.ActivityLog.list("-created_date", limit);
+      const data = await studio.entities.ActivityLog.list("-created_date", limit);
       setActivities(data);
     } catch (err) {
       console.error('Failed to load activities:', err);

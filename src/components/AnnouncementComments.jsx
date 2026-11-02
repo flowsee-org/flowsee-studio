@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { Send, MessageSquare, Reply, Clock } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { formatPersianNumber as faNum } from "@/lib/number-format";
@@ -31,13 +31,13 @@ export default function AnnouncementComments({ announcementId }) {
 
   useEffect(() => {
     loadComments();
-    const unsub = base44.entities.Comment.subscribe(() => loadComments());
+    const unsub = studio.entities.Comment.subscribe(() => loadComments());
     return unsub;
   }, [announcementId]);
 
   const loadComments = async () => {
     try {
-      const data = await base44.entities.Comment.list({ q: JSON.stringify({ entity_type: "announcement", entity_id: announcementId }) });
+      const data = await studio.entities.Comment.list({ q: JSON.stringify({ entity_type: "announcement", entity_id: announcementId }) });
       setComments(data.sort((a, b) => new Date(a.created_date) - new Date(b.created_date)));
     } catch (err) {
       console.error("Failed to load comments:", err);
@@ -50,7 +50,7 @@ export default function AnnouncementComments({ announcementId }) {
     if (!newComment.trim() || sending) return;
     setSending(true);
     try {
-      await base44.entities.Comment.create({
+      await studio.entities.Comment.create({
         entity_type: "announcement",
         entity_id: announcementId,
         author_name: user?.full_name || user?.email || "کاربر",
@@ -70,7 +70,7 @@ export default function AnnouncementComments({ announcementId }) {
     if (!text || sending) return;
     setSending(true);
     try {
-      await base44.entities.Comment.create({
+      await studio.entities.Comment.create({
         entity_type: "announcement",
         entity_id: announcementId,
         author_name: user?.full_name || user?.email || "کاربر",

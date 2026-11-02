@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { X } from "lucide-react";
 import PersianDatePicker, { getPersianDate } from "@/components/PersianDatePicker";
 import { toast } from "@/components/ui/use-toast";
@@ -47,9 +47,9 @@ export default function ReportForm({ tasks, userName, editReport, onClose, onSav
       project_name: projectNames.join("، ") || "",
     };
     if (editReport) {
-      await base44.entities.WorkReport.update(editReport.id, data);
+      await studio.entities.WorkReport.update(editReport.id, data);
     } else {
-      await base44.entities.WorkReport.create(data);
+      await studio.entities.WorkReport.create(data);
     }
     setSaving(false);
     onSaved();

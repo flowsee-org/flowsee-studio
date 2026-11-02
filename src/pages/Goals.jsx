@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { loadTeamMembers } from "@/lib/teamMembers";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -74,13 +74,13 @@ export default function Goals() {
   useEffect(() => {
     load();
     loadMembers();
-    const unsubscribe = base44.entities.Goal.subscribe(() => load());
+    const unsubscribe = studio.entities.Goal.subscribe(() => load());
     return unsubscribe;
   }, []);
 
   const load = async () => {
     try {
-      const data = await base44.entities.Goal.list("-created_date");
+      const data = await studio.entities.Goal.list("-created_date");
       setGoals(data);
     } catch (err) {
       console.error("Failed to load goals:", err);
@@ -88,7 +88,7 @@ export default function Goals() {
     setLoading(false);
   };
 
-  const { deleteWithUndo } = useDeleteUndo("Goal", (id) => base44.entities.Goal.delete(id), load);
+  const { deleteWithUndo } = useDeleteUndo("Goal", (id) => studio.entities.Goal.delete(id), load);
 
   const loadMembers = async () => {
     const members = await loadTeamMembers();
@@ -131,9 +131,9 @@ export default function Goals() {
         ),
       };
       if (editGoal) {
-        await base44.entities.Goal.update(editGoal.id, data);
+        await studio.entities.Goal.update(editGoal.id, data);
       } else {
-        await base44.entities.Goal.create(data);
+        await studio.entities.Goal.create(data);
       }
       await load();
       toast({ title: editGoal ? "هدف ویرایش شد" : "هدف ثبت شد" });
@@ -186,7 +186,7 @@ export default function Goals() {
     const krs = (goal.key_results || []).map((kr, i) =>
       i === krIndex ? { ...kr, current: Number(newCurrent) || 0 } : kr
     );
-    await base44.entities.Goal.update(goal.id, { key_results: krs });
+    await studio.entities.Goal.update(goal.id, { key_results: krs });
   };
 
   // ---- Derived data ----

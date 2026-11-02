@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 import { Settings, Upload, Image, Clock, Globe, Building, Coins, Lock } from "lucide-react";
@@ -46,7 +46,7 @@ export default function AppSettings() {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      const all = await base44.entities.AppSettings.list();
+      const all = await studio.entities.AppSettings.list();
       if (all && all.length > 0) {
         const doc = all[0];
         setExistingId(doc.id);
@@ -93,9 +93,9 @@ export default function AppSettings() {
       setSaving(true);
       const data = { ...settings };
       if (existingId) {
-        await base44.entities.AppSettings.update(existingId, data);
+        await studio.entities.AppSettings.update(existingId, data);
       } else {
-        await base44.entities.AppSettings.create(data);
+        await studio.entities.AppSettings.create(data);
       }
       toast({ title: "ذخیره شد", description: "تنظیمات شرکت با موفقیت بروزرسانی گردید" });
       await loadSettings();

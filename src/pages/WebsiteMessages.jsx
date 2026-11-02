@@ -59,7 +59,7 @@ export default function WebsiteMessages() {
       try {
         const response = await fetch(API_URL + "?" + query.toString(), {
           headers: {
-            Authorization: "Bearer " + localStorage.getItem("base44_access_token"),
+            Authorization: "Bearer " + localStorage.getItem("studio_access_token"),
             Accept: "application/json",
           },
           signal: controller.signal,
@@ -99,7 +99,7 @@ export default function WebsiteMessages() {
     setIsMutating(true);
     setError("");
     try {
-      const token = localStorage.getItem("base44_access_token");
+      const token = localStorage.getItem("studio_access_token");
       const isBulk = ids.length > 1;
       const response = await fetch(isBulk ? `${API_URL}/bulk-status` : `${API_URL}/${ids[0]}`, {
         method: isBulk ? "POST" : "PUT",

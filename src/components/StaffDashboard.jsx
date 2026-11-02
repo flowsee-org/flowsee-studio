@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ListTodo, CheckCircle, Clock, Calendar, ArrowLeft, Settings2, UserRound } from "lucide-react";
 import TodayTasks from "@/components/TodayTasks";
@@ -41,9 +41,9 @@ export default function StaffDashboard() {
   useEffect(() => {
     (async () => {
       const [tasks, meetings, workReports] = await Promise.all([
-        base44.entities.Task.list("-created_date"),
-        base44.entities.Meeting.list("-created_date"),
-        base44.entities.WorkReport.list("-created_date"),
+        studio.entities.Task.list("-created_date"),
+        studio.entities.Meeting.list("-created_date"),
+        studio.entities.WorkReport.list("-created_date"),
       ]);
       setData({ tasks, meetings, workReports });
       setLoading(false);

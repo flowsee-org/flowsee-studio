@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { X, Plus, Trash2 } from "lucide-react";
 import { loadTeamMembers } from "@/lib/teamMembers";
 
@@ -23,7 +23,7 @@ export default function TaskTemplateModal({ editTemplate, onClose, onSaved }) {
   useEffect(() => {
     Promise.all([
       loadTeamMembers(),
-      base44.entities.Project.list(),
+      studio.entities.Project.list(),
     ]).then(([emps, projs]) => {
       setEmployees(emps);
       setProjects(projs);
@@ -54,9 +54,9 @@ export default function TaskTemplateModal({ editTemplate, onClose, onSaved }) {
     const proj = projects.find((p) => p.id === form.project_id);
     const data = { ...form, project_name: proj?.name || "" };
     if (editTemplate?.id) {
-      await base44.entities.TaskTemplate.update(editTemplate.id, data);
+      await studio.entities.TaskTemplate.update(editTemplate.id, data);
     } else {
-      await base44.entities.TaskTemplate.create(data);
+      await studio.entities.TaskTemplate.create(data);
     }
     setSaving(false);
     onSaved();

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Plus, Calendar, User, Check, X, AlertCircle, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import PersianDatePicker, { getPersianDate } from "@/components/PersianDatePicker";
@@ -86,13 +86,13 @@ export default function LeaveRequests() {
 
   useEffect(() => {
     load();
-    const unsubscribe = base44.entities.LeaveRequest.subscribe(() => load());
+    const unsubscribe = studio.entities.LeaveRequest.subscribe(() => load());
     return unsubscribe;
   }, []);
 
   const load = async () => {
     try {
-      const data = await base44.entities.LeaveRequest.list("-created_date");
+      const data = await studio.entities.LeaveRequest.list("-created_date");
       setRequests(data);
     } catch (err) {
       console.error("Failed to load leave requests:", err);
@@ -101,7 +101,7 @@ export default function LeaveRequests() {
     }
   };
 
-  const { deleteWithUndo } = useDeleteUndo("LeaveRequest", (id) => base44.entities.LeaveRequest.delete(id), load);
+  const { deleteWithUndo } = useDeleteUndo("LeaveRequest", (id) => studio.entities.LeaveRequest.delete(id), load);
 
   const visibleRequests = isAdmin
     ? requests
@@ -121,7 +121,7 @@ export default function LeaveRequests() {
     setSaving(true);
     setError("");
     try {
-      await base44.entities.LeaveRequest.create({
+      await studio.entities.LeaveRequest.create({
         user_name: userName,
         user_email: userEmail,
         leave_type: leaveType,
@@ -150,14 +150,14 @@ export default function LeaveRequests() {
   };
 
   const handleApprove = async (id) => {
-    await base44.entities.LeaveRequest.update(id, { status: "approved" });
+    await studio.entities.LeaveRequest.update(id, { status: "approved" });
     load();
   };
 
   const handleReject = async (id) => {
     const notes = window.prompt("دلیل رد درخواست (اختیاری):");
     if (notes === null) return;
-    await base44.entities.LeaveRequest.update(id, { status: "rejected", reviewer_notes: notes || "" });
+    await studio.entities.LeaveRequest.update(id, { status: "rejected", reviewer_notes: notes || "" });
     load();
   };
 

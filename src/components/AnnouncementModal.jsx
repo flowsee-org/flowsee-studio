@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { X, Upload, Pin, Clock } from "lucide-react";
 import RichTextField from "@/components/RichTextField";
 import PersianDatePicker from "@/components/PersianDatePicker";
@@ -22,7 +22,7 @@ export default function AnnouncementModal({ editAnnouncement, onClose, onSaved }
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    base44.entities.Employee.list().then(setEmployees);
+    studio.entities.Employee.list().then(setEmployees);
   }, []);
 
   const toggleName = (name) => {
@@ -38,7 +38,7 @@ export default function AnnouncementModal({ editAnnouncement, onClose, onSaved }
     if (!file) return;
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await studio.integrations.Core.UploadFile({ file });
       setForm({ ...form, file_url });
     } catch (err) {
       console.error("Upload failed", err);
@@ -53,9 +53,9 @@ export default function AnnouncementModal({ editAnnouncement, onClose, onSaved }
     if (data.target_audience !== "team") data.target_team = "";
     if (data.target_audience !== "individual") data.target_names = [];
     if (editAnnouncement?.id) {
-      await base44.entities.Announcement.update(editAnnouncement.id, data);
+      await studio.entities.Announcement.update(editAnnouncement.id, data);
     } else {
-      await base44.entities.Announcement.create(data);
+      await studio.entities.Announcement.create(data);
     }
     setSaving(false);
     onSaved();

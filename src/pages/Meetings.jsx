@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Plus, Calendar, Clock, User, CheckCircle, X, Video, Clock3, RefreshCw, FileText, AlertCircle, History, ArrowDownCircle, Filter, ChevronDown, Users, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import MeetingModal from "@/components/MeetingModal";
@@ -114,8 +114,8 @@ export default function Meetings() {
   useEffect(() => {
     load();
     loadCreators();
-    const unsubscribeMeeting = base44.entities.Meeting.subscribe(() => load());
-    const unsubscribeLeave = base44.entities.LeaveRequest.subscribe(() => load());
+    const unsubscribeMeeting = studio.entities.Meeting.subscribe(() => load());
+    const unsubscribeLeave = studio.entities.LeaveRequest.subscribe(() => load());
     return () => {
       if (typeof unsubscribeMeeting === "function") unsubscribeMeeting();
       if (typeof unsubscribeLeave === "function") unsubscribeLeave();
@@ -125,8 +125,8 @@ export default function Meetings() {
   const load = async () => {
     try {
       const [data, leaves] = await Promise.all([
-        base44.entities.Meeting.list("-created_date").catch(() => []),
-        base44.entities.LeaveRequest.list("-created_date").catch(() => []),
+        studio.entities.Meeting.list("-created_date").catch(() => []),
+        studio.entities.LeaveRequest.list("-created_date").catch(() => []),
       ]);
       setMeetings(Array.isArray(data) ? data : []);
       setLeaveRequests(Array.isArray(leaves) ? leaves : []);
@@ -135,7 +135,7 @@ export default function Meetings() {
     }
   };
 
-  const { deleteWithUndo } = useDeleteUndo("Meeting", (id) => base44.entities.Meeting.delete(id), load);
+  const { deleteWithUndo } = useDeleteUndo("Meeting", (id) => studio.entities.Meeting.delete(id), load);
 
   const loadCreators = async () => {
     const members = await loadTeamMembers();
@@ -193,13 +193,13 @@ export default function Meetings() {
   }, [creatorNames, user?.id, userName, memberMap]);
 
   const confirmMeeting = async (id) => {
-    await base44.entities.Meeting.update(id, { status: "confirmed" });
+    await studio.entities.Meeting.update(id, { status: "confirmed" });
     load();
   };
 
   const proposeTime = async (id) => {
     if (!proposedDate) return;
-    await base44.entities.Meeting.update(id, { proposed_date: proposedDate, proposed_time: proposedTime, status: "rescheduled" });
+    await studio.entities.Meeting.update(id, { proposed_date: proposedDate, proposed_time: proposedTime, status: "rescheduled" });
     setProposingFor(null);
     setProposedDate("");
     setProposedTime("10:00");
@@ -207,7 +207,7 @@ export default function Meetings() {
   };
 
   const acceptProposed = async (m) => {
-    await base44.entities.Meeting.update(m.id, {
+    await studio.entities.Meeting.update(m.id, {
       date: m.proposed_date,
       time: m.proposed_time,
       proposed_date: "",
@@ -218,7 +218,7 @@ export default function Meetings() {
   };
 
   const markDone = async (id) => {
-    await base44.entities.Meeting.update(id, { status: "done" });
+    await studio.entities.Meeting.update(id, { status: "done" });
     load();
   };
 
@@ -226,7 +226,7 @@ export default function Meetings() {
     if (!summaryText.trim()) return;
     const isCreator = m.created_by_id === user?.id;
     const field = isCreator ? "summary_creator" : "summary_colleague";
-    await base44.entities.Meeting.update(m.id, { [field]: summaryText });
+    await studio.entities.Meeting.update(m.id, { [field]: summaryText });
     setSummaryFor(null);
     setSummaryText("");
     load();
@@ -245,7 +245,7 @@ export default function Meetings() {
 
   const submitFeedback = async (m) => {
     if (!feedbackRating) return;
-    await base44.entities.Meeting.update(m.id, {
+    await studio.entities.Meeting.update(m.id, {
       feedback: {
         rating: feedbackRating,
         comment: feedbackComment.trim(),

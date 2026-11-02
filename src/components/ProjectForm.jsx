@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { X, UserMinus } from "lucide-react";
 import { loadTeamMembers } from "@/lib/teamMembers";
 import PersianDatePicker from "@/components/PersianDatePicker";
@@ -31,9 +31,9 @@ export default function ProjectForm({ editProject, onClose, onSaved }) {
     setSaving(true);
     try {
       if (editProject) {
-        await base44.entities.Project.update(editProject.id, form);
+        await studio.entities.Project.update(editProject.id, form);
       } else {
-        await base44.entities.Project.create(form);
+        await studio.entities.Project.create(form);
       }
       await onSaved();
       onClose();

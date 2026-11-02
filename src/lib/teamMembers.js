@@ -1,4 +1,4 @@
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 
 const normalizeKey = (value) => String(value || "")
   .normalize("NFKC")
@@ -26,13 +26,13 @@ export async function loadTeamMembers() {
   let employees = [];
   try {
     [users, employees] = await Promise.all([
-      base44.entities.User.list(),
-      base44.entities.Employee.list(),
+      studio.entities.User.list(),
+      studio.entities.Employee.list(),
     ]);
   } catch {
     // Non-admin users may not be able to list all users; try employees only
     try {
-      employees = await base44.entities.Employee.list();
+      employees = await studio.entities.Employee.list();
     } catch {
       employees = [];
     }

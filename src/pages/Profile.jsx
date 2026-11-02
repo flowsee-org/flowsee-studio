@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Camera, Save, Mail, Phone, User, CheckCircle, AlertTriangle, Send, Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
@@ -29,7 +29,7 @@ export default function Profile() {
     setSaving(true);
     setError("");
     try {
-      await base44.auth.updateMe({ full_name: fullName, phone, profile_image: profileImage });
+      await studio.auth.updateMe({ full_name: fullName, phone, profile_image: profileImage });
       // Refresh user data after update
       await checkUserAuth();
       setSaved(true);
@@ -60,7 +60,7 @@ export default function Profile() {
   const handleResendVerification = async () => {
     setSendingVerification(true);
     try {
-      await base44.auth.resendOtp(user.email);
+      await studio.auth.resendOtp(user.email);
       toast({
         title: "ایمیل تایید ارسال شد",
         description: "کد تایید به ایمیل شما ارسال شد. ایمیل خود را بررسی کنید.",

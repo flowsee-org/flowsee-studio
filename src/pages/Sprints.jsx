@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Plus, Flag, Play, CheckCircle2, Calendar, ListTodo, Users, Pencil, X, AlertCircle } from "lucide-react";
 import PersianDatePicker, { getPersianDate } from "@/components/PersianDatePicker";
@@ -50,9 +50,9 @@ function SprintModal({ sprint, onClose, onSaved }) {
         status,
       };
       if (sprint?.id) {
-        await base44.entities.Sprint.update(sprint.id, data);
+        await studio.entities.Sprint.update(sprint.id, data);
       } else {
-        await base44.entities.Sprint.create(data);
+        await studio.entities.Sprint.create(data);
       }
       toast({ title: sprint?.id ? "اسپرینت ویرایش شد" : "اسپرینت جدید ثبت شد" });
       setSaving(false);
@@ -166,8 +166,8 @@ export default function Sprints() {
   const load = async () => {
     try {
       const [s, t] = await Promise.all([
-        base44.entities.Sprint.list("-created_date").catch(() => []),
-        base44.entities.Task.list().catch(() => []),
+        studio.entities.Sprint.list("-created_date").catch(() => []),
+        studio.entities.Task.list().catch(() => []),
       ]);
       setSprints(Array.isArray(s) ? s : []);
       setTasks(Array.isArray(t) ? t : []);
@@ -178,12 +178,12 @@ export default function Sprints() {
     }
   };
 
-  const { deleteWithUndo } = useDeleteUndo("Sprint", (id) => base44.entities.Sprint.delete(id), load);
+  const { deleteWithUndo } = useDeleteUndo("Sprint", (id) => studio.entities.Sprint.delete(id), load);
 
   useEffect(() => {
     load();
-    const unsubSprint = base44.entities.Sprint.subscribe(() => load());
-    const unsubTask = base44.entities.Task.subscribe(() => load());
+    const unsubSprint = studio.entities.Sprint.subscribe(() => load());
+    const unsubTask = studio.entities.Task.subscribe(() => load());
     return () => {
       if (unsubSprint) unsubSprint();
       if (unsubTask) unsubTask();
@@ -202,7 +202,7 @@ export default function Sprints() {
 
   const changeStatus = async (id, status) => {
     try {
-      await base44.entities.Sprint.update(id, { status });
+      await studio.entities.Sprint.update(id, { status });
       toast({ title: "وضعیت اسپرینت به‌روزرسانی شد" });
       await load();
     } catch (error) {

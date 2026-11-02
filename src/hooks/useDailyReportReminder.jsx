@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { studio } from '@/api/studioClient';
 import { useAuth } from '@/lib/AuthContext';
 import { AlertTriangle, X, FileText, Clock } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -45,7 +45,7 @@ export function useDailyReportReminder() {
         const today = getPersianDate(0);
         try {
           // Check if user already filed a report today
-          const reports = await base44.entities.WorkReport.list({ q: JSON.stringify({ created_by_id: user.id, date: today }) });
+          const reports = await studio.entities.WorkReport.list({ q: JSON.stringify({ created_by_id: user.id, date: today }) });
           const hasReport = reports.length > 0;
 
           if (!hasReport) {

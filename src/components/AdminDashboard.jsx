@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { TrendingUp, TrendingDown, Wallet, ListTodo, FileText, ArrowUpRight, ArrowDownRight, ArrowLeft, Minus, Filter, ChevronLeft, ChevronRight, Users, CalendarDays } from "lucide-react";
 import TodayTasks from "@/components/TodayTasks";
 import AnnouncementWidget from "@/components/AnnouncementWidget";
@@ -25,13 +25,13 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const [expenses, incomes, tasks, meetings, workReports, users, leaveRequests] = await Promise.all([
-        base44.entities.Expense.list("-created_date"),
-        base44.entities.Income.list("-created_date"),
-        base44.entities.Task.list("-created_date"),
-        base44.entities.Meeting.list("-created_date"),
-        base44.entities.WorkReport.list("-created_date"),
-        base44.entities.User.list(),
-        base44.entities.LeaveRequest.list("-created_date"),
+        studio.entities.Expense.list("-created_date"),
+        studio.entities.Income.list("-created_date"),
+        studio.entities.Task.list("-created_date"),
+        studio.entities.Meeting.list("-created_date"),
+        studio.entities.WorkReport.list("-created_date"),
+        studio.entities.User.list(),
+        studio.entities.LeaveRequest.list("-created_date"),
       ]);
       setData({ expenses, incomes, tasks, meetings, workReports, users, leaveRequests });
     } catch (err) {

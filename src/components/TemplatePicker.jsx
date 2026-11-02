@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { X, Plus, Pencil, Trash2, FileText, CheckCircle } from "lucide-react";
 import TaskTemplateModal from "@/components/TaskTemplateModal";
 import { formatPersianNumber as faNum } from "@/lib/number-format";
@@ -23,13 +23,13 @@ export default function TemplatePicker({ onClose, onUse }) {
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    const data = await base44.entities.TaskTemplate.list("-created_date");
+    const data = await studio.entities.TaskTemplate.list("-created_date");
     setTemplates([...defaultTemplates, ...data]);
     setLoading(false);
   };
 
   const handleDelete = async (id) => {
-    await base44.entities.TaskTemplate.delete(id);
+    await studio.entities.TaskTemplate.delete(id);
     load();
   };
 

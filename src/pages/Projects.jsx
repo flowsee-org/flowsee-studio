@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { Plus, Trash2, FolderKanban, Pencil, Filter, X, Archive, RotateCcw, Table2, Columns3, GanttChart, ArrowDownUp } from "lucide-react";
 import ProjectForm from "@/components/ProjectForm";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -93,8 +93,8 @@ export default function Projects() {
     setLoading(true);
     try {
       const [projectData, taskData] = await Promise.all([
-        base44.entities.Project.list("-created_date"),
-        base44.entities.Task.list(),
+        studio.entities.Project.list("-created_date"),
+        studio.entities.Task.list(),
       ]);
       setProjects(projectData || []);
       setTasks(taskData || []);
@@ -117,7 +117,7 @@ export default function Projects() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await base44.entities.Project.delete(deleteTarget.id);
+      await studio.entities.Project.delete(deleteTarget.id);
       setProjects((current) => current.filter((project) => project.id !== deleteTarget.id));
       toast({ title: `پروژه «${deleteTarget.name}» حذف شد` });
     } catch (error) {
@@ -129,7 +129,7 @@ export default function Projects() {
 
   const updateProject = async (project, changes, successTitle) => {
     try {
-      await base44.entities.Project.update(project.id, changes);
+      await studio.entities.Project.update(project.id, changes);
       setProjects((current) => current.map((item) => item.id === project.id ? { ...item, ...changes } : item));
       toast({ title: successTitle });
     } catch (error) {

@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { base44 } from "@/api/base44Client";
+import { studio } from "@/api/studioClient";
 import { Plus, Trash2, X, BarChart3, PieChart as PieChartIcon, Upload, Lock, FileText, Filter, Pencil, ChevronDown } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import PersianDatePicker from "@/components/PersianDatePicker";
@@ -155,10 +155,10 @@ export default function Accounting() {
   const loadAll = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
     const [e, i, s, periodLocks] = await Promise.all([
-      base44.entities.Expense.list("-created_date"),
-      base44.entities.Income.list("-created_date"),
-      base44.entities.Salary.list("-created_date"),
-      base44.entities.AccountingPeriodLock.list(),
+      studio.entities.Expense.list("-created_date"),
+      studio.entities.Income.list("-created_date"),
+      studio.entities.Salary.list("-created_date"),
+      studio.entities.AccountingPeriodLock.list(),
     ]);
     setExpenses(e);
     setIncomes(i);
@@ -169,9 +169,9 @@ export default function Accounting() {
 
 
   // Delete-with-undo hooks — declared at top level before any usage to prevent minifier TDZ errors
-  const { deleteWithUndo: deleteExpense } = useDeleteUndo("Expense", (id) => base44.entities.Expense.delete(id), loadAll);
-  const { deleteWithUndo: deleteIncome } = useDeleteUndo("Income", (id) => base44.entities.Income.delete(id), loadAll);
-  const { deleteWithUndo: deleteSalary } = useDeleteUndo("Salary", (id) => base44.entities.Salary.delete(id), loadAll);
+  const { deleteWithUndo: deleteExpense } = useDeleteUndo("Expense", (id) => studio.entities.Expense.delete(id), loadAll);
+  const { deleteWithUndo: deleteIncome } = useDeleteUndo("Income", (id) => studio.entities.Income.delete(id), loadAll);
+  const { deleteWithUndo: deleteSalary } = useDeleteUndo("Salary", (id) => studio.entities.Salary.delete(id), loadAll);
 
   useEffect(() => {
     loadAll();
@@ -202,7 +202,7 @@ export default function Accounting() {
   const handleLockPeriod = async () => {
     if (!lockMonth) return;
     const period = `${getPersianDate(0).split("/")[0]}/${lockMonth}`;
-    if (!lockedPeriods.includes(period)) await base44.entities.AccountingPeriodLock.create({ period_key: period, locked_at: new Date().toISOString() });
+    if (!lockedPeriods.includes(period)) await studio.entities.AccountingPeriodLock.create({ period_key: period, locked_at: new Date().toISOString() });
     setLockedPeriods((current) => [...new Set([...current, period])]);
     setShowLockModal(false);
     setLockMonth("");
@@ -273,7 +273,7 @@ export default function Accounting() {
   const openEdit = (type, item) => setEditingRecord({ type, item });
   const saveRecord = async (type, id, data) => {
     const entityName = type === "expense" ? "Expense" : type === "income" ? "Income" : "Salary";
-    await base44.entities[entityName].update(id, data);
+    await studio.entities[entityName].update(id, data);
     setEditingRecord(null);
     await loadAll();
     toast({ title: "تغییرات ذخیره شد" });
@@ -480,7 +480,7 @@ export default function Accounting() {
               </MonthAccordion>
             ))}
             {tab === "salary" && filteredSalaries.map((s) => (
-              <SalaryRow key={s.id} salary={s} isLocked={isLocked(s.date)} onDelete={() => handleDelete("salary", s.id)} onEdit={(data) => base44.entities.Salary.update(s.id, data).then(loadAll)} onViewSlip={(slip) => setSalarySlip(slip)} />
+              <SalaryRow key={s.id} salary={s} isLocked={isLocked(s.date)} onDelete={() => handleDelete("salary", s.id)} onEdit={(data) => studio.entities.Salary.update(s.id, data).then(loadAll)} onViewSlip={(slip) => setSalarySlip(slip)} />
             ))}
             {((tab === "expense" && filteredExpenses.length === 0) || (tab === "income" && filteredIncomes.length === 0) || (tab === "salary" && filteredSalaries.length === 0)) && (
               <p className="text-center text-muted-foreground py-12">موردی ثبت نشده است</p>
@@ -609,7 +609,7 @@ function ImportCsvModal({ initialType, existingRecords, onClose, onSaved }) {
     for (let start = 0; start < preview.records.length; start += batchSize) {
       const batch = preview.records.slice(start, start + batchSize);
       const results = await Promise.allSettled(
-        batch.map((record) => base44.entities[entityNames[type]].create(record))
+        batch.map((record) => studio.entities[entityNames[type]].create(record))
       );
       results.forEach((result, index) => {
         if (result.status === "fulfilled") created += 1;
@@ -903,7 +903,7 @@ function FormModal({ tab, initial, isDateLocked, onClose, onSaved }) {
       ["payee", "purpose", "provider", "billing_period", "channel", "campaign"].forEach((key) => delete payload[key]);
       if (initial) await onSaved(payload);
       else {
-        await base44.entities[entityName].create(payload);
+        await studio.entities[entityName].create(payload);
         await onSaved();
       }
       toast({ title: initial ? "تغییرات ذخیره شد" : "اطلاعات ثبت شد" });
@@ -921,7 +921,7 @@ function FormModal({ tab, initial, isDateLocked, onClose, onSaved }) {
     if (!file) return;
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await studio.integrations.Core.UploadFile({ file });
       setForm({ ...form, receipt_url: file_url });
     } catch (err) {
       console.error("Upload failed", err);
