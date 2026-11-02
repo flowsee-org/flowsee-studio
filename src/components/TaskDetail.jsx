@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { X, Paperclip, Clock, Download, ArrowUpRight, MessageSquare, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
@@ -39,6 +39,15 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState('details'); // details, comments, activity
+  const backdropPointerDown = useRef(false);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   useEffect(() => {
     loadTeamMembers().then((members) => setEmployees(members.filter((member) => !/\(ادمین\)/i.test(member.name || ''))));
@@ -135,7 +144,15 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3"
+      onPointerDown={(event) => { backdropPointerDown.current = event.target === event.currentTarget; }}
+      onPointerUp={(event) => {
+        if (backdropPointerDown.current && event.target === event.currentTarget) onClose();
+        backdropPointerDown.current = false;
+      }}
+      onPointerCancel={() => { backdropPointerDown.current = false; }}
+    >
       <div className="flex h-[min(calc(100dvh-1.5rem),52rem)] max-h-[min(calc(100dvh-1.5rem),52rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-overlay" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-border">
@@ -252,13 +269,14 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
                     value={form.due_date || ''}
                     onChange={(val) => setForm({ ...form, due_date: val })}
                     placeholder="تاریخ سررسید"
+                    closeOnSelect
                   />
                 </div>
               </div>
 
               <div>
                 <label className="text-sm font-medium block mb-1.5">مسئولین</label>
-                <div className="border border-input rounded-xl p-2.5 max-h-36 overflow-y-auto scrollbar-thin space-y-1.5">
+                <div className="border border-input rounded-xl p-2.5 space-y-1.5">
                   {employees.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">کارمندی ثبت نشده</p>}
                   {employees.map((emp) => (
                     <label key={emp.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent/50 rounded-lg px-2 py-1.5">
@@ -274,8 +292,9 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
                         }}
                         className="w-4 h-4 accent-primary"
                       />
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xs font-bold text-primary">
                         {emp.name.charAt(0).toUpperCase()}
+                        {emp.profile_image && <img src={emp.profile_image} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none'; }} />}
                       </div>
                       <span className="text-sm">{emp.name}</span>
                     </label>
