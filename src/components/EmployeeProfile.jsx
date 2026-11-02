@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { MODULES } from "@/lib/permissions";
 import { X, User, Calendar, Briefcase, BookOpen, CircleDot, Camera } from "lucide-react";
 import { studio } from "@/api/studioClient";
 import PersianDatePicker from "@/components/PersianDatePicker";
@@ -17,6 +18,12 @@ export const availabilityColor = (v) => availabilityOptions.find((o) => o.value 
 export default function EmployeeProfile({ employee, canEdit, onClose, onSaved }) {
   const [form, setForm] = useState({
     full_name: employee.name || "",
+    role: employee.role || "user",
+    module_access: Array.isArray(employee.module_access)
+      ? employee.module_access
+      : (employee.role === "admin" || employee.role === "superadmin"
+          ? MODULES.map((m) => m.id)
+          : MODULES.filter((m) => !m.adminOnly).map((m) => m.id)),
     phone: employee.phone || "",
     profile_image: employee.profile_image || "",
     department: employee.department || "",
@@ -36,6 +43,8 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
     try {
       await studio.entities.User.update(employee.id, {
         full_name: form.full_name.trim(),
+        role: form.role,
+        module_access: form.module_access,
         phone: form.phone.trim(),
         profile_image: form.profile_image,
         department: form.department.trim(),
@@ -191,6 +200,81 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
             />
             <p className="text-xs text-muted-foreground mt-1.5">مهارت‌ها را با « , » از هم جدا کنید.</p>
           </div>
+
+          {canEdit && (
+            <div className="space-y-3 pt-3 border-t border-border">
+              <div>
+                <label className="text-sm font-medium block mb-1.5">نقش کاربری</label>
+                <select
+                  value={form.role}
+                  onChange={(e) => {
+                    const newRole = e.target.value;
+                    const defaultMods = newRole === "superadmin" || newRole === "admin"
+                      ? MODULES.map((m) => m.id)
+                      : MODULES.filter((m) => !m.adminOnly).map((m) => m.id);
+                    setForm({ ...form, role: newRole, module_access: defaultMods });
+                  }}
+                  className="w-full border border-input rounded-xl px-4 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <option value="user">پرسنل (User)</option>
+                  <option value="admin">مدیر (Admin)</option>
+                  <option value="superadmin">مدیر ارشد (Superadmin)</option>
+                </select>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium">دسترسی به بخش‌ها و ساب‌ماژول‌ها</label>
+                  <div className="flex gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, module_access: MODULES.map((m) => m.id) })}
+                      className="text-primary hover:underline"
+                    >
+                      انتخاب همه
+                    </button>
+                    <span className="text-muted-foreground">·</span>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, module_access: ["dashboard"] })}
+                      className="text-destructive hover:underline"
+                    >
+                      حذف همه
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 rounded-xl border border-border bg-accent/20">
+                  {MODULES.map((mod) => {
+                    const isChecked = (form.module_access || []).includes(mod.id);
+                    return (
+                      <label
+                        key={mod.id}
+                        className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer select-none transition ${
+                          isChecked
+                            ? "bg-primary/10 border-primary/40 text-primary font-medium"
+                            : "bg-card border-border/70 text-muted-foreground hover:bg-accent/50"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            const current = form.module_access || [];
+                            const updated = current.includes(mod.id)
+                              ? current.filter((id) => id !== mod.id)
+                              : [...current, mod.id];
+                            setForm({ ...form, module_access: updated });
+                          }}
+                          className="w-3.5 h-3.5 accent-primary cursor-pointer"
+                        />
+                        <span className="truncate">{mod.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="text-sm font-medium block mb-1.5">درباره من</label>

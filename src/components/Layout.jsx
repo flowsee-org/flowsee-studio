@@ -49,7 +49,7 @@ export default function Layout() {
   const [open, setOpen] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem("studio-sidebar-hidden") === "true");
   const { user, logout, isAdmin, isSuperadmin } = useAuth();
-  const navItems = allNavItems.filter((item) => (!item.adminOnly || isAdmin) && canAccessModule(user, item.module));
+  const navItems = allNavItems.filter((item) => canAccessModule(user, item.module));
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === "undefined") return false;
     const stored = localStorage.getItem("theme");

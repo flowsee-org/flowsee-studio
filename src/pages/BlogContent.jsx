@@ -3,6 +3,7 @@ import { uploadEditorImage } from "@/lib/editor-image";
 import { useCallback, useEffect, useState } from "react";
 import { ExternalLink, FileText, Loader2, Plus, RefreshCw, Save, Trash2, Upload, X } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import { canAccessModule } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { siteContentMediaUrl } from "@/lib/site-content-media";
@@ -92,7 +93,7 @@ export default function BlogContent() {
   const { user, isSuperadmin } = useAuth(); const { toast } = useToast();
   const [posts, setPosts] = useState([]); const [categories, setCategories] = useState([]); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [editor, setEditor] = useState(null); const [refresh, setRefresh] = useState(0);
   const load = useCallback(async () => { setLoading(true); setError(""); try { const result = await apiRequest(); setPosts(result.posts || []); setCategories(result.categories || []); } catch (loadError) { setError(loadError.message); } finally { setLoading(false); } }, []);
-  useEffect(() => { if (isSuperadmin && user) load(); }, [isSuperadmin, user, load, refresh]);
+  useEffect(() => { if (user && canAccessModule(user, "blog-content")) load(); }, [user, load, refresh]);
   const saved = () => { setEditor(null); setRefresh((value) => value + 1); toast({ title: "مقاله ذخیره شد" }); };
   const remove = async (post) => { if (!window.confirm(`مقالهٔ «${post.title}» حذف شود؟`)) return; try { await apiRequest(`/${post.id}`, { method: "DELETE" }); setRefresh((value) => value + 1); toast({ title: "مقاله حذف شد" }); } catch (deleteError) { toast({ title: "حذف انجام نشد", description: deleteError.message, variant: "destructive" }); } };
   if (!isSuperadmin) return <div dir="rtl" className="mx-auto flex min-h-80 max-w-3xl items-center justify-center rounded-2xl border bg-card p-8 text-center text-muted-foreground">مدیریت بلاگ فقط برای مدیر اصلی Studio فعال است.</div>;

@@ -129,19 +129,40 @@ export default function AnnouncementModal({ editAnnouncement, onClose, onSaved }
           )}
           {form.target_audience === "individual" && (
             <div>
-              <label className="text-sm font-medium block mb-1.5">انتخاب افراد</label>
-              <div className="border border-input rounded-xl p-2.5 max-h-32 overflow-y-auto scrollbar-thin space-y-1">
-                {employees.map((emp) => (
-                  <label key={emp.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent/50 rounded-lg px-2 py-1.5">
-                    <input
-                      type="checkbox"
-                      checked={(form.target_names || []).includes(emp.name)}
-                      onChange={() => toggleName(emp.name)}
-                      className="w-4 h-4 accent-primary"
-                    />
-                    <span className="text-sm">{emp.name}</span>
-                  </label>
-                ))}
+              <label className="text-sm font-medium block mb-2">انتخاب افراد</label>
+              <div className="flex flex-wrap gap-2">
+                {employees.map((emp) => {
+                  const isSelected = (form.target_names || []).includes(emp.name);
+                  return (
+                    <label
+                      key={emp.id}
+                      className={`inline-flex items-center gap-2 cursor-pointer rounded-xl border px-3 py-2 text-sm transition select-none ${
+                        isSelected
+                          ? "border-primary bg-primary/10 text-primary font-medium shadow-sm"
+                          : "border-border bg-card hover:bg-accent/60 text-foreground"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleName(emp.name)}
+                        className="w-4 h-4 accent-primary rounded cursor-pointer"
+                      />
+                      <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/15 text-xs font-bold text-primary">
+                        {emp.name.charAt(0).toUpperCase()}
+                        {emp.profile_image && (
+                          <img
+                            src={emp.profile_image}
+                            alt=""
+                            className="absolute inset-0 h-full w-full object-cover"
+                            onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                          />
+                        )}
+                      </div>
+                      <span className="truncate max-w-[130px]">{emp.name}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           )}

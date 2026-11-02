@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { NotificationProvider } from '@/lib/NotificationContext';
@@ -15,6 +15,7 @@ import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import Layout from '@/components/Layout';
 import AdminRoute from '@/components/AdminRoute';
+import { canAccessModule } from '@/lib/permissions';
 import Admin from '@/pages/Admin';
 import WebsiteMessages from '@/pages/WebsiteMessages';
 import SiteContent from '@/pages/SiteContent';
@@ -99,8 +100,14 @@ const AuthenticatedApp = () => {
             <Route path="/settings" element={<AppSettings />} />
             <Route element={<AdminRoute />}>
               <Route path="/admin" element={<Admin />} />
+            </Route>
+            <Route element={<ModuleRoute module="website-messages" />}>
               <Route path="/website-messages" element={<WebsiteMessages />} />
+            </Route>
+            <Route element={<ModuleRoute module="site-content" />}>
               <Route path="/site-content" element={<SiteContent />} />
+            </Route>
+            <Route element={<ModuleRoute module="blog-content" />}>
               <Route path="/blog-content" element={<BlogContent />} />
             </Route>
           </Route>

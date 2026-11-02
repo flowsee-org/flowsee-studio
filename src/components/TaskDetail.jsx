@@ -251,30 +251,47 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
               </div>
 
               <div>
-                <label className="text-sm font-medium block mb-1.5">مسئولین</label>
-                <div className="border border-input rounded-xl p-2.5 space-y-1.5">
-                  {employees.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">کارمندی ثبت نشده</p>}
-                  {employees.map((emp) => (
-                    <label key={emp.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent/50 rounded-lg px-2 py-1.5">
-                      <input
-                        type="checkbox"
-                        checked={(form.assignees || []).includes(emp.name)}
-                        onChange={() => {
-                          const current = form.assignees || [];
-                          const newAssignees = current.includes(emp.name)
-                            ? current.filter((a) => a !== emp.name)
-                            : [...current, emp.name];
-                          setForm({ ...form, assignees: newAssignees, assignee: newAssignees[0] || userName });
-                        }}
-                        className="w-4 h-4 accent-primary"
-                      />
-                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xs font-bold text-primary">
-                        {emp.name.charAt(0).toUpperCase()}
-                        {emp.profile_image && <img src={emp.profile_image} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none'; }} />}
-                      </div>
-                      <span className="text-sm">{emp.name}</span>
-                    </label>
-                  ))}
+                <label className="text-sm font-medium block mb-2">مسئولین</label>
+                <div className="flex flex-wrap gap-2">
+                  {employees.length === 0 && <p className="text-xs text-muted-foreground text-center py-3 w-full border border-dashed rounded-xl">کارمندی ثبت نشده</p>}
+                  {employees.map((emp) => {
+                    const isSelected = (form.assignees || []).includes(emp.name);
+                    return (
+                      <label
+                        key={emp.id}
+                        className={`inline-flex items-center gap-2 cursor-pointer rounded-xl border px-3 py-2 text-sm transition select-none ${
+                          isSelected
+                            ? "border-primary bg-primary/10 text-primary font-medium shadow-sm"
+                            : "border-border bg-card hover:bg-accent/60 text-foreground"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {
+                            const current = form.assignees || [];
+                            const newAssignees = current.includes(emp.name)
+                              ? current.filter((a) => a !== emp.name)
+                              : [...current, emp.name];
+                            setForm({ ...form, assignees: newAssignees, assignee: newAssignees[0] || userName });
+                          }}
+                          className="w-4 h-4 accent-primary rounded cursor-pointer"
+                        />
+                        <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/15 text-xs font-bold text-primary">
+                          {emp.name.charAt(0).toUpperCase()}
+                          {emp.profile_image && (
+                            <img
+                              src={emp.profile_image}
+                              alt=""
+                              className="absolute inset-0 h-full w-full object-cover"
+                              onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                            />
+                          )}
+                        </div>
+                        <span className="truncate max-w-[130px]">{emp.name}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 

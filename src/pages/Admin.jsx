@@ -175,18 +175,145 @@ export default function Admin() {
     setSendingDigest(false);
   };
 
-  const downloadExport = async (event, path) => {
-    event.preventDefault();
+  const exportJsonBackup = async () => {
     try {
-      const response = await fetch(path, { headers: { Authorization: `Bearer ${localStorage.getItem('studio_access_token') || ''}` } });
-      if (!response.ok) throw new Error('دریافت فایل ناموفق بود');
-      const url = URL.createObjectURL(await response.blob());
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = path.endsWith('/backup') ? 'studio-backup.json' : `${path.split('/').pop()}.csv`;
-      anchor.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (err) { setRestoreMsg(err.message); }
+      setRestoreMsg("در حال آماده‌سازی فایل بکاپ...");
+      const [u, t, exp, inc, sal, p, a, m, s, wr, lr] = await Promise.all([
+        studio.entities.User.list().catch(() => []),
+        studio.entities.Task.list().catch(() => []),
+        studio.entities.Expense.list().catch(() => []),
+        studio.entities.Income.list().catch(() => []),
+        studio.entities.Salary.list().catch(() => []),
+        studio.entities.Project.list().catch(() => []),
+        studio.entities.Announcement.list().catch(() => []),
+        studio.entities.Meeting.list().catch(() => []),
+        studio.entities.Sprint.list().catch(() => []),
+        studio.entities.WorkReport.list().catch(() => []),
+        studio.entities.LeaveRequest.list().catch(() => []),
+      ]);
+
+      const backup = {
+        app: "flowsee-studio",
+        version: "1.0",
+        export_date: new Date().toISOString(),
+        entities: {
+          User: u,
+          Task: t,
+          Expense: exp,
+          Income: inc,
+          Salary: sal,
+          Project: p,
+          Announcement: a,
+          Meeting: m,
+          Sprint: s,
+          WorkReport: wr,
+          LeaveRequest: lr,
+        },
+      };
+
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const aElem = document.createElement("a");
+      aElem.href = url;
+      aElem.download = `flowsee-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      aElem.click();
+      URL.revokeObjectURL(url);
+      setRestoreMsg("✅ فایل بکاپ با موفقیت دانلود شد.");
+    } catch (err) {
+      setRestoreMsg("❌ خطا در ساخت بکاپ: " + err.message);
+    }
+  };
+
+  const exportUsersCsv = async () => {
+    try {
+      setRestoreMsg("در حال دریافت اطلاعات کاربران...");
+      const userList = await studio.entities.User.list().catch(() => users);
+      const headers = ["شناسه", "نام و نام خانوادگی", "ایمیل", "نقش", "شماره تماس", "بخش", "سمت", "وضعیت"];
+      const escape = (val) => `"${String(val ?? "").replace(/"/g, '""')}"`;
+      const rows = userList.map((u) => [
+        escape(u.id),
+        escape(u.full_name || u.name),
+        escape(u.email),
+        escape(u.role),
+        escape(u.phone),
+        escape(u.department),
+        escape(u.position),
+        escape(u.is_active === false ? "غیرفعال" : "فعال"),
+      ].join(","));
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setRestoreMsg("✅ خروجی کاربران با موفقیت دانلود شد.");
+    } catch (err) {
+      setRestoreMsg("❌ خطا در اکسپورت کاربران: " + err.message);
+    }
+  };
+
+  const exportTasksCsv = async () => {
+    try {
+      setRestoreMsg("در حال دریافت اطلاعات تسک‌ها...");
+      const taskList = await studio.entities.Task.list().catch(() => tasks);
+      const headers = ["شناسه", "عنوان تسک", "پروژه", "وضعیت", "اولویت", "مسئولین", "مهلت", "تاریخ ایجاد"];
+      const escape = (val) => `"${String(val ?? "").replace(/"/g, '""')}"`;
+      const rows = taskList.map((t) => [
+        escape(t.id),
+        escape(t.title),
+        escape(t.project_name || t.project_id),
+        escape(t.status),
+        escape(t.priority),
+        escape((t.assignees || [t.assignee]).filter(Boolean).join(" - ")),
+        escape(t.due_date),
+        escape(t.created_at || t.created_date),
+      ].join(","));
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `tasks-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setRestoreMsg("✅ خروجی تسک‌ها با موفقیت دانلود شد.");
+    } catch (err) {
+      setRestoreMsg("❌ خطا در اکسپورت تسک‌ها: " + err.message);
+    }
+  };
+
+  const exportExpensesCsv = async () => {
+    try {
+      setRestoreMsg("در حال دریافت اطلاعات هزینه‌ها...");
+      const expList = await studio.entities.Expense.list().catch(() => expenses);
+      const headers = ["شناسه", "عنوان هزینه", "مبلغ (تومان)", "دسته‌بندی", "پروژه", "تاریخ", "وضعیت"];
+      const escape = (val) => `"${String(val ?? "").replace(/"/g, '""')}"`;
+      const rows = expList.map((e) => [
+        escape(e.id),
+        escape(e.title),
+        escape(e.amount),
+        escape(e.category),
+        escape(e.project_name),
+        escape(e.date),
+        escape(e.status),
+      ].join(","));
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `expenses-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setRestoreMsg("✅ خروجی هزینه‌ها با موفقیت دانلود شد.");
+    } catch (err) {
+      setRestoreMsg("❌ خطا در اکسپورت هزینه‌ها: " + err.message);
+    }
   };
 
   const totalExpense = expenses.reduce((s, e) => s + (e.amount || 0), 0);
@@ -503,34 +630,34 @@ export default function Admin() {
         </h2>
         <p className="text-sm text-muted-foreground mb-4">دانلود یا آپلود کامل دیتابیس (فقط برای مدیرعامل)</p>
         <div className="flex gap-3 flex-wrap">
-          <a
-            href={`/api/apps/${appId}/backup`}
-              onClick={(event) => downloadExport(event, `/api/apps/${appId}/backup`)}
-            className="bg-primary text-primary-foreground px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+          <button
+            type="button"
+            onClick={exportJsonBackup}
+            className="bg-primary text-primary-foreground px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2 cursor-pointer shadow-sm"
           >
             <RotateCcw className="w-5 h-5" /> دانلود بکاپ JSON
-          </a>
-          <a
-            href={`/api/apps/${appId}/export/User`}
-              onClick={(event) => downloadExport(event, `/api/apps/${appId}/export/User`)}
-            className="bg-green-600 text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+          </button>
+          <button
+            type="button"
+            onClick={exportUsersCsv}
+            className="bg-green-600 text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2 cursor-pointer shadow-sm"
           >
             <Users className="w-5 h-5" /> اکسپورت کاربران (CSV)
-          </a>
-          <a
-            href={`/api/apps/${appId}/export/Task`}
-              onClick={(event) => downloadExport(event, `/api/apps/${appId}/export/Task`)}
-            className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+          </button>
+          <button
+            type="button"
+            onClick={exportTasksCsv}
+            className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2 cursor-pointer shadow-sm"
           >
             <Shield className="w-5 h-5" /> اکسپورت تسک‌ها (CSV)
-          </a>
-          <a
-            href={`/api/apps/${appId}/export/Expense`}
-              onClick={(event) => downloadExport(event, `/api/apps/${appId}/export/Expense`)}
-            className="bg-amber-600 text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+          </button>
+          <button
+            type="button"
+            onClick={exportExpensesCsv}
+            className="bg-amber-600 text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2 cursor-pointer shadow-sm"
           >
             <TrendingDown className="w-5 h-5" /> اکسپورت هزینه‌ها (CSV)
-          </a>
+          </button>
         </div>
       </div>
 

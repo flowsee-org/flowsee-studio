@@ -22,7 +22,11 @@ export const DEFAULT_MODULE_ACCESS = MODULES.map(({ id }) => id);
 export function canAccessModule(user, moduleId) {
   if (!user || !moduleId) return false;
   if (moduleId === "dashboard") return true;
-  if (user.role === "admin" || user.role === "superadmin") return true;
-  if (!Array.isArray(user.module_access)) return true;
-  return user.module_access.includes(moduleId);
+  if (user.role === "superadmin") return true;
+  if (Array.isArray(user.module_access)) {
+    return user.module_access.includes(moduleId);
+  }
+  if (user.role === "admin") return true;
+  const mod = MODULES.find((m) => m.id === moduleId);
+  return !mod?.adminOnly;
 }
