@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { CalendarDays, Check, CheckCircle2, Circle, CircleDot, Clock3, Flag, FolderKanban, ListChecks, MoreHorizontal, Paperclip, Plus, Repeat2, Tag, UserRound, X } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
@@ -68,7 +68,21 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
   const [creatingProject, setCreatingProject] = useState(false);
   const [openProperty, setOpenProperty] = useState(null);
   const [membersLoading, setMembersLoading] = useState(true);
+  const backdropPointerDown = useRef(false);
   const showRecurring = !!form.recurring_config;
+
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (openProperty) {
+        setOpenProperty(null);
+        return;
+      }
+      onClose();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [openProperty, onClose]);
 
   useEffect(() => {
     let active = true;
@@ -204,8 +218,17 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3" onClick={onClose}>
-      <section dir="rtl" role="dialog" aria-modal="true" aria-labelledby="task-form-title" className="flex h-[min(calc(100dvh-1.5rem),52rem)] max-h-[min(calc(100dvh-1.5rem),52rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-overlay" onClick={(event) => event.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3"
+      onPointerDown={(event) => { backdropPointerDown.current = event.target === event.currentTarget; }}
+      onPointerUp={(event) => {
+        const shouldClose = backdropPointerDown.current && event.target === event.currentTarget;
+        backdropPointerDown.current = false;
+        if (shouldClose) onClose();
+      }}
+      onPointerCancel={() => { backdropPointerDown.current = false; }}
+    >
+      <section dir="rtl" role="dialog" aria-modal="true" aria-labelledby="task-form-title" className="flex h-[min(calc(100dvh-1.5rem),52rem)] max-h-[min(calc(100dvh-1.5rem),52rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-overlay">
         <header className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
             <FolderKanban className="h-4 w-4 shrink-0" />
@@ -234,7 +257,7 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
                 <Command dir="rtl"><CommandInput placeholder="جست‌وجوی اولویت…" /><CommandList><CommandEmpty>اولویتی پیدا نشد</CommandEmpty><CommandGroup>{priorityOptions.map((option) => <CommandItem key={option.value} value={option.label} onSelect={() => setForm((current) => ({ ...current, priority: option.value }))}><Flag className="h-4 w-4 text-muted-foreground" /><span>{option.label}</span>{form.priority === option.value && <Check className="ms-auto h-4 w-4 text-primary" />}</CommandItem>)}</CommandGroup></CommandList></Command>
               </PropertyChip>
               <PropertyChip open={openProperty === "assignee"} onOpenChange={(open) => setPropertyOpen("assignee", open)} icon={UserRound} label="مسئول" value={selectedAssignees.length ? (selectedAssignees.length === 1 ? selectedAssignees[0] : `${selectedAssignees[0]} و ${selectedAssignees.length - 1} نفر`) : "بدون مسئول"}>
-                <Command dir="rtl" filter={(value, search) => value.toLocaleLowerCase("fa-IR").includes(search.toLocaleLowerCase("fa-IR")) ? 1 : 0}><CommandInput placeholder="جست‌وجوی اعضا…" /><CommandList>{membersLoading ? <div className="py-6 text-center text-sm text-muted-foreground">در حال بارگذاری اعضا…</div> : normalizedEmployees.length === 0 ? <div className="py-6 text-center text-sm text-muted-foreground">عضوی برای انتخاب در دسترس نیست</div> : <><CommandEmpty>عضوی با این عبارت پیدا نشد</CommandEmpty><CommandGroup>{normalizedEmployees.map((employee) => <CommandItem key={employee.id || employee.name} value={`${employee.name} ${employee.email || ""}`} onSelect={() => toggleAssignee(employee.name)}><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">{employee.name.slice(0, 1)}</span><span className="min-w-0 flex-1 truncate">{employee.name}</span>{selectedAssignees.includes(employee.name) && <Check className="h-4 w-4 text-primary" />}</CommandItem>)}</CommandGroup></>}</CommandList></Command>
+                <Command dir="rtl" filter={(value, search) => value.toLocaleLowerCase("fa-IR").includes(search.toLocaleLowerCase("fa-IR")) ? 1 : 0}><CommandInput placeholder="جست‌وجوی اعضا…" /><CommandList className="max-h-none overflow-visible">{membersLoading ? <div className="py-6 text-center text-sm text-muted-foreground">در حال بارگذاری اعضا…</div> : normalizedEmployees.length === 0 ? <div className="py-6 text-center text-sm text-muted-foreground">عضوی برای انتخاب در دسترس نیست</div> : <><CommandEmpty>عضوی با این عبارت پیدا نشد</CommandEmpty><CommandGroup>{normalizedEmployees.map((employee) => <CommandItem key={employee.id || employee.name} value={`${employee.name} ${employee.email || ""}`} onSelect={() => toggleAssignee(employee.name)}><span className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-medium">{employee.name.slice(0, 1)}{employee.profile_image && <img src={employee.profile_image} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}</span><span className="min-w-0 flex-1 truncate">{employee.name}</span>{selectedAssignees.includes(employee.name) && <Check className="h-4 w-4 text-primary" />}</CommandItem>)}</CommandGroup></>}</CommandList></Command>
               </PropertyChip>
               <PropertyChip open={openProperty === "project"} onOpenChange={(open) => setPropertyOpen("project", open)} icon={FolderKanban} label="پروژه" value={selectedProject?.name || "بدون پروژه"}>
                 <Command dir="rtl"><CommandInput placeholder="جست‌وجوی پروژه…" /><CommandList><CommandEmpty>پروژه‌ای پیدا نشد</CommandEmpty><CommandGroup><CommandItem value="بدون پروژه" onSelect={() => setForm((current) => ({ ...current, project_id: "", project_name: "" }))}><FolderKanban className="h-4 w-4 text-muted-foreground" /><span className="flex-1">بدون پروژه</span>{!form.project_id && <Check className="h-4 w-4 text-primary" />}</CommandItem>{availableProjects.map((project) => <CommandItem key={project.id} value={project.name} onSelect={() => { setForm((current) => ({ ...current, project_id: project.id, project_name: project.name })); setPropertyOpen("project", false); }}><FolderKanban className="h-4 w-4 text-muted-foreground" /><span className="min-w-0 flex-1 truncate">{project.name}</span>{String(form.project_id) === String(project.id) && <Check className="h-4 w-4 text-primary" />}</CommandItem>)}</CommandGroup><div className="border-t border-border p-2"><form onSubmit={(event) => { event.preventDefault(); createProjectFromPicker(); }} className="flex gap-2"><Input value={projectInput} onChange={(event) => setProjectInput(event.target.value)} placeholder="نام پروژه جدید" className="h-9 min-w-0" /><Button type="submit" size="sm" disabled={!projectInput.trim() || creatingProject}>{creatingProject ? "در حال ساخت…" : "ساخت پروژه"}</Button></form></div></CommandList></Command>
@@ -247,7 +270,7 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
                 </div>
               </PropertyChip>
               <PropertyChip open={openProperty === "dueDate"} onOpenChange={(open) => setPropertyOpen("dueDate", open)} icon={CalendarDays} label="موعد" value={form.due_date || "موعد سررسید"} contentClassName="w-72 overflow-visible">
-                <div className="space-y-2 p-2"><span className="block text-xs font-medium">موعد سررسید</span><PersianDatePicker value={form.due_date || ""} onChange={(value) => setForm((current) => ({ ...current, due_date: value }))} placeholder="انتخاب تاریخ" /><Button type="button" variant="ghost" size="sm" onClick={() => setForm((current) => ({ ...current, due_date: "" }))}>پاک کردن تاریخ</Button></div>
+                <div className="space-y-2 p-2"><span className="block text-xs font-medium">موعد سررسید</span><PersianDatePicker value={form.due_date || ""} onChange={(value) => { setForm((current) => ({ ...current, due_date: value })); if (value) setPropertyOpen("dueDate", false); }} placeholder="انتخاب تاریخ" /><Button type="button" variant="ghost" size="sm" onClick={() => { setForm((current) => ({ ...current, due_date: "" })); setPropertyOpen("dueDate", false); }}>پاک کردن تاریخ</Button></div>
               </PropertyChip>
               <Button type="button" variant="ghost" size="sm" onClick={() => setAdvancedOpen((open) => !open)} className="h-8 px-2 text-muted-foreground"><MoreHorizontal className="h-4 w-4" />{advancedOpen ? "بستن تنظیمات" : "بیشتر"}</Button>
             </div>

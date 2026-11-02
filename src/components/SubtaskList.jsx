@@ -43,20 +43,25 @@ export default function SubtaskList({ subtasks = [], onChange }) {
         <div className="space-y-1.5">
           {localSubtasks.map((subtask, index) => (
             <div key={index} className="flex items-center gap-2 bg-accent/40 rounded-lg px-3 py-2">
+              <span aria-label={`زیرتسک ${index + 1}`} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-background text-xs font-medium text-muted-foreground">{index + 1}</span>
               <input
                 type="checkbox"
+                aria-label={`تکمیل زیرتسک ${index + 1}`}
                 checked={subtask.done}
                 onChange={() => handleToggle(index)}
                 className="w-4 h-4 accent-primary flex-shrink-0"
               />
               <input
                 type="text"
+                aria-label={`عنوان زیرتسک ${index + 1}`}
                 value={subtask.title}
                 onChange={(e) => handleUpdateText(index, e.target.value)}
                 className={`flex-1 text-sm bg-transparent border-none focus:outline-none focus:ring-0 ${subtask.done ? 'line-through text-muted-foreground' : ''}`}
               />
               <button
+                type="button"
                 onClick={() => handleRemove(index)}
+                aria-label={`حذف زیرتسک ${index + 1}`}
                 className="text-muted-foreground hover:text-red-500 p-1"
               >
                 <Trash2 className="w-4 h-4" />
@@ -75,8 +80,10 @@ export default function SubtaskList({ subtasks = [], onChange }) {
           className="flex-1 border border-input rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
         <button
+          type="button"
           onClick={handleAdd}
           disabled={!newSubtask.trim()}
+          aria-label="افزودن زیرتسک"
           className="bg-primary text-primary-foreground px-3 rounded-xl flex items-center disabled:opacity-50"
         >
           <Plus className="w-4 h-4" />
