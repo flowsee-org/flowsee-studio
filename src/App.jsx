@@ -15,7 +15,7 @@ import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import Layout from '@/components/Layout';
 import AdminRoute from '@/components/AdminRoute';
-import { canAccessModule } from '@/lib/permissions';
+import ModuleRoute from '@/components/ModuleRoute';
 import Admin from '@/pages/Admin';
 import WebsiteMessages from '@/pages/WebsiteMessages';
 import SiteContent from '@/pages/SiteContent';
