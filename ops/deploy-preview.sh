@@ -6,22 +6,54 @@ STATE=/var/lib/flowsee-studio-preview
 DOMAIN=studio.flowsee.ir
 [[ $EUID -eq 0 ]] || { echo 'Run this script as root on the Flowsee server.' >&2; exit 1; }
 
-echo "=== SERVER DIAGNOSTICS & RECOVERY ==="
-tail -n 60 /var/log/nginx/error.log 2>/dev/null || true
-tail -n 60 /var/www/flowsee-shared/storage/logs/laravel.log 2>/dev/null || true
-systemctl list-units --type=service | grep -i flowsee || true
+echo "=== DISK USAGE BEFORE CLEANUP ==="
+df -h
+echo "--- Top directories ---"
+du -sh /var/lib/flowsee-studio-preview/* 2>/dev/null | sort -hr | head -n 10 || true
+du -sh /var/www/flowsee-releases/* 2>/dev/null | sort -hr | head -n 10 || true
+du -sh /var/log/* 2>/dev/null | sort -hr | head -n 10 || true
+du -sh /root/.npm /tmp /var/cache 2>/dev/null || true
+
+echo "=== FREEING DISK SPACE ==="
+journalctl --vacuum-size=50M || true
+apt-get clean || true
+find /var/log -type f \( -name "*.gz" -o -name "*.1" -o -name "*.old" \) -delete || true
+rm -rf /root/.npm /tmp/* /tmp/.[!.]* 2>/dev/null || true
+rm -rf "$STATE"/.studio-build.* 2>/dev/null || true
+
+if [[ -d "$STATE/releases" ]]; then
+  CURRENT_STUDIO=$(readlink -f "$STATE/dist" 2>/dev/null || echo "")
+  for rel in "$STATE/releases"/*; do
+    if [[ -d "$rel" && "$rel" != "$CURRENT_STUDIO" ]]; then
+      echo "Removing old studio release: $rel"
+      rm -rf "$rel"
+    fi
+  done
+fi
+
+CURRENT_LARAVEL=$(readlink -f /var/www/flowsee-live 2>/dev/null || echo "")
+CURRENT_LARAVEL_DIR="$(dirname "$CURRENT_LARAVEL")"
+for rel in /var/www/flowsee-releases/*; do
+  if [[ -d "$rel" && "$rel" != "$CURRENT_LARAVEL_DIR" ]]; then
+    echo "Removing old flowsee release: $rel"
+    rm -rf "$rel"
+  fi
+done
+
+echo "=== DISK USAGE AFTER CLEANUP ==="
+df -h
+
 systemctl restart php8.4-fpm || true
-systemctl status php8.4-fpm --no-pager || true
 chown -R www-data:www-data /var/www/flowsee-shared/storage 2>/dev/null || true
 chmod -R 775 /var/www/flowsee-shared/storage 2>/dev/null || true
-CURRENT_DIR="$(dirname "$(readlink -f /var/www/flowsee-live)")"
-if [[ -f "$CURRENT_DIR/artisan" ]]; then
-  echo "Current release dir: $CURRENT_DIR"
-  /usr/bin/php8.4 "$CURRENT_DIR/artisan" optimize:clear || true
+if [[ -f "$CURRENT_LARAVEL_DIR/artisan" ]]; then
+  /usr/bin/php8.4 "$CURRENT_LARAVEL_DIR/artisan" optimize:clear || true
 fi
-curl -s -i --resolve "flowsee.ir:443:127.0.0.1" "https://flowsee.ir/up" | head -n 25 || true
-curl -s -i --resolve "flowsee.ir:443:127.0.0.1" "https://flowsee.ir/" | head -n 25 || true
-echo "=== END DIAGNOSTICS ==="
+
+echo "=== TESTING FLOWSEE SITES ==="
+curl -s -i --resolve "flowsee.ir:443:127.0.0.1" "https://flowsee.ir/up" | head -n 15 || true
+curl -s -i --resolve "flowsee.ir:443:127.0.0.1" "https://flowsee.ir/" | head -n 15 || true
+echo "============================="
 [[ -d "$APP/.git" && -d "$APP/node_modules" ]] || { echo 'Expected Studio repository or dependencies are missing.' >&2; exit 1; }
 [[ -f "$APP/.flowsee-preview.vite.config.mjs" ]] || { echo 'The preview Vite configuration is missing; no files were changed.' >&2; exit 1; }
 [[ -d "$STATE/dist" || -L "$STATE/dist" ]] || { echo 'The current Studio document root is missing; no files were changed.' >&2; exit 1; }
