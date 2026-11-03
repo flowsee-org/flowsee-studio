@@ -64,7 +64,12 @@ const AuthenticatedApp = () => {
 
   // Handle authentication errors
   if (authError) {
-    if (authError.type === 'user_not_registered' || authError.type === 'user_deactivated') {
+    // A public-settings probe can report that the current visitor is not yet
+    // registered before they have had a chance to sign in. Keep auth pages
+    // reachable so existing team accounts can authenticate; protected routes
+    // still enforce app membership after login.
+    if (authError.type === 'user_deactivated' ||
+        (authError.type === 'user_not_registered' && !isPublicAuthPage)) {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required' && !isPublicAuthPage) {
       // The redirect effect above handles this case; await it.
