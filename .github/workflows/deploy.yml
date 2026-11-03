@@ -52,4 +52,4 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile="$known_hosts_file" \
             'root@46.34.163.250' \
-            '/var/www/flowsee-studio/ops/deploy-preview.sh'
+            'git -C /var/www/flowsee-studio fetch origin main && git -C /var/www/flowsee-studio reset --hard origin/main && /var/www/flowsee-studio/ops/deploy-preview.sh'

@@ -14,6 +14,7 @@ if ! command -v node >/dev/null || ! command -v npm >/dev/null; then
 fi
 for tool in git tar node npm curl; do command -v "$tool" >/dev/null || { echo "Missing required command: $tool" >&2; exit 1; }; done
 git -C "$APP" fetch origin main
+git -C "$APP" reset --hard origin/main
 SHA=$(git -C "$APP" rev-parse origin/main)
 [[ $SHA =~ ^[0-9a-f]{40}$ ]] || { echo 'Could not resolve origin/main.' >&2; exit 1; }
 BUILD=$(mktemp -d "$STATE/.studio-build.XXXXXX")
