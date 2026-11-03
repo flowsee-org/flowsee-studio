@@ -5,6 +5,23 @@ APP=/var/www/flowsee-studio
 STATE=/var/lib/flowsee-studio-preview
 DOMAIN=studio.flowsee.ir
 [[ $EUID -eq 0 ]] || { echo 'Run this script as root on the Flowsee server.' >&2; exit 1; }
+
+echo "=== SERVER DIAGNOSTICS & RECOVERY ==="
+tail -n 60 /var/log/nginx/error.log 2>/dev/null || true
+tail -n 60 /var/www/flowsee-shared/storage/logs/laravel.log 2>/dev/null || true
+systemctl list-units --type=service | grep -i flowsee || true
+systemctl restart php8.4-fpm || true
+systemctl status php8.4-fpm --no-pager || true
+chown -R www-data:www-data /var/www/flowsee-shared/storage 2>/dev/null || true
+chmod -R 775 /var/www/flowsee-shared/storage 2>/dev/null || true
+CURRENT_DIR="$(dirname "$(readlink -f /var/www/flowsee-live)")"
+if [[ -f "$CURRENT_DIR/artisan" ]]; then
+  echo "Current release dir: $CURRENT_DIR"
+  /usr/bin/php8.4 "$CURRENT_DIR/artisan" optimize:clear || true
+fi
+curl -s -i --resolve "flowsee.ir:443:127.0.0.1" "https://flowsee.ir/up" | head -n 25 || true
+curl -s -i --resolve "flowsee.ir:443:127.0.0.1" "https://flowsee.ir/" | head -n 25 || true
+echo "=== END DIAGNOSTICS ==="
 [[ -d "$APP/.git" && -d "$APP/node_modules" ]] || { echo 'Expected Studio repository or dependencies are missing.' >&2; exit 1; }
 [[ -f "$APP/.flowsee-preview.vite.config.mjs" ]] || { echo 'The preview Vite configuration is missing; no files were changed.' >&2; exit 1; }
 [[ -d "$STATE/dist" || -L "$STATE/dist" ]] || { echo 'The current Studio document root is missing; no files were changed.' >&2; exit 1; }
