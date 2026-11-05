@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { fetchAllTags, persistNewTag, subscribeToTags, getCachedTags } from "@/lib/tags";
+import { normalizeSubtasks } from "@/lib/subtasks";
 
 const statusOptions = [
   { value: "todo", label: "در انتظار", Icon: Circle },
@@ -43,14 +44,23 @@ const blankTaskForm = () => ({
 
 function getInitialForm(editTask) {
   if (editTask) {
-    return { ...editTask, tags: Array.isArray(editTask.tags) ? editTask.tags : [] };
+    return {
+      ...editTask,
+      tags: Array.isArray(editTask.tags) ? editTask.tags : [],
+      subtasks: normalizeSubtasks(editTask.subtasks),
+    };
   }
   try {
     const raw = localStorage.getItem(TASK_DRAFT_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object") {
-        return { ...blankTaskForm(), ...parsed };
+        return {
+          ...blankTaskForm(),
+          ...parsed,
+          tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+          subtasks: normalizeSubtasks(parsed.subtasks),
+        };
       }
     }
   } catch {
@@ -205,7 +215,62 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
   };
 
   const handleSubtaskChange = (newSubtasks) => {
-    setForm({ ...form, subtasks: newSubtasks });
+    setForm((current) => ({ ...current, subtasks: newSubtasks }));
+  };
+
+  const handleConvertToTask = async (subtask, index) => {
+    const subtaskTitle = (subtask?.title || subtask?.name || "").trim();
+    if (!subtaskTitle) {
+      toast({ title: "خطا", description: "عنوان زیرتسک نمی‌تواند خالی باشد", variant: "destructive" });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const currentForm = formRef.current || form;
+      const remainingSubtasks = normalizeSubtasks(currentForm.subtasks).filter((_, i) => i !== index);
+
+      // 1. Create the new main task
+      const newTaskData = {
+        title: subtaskTitle,
+        project_id: currentForm.project_id || "",
+        project_name: currentForm.project_name || "",
+        priority: currentForm.priority || "medium",
+        status: "todo",
+        assignees: Array.isArray(currentForm.assignees) ? [...currentForm.assignees] : [],
+        assignee: currentForm.assignee || "",
+        description: `تبدیل‌شده از زیرتسک در تسک: ${currentForm.title || "بدون عنوان"}`,
+        tags: Array.isArray(currentForm.tags) ? [...currentForm.tags] : [],
+        subtasks: [],
+      };
+      await studio.entities.Task.create(newTaskData);
+
+      // 2. Update form subtasks
+      const updatedForm = { ...currentForm, subtasks: remainingSubtasks };
+      setForm(updatedForm);
+      formRef.current = updatedForm;
+
+      // If editing an existing task, persist to DB as well
+      if (editTask?.id) {
+        if (initialTaskRef.current) {
+          initialTaskRef.current.subtasks = remainingSubtasks;
+        }
+        const proj = availableProjects.find((p) => String(p.id) === String(updatedForm.project_id));
+        const data = { ...updatedForm, project_name: proj?.name || updatedForm.project_name || "" };
+        await studio.entities.Task.update(editTask.id, data);
+      }
+
+      toast({
+        title: "تبدیل به تسک اصلی انجام شد",
+        description: `تسک جدید «${subtaskTitle}» با موفقیت ایجاد شد.`,
+      });
+      onSaved?.();
+    } catch (err) {
+      console.error("Failed to convert subtask to task:", err);
+      toast({ title: "خطا در تبدیل زیرتسک", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleRecurringChange = (config) => {
@@ -400,7 +465,7 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
               {form.recurring_config?.frequency === "weekly" && <label className="space-y-1.5 text-xs text-muted-foreground">روز هفته<SelectControl value={form.recurring_config?.day_of_week ?? 0} onChange={(event) => handleRecurringChange({ ...form.recurring_config, day_of_week: Number(event.target.value) })} className="w-full"><option value={0}>یکشنبه</option><option value={1}>دوشنبه</option><option value={2}>سه‌شنبه</option><option value={3}>چهارشنبه</option><option value={4}>پنج‌شنبه</option><option value={5}>جمعه</option><option value={6}>شنبه</option></SelectControl></label>}
               {form.recurring_config?.frequency === "monthly" && <label className="space-y-1.5 text-xs text-muted-foreground">روز ماه<SelectControl value={form.recurring_config?.day_of_month || 1} onChange={(event) => handleRecurringChange({ ...form.recurring_config, day_of_month: Number(event.target.value) })} className="w-full">{[...Array(31)].map((_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}</SelectControl></label>}
             </div>}
-            <div><h3 className="mb-2 flex items-center gap-2 text-sm font-medium"><ListChecks className="h-4 w-4 text-muted-foreground" />زیرتسک‌ها</h3><SubtaskList subtasks={form.subtasks || []} onChange={handleSubtaskChange} /></div>
+            <div><h3 className="mb-2 flex items-center gap-2 text-sm font-medium"><ListChecks className="h-4 w-4 text-muted-foreground" />زیرتسک‌ها</h3><SubtaskList subtasks={form.subtasks || []} onChange={handleSubtaskChange} onConvertToTask={handleConvertToTask} /></div>
           </div>}
         </div>
 

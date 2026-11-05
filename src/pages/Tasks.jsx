@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { Plus, Trash2, Pencil, ArrowDownUp, LayoutTemplate, Filter, X, Send, CheckCircle, Clock, Search, Archive, Eye, RotateCcw, Table2, Columns3, GanttChart, UserRound, SquarePen, UsersRound, ListChecks } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowDownUp, LayoutTemplate, Filter, X, Send, CheckCircle, Clock, Search, Archive, Eye, RotateCcw, Table2, Columns3, GanttChart, UserRound, SquarePen, UsersRound, ListChecks, CheckSquare } from "lucide-react";
 import TaskForm from "@/components/TaskForm";
 import TemplatePicker from "@/components/TemplatePicker";
 import TaskRequestModal from "@/components/TaskRequestModal";
@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/use-toast";
 import SelectControl from "@/components/ui/SelectControl";
 import { formatPersianNumber as faNum } from "@/lib/number-format";
 import { fetchAllTags, subscribeToTags, getCachedTags } from "@/lib/tags";
+import { getSubtaskStats } from "@/lib/subtasks";
 
 const columns = [
   { id: "todo", title: "در انتظار", color: "bg-slate-100" },
@@ -393,12 +394,14 @@ export default function Tasks() {
   };
 
   const useTemplate = (template) => {
-    const checklistText = (template.checklist || []).length > 0
-      ? (template.description ? template.description + "\n\n" : "") + "📋 چک‌لیست:\n" + template.checklist.map((item) => `☐ ${item}`).join("\n")
+    const checklistItems = template.checklist || [];
+    const checklistText = checklistItems.length > 0
+      ? (template.description ? template.description + "\n\n" : "") + "📋 چک‌لیست:\n" + checklistItems.map((item) => `☐ ${item}`).join("\n")
       : template.description || "";
     setEditTask({
       title: template.title,
       description: checklistText,
+      subtasks: checklistItems.map((item) => ({ title: item, done: false })),
       project_id: template.project_id || "",
       project_name: template.project_name || "",
       priority: template.priority || "medium",
@@ -878,6 +881,22 @@ export default function Tasks() {
                                       <RotateCcw className="w-3 h-3" /> تکراری
                                     </span>
                                   )}
+                                  {t.subtasks && t.subtasks.length > 0 && (() => {
+                                    const stats = getSubtaskStats(t.subtasks);
+                                    return stats.hasSubtasks ? (
+                                      <span
+                                        title={`پیشرفت زیرتسک‌ها: ${faNum(stats.completed)} از ${faNum(stats.total)}`}
+                                        className={`text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1 font-medium ${
+                                          stats.allDone
+                                            ? "bg-emerald-100 text-emerald-800"
+                                            : "bg-accent text-muted-foreground"
+                                        }`}
+                                      >
+                                        <CheckSquare className="w-3 h-3" />
+                                        {faNum(stats.completed)}/{faNum(stats.total)}
+                                      </span>
+                                    ) : null;
+                                  })()}
                                 </div>
                                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
                                   <AssigneeAvatars task={t} />
@@ -917,7 +936,21 @@ export default function Tasks() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {sortedTableTasks.map((task) => <tr key={task.id} className="hover:bg-accent/20">
-                    <td className="p-3"><button onClick={() => handleViewDetail(task)} className="text-right font-medium hover:text-primary">{task.title}</button>{task.task_number && <div className="text-xs text-muted-foreground mt-1">{task.task_number}</div>}</td>
+                    <td className="p-3">
+                      <div className="flex items-center flex-wrap gap-1">
+                        <button onClick={() => handleViewDetail(task)} className="text-right font-medium hover:text-primary">{task.title}</button>
+                        {task.subtasks?.length > 0 && (() => {
+                          const stats = getSubtaskStats(task.subtasks);
+                          return stats.hasSubtasks ? (
+                            <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full ${stats.allDone ? 'bg-emerald-100 text-emerald-800' : 'bg-muted text-muted-foreground'}`}>
+                              <CheckSquare className="w-3 h-3" />
+                              {faNum(stats.completed)}/{faNum(stats.total)}
+                            </span>
+                          ) : null;
+                        })()}
+                      </div>
+                      {task.task_number && <div className="text-xs text-muted-foreground mt-1">{task.task_number}</div>}
+                    </td>
                     <td className="p-3"><SelectControl aria-label={`وضعیت ${task.title}`} value={task.status} onChange={async (e) => { await studio.entities.Task.update(task.id, { status: e.target.value }); await load(); }} className="h-8">{columns.map((column) => <option key={column.id} value={column.id}>{column.title}</option>)}</SelectControl></td>
                     <td className="p-3"><span className={`rounded-full px-2 py-1 text-xs ${priorityColors[task.priority]}`}>{priorityLabels[task.priority]}</span></td>
                     <td className="p-3">{(task.assignees || (task.assignee ? [task.assignee] : [])).join("، ") || "—"}</td>

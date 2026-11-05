@@ -106,6 +106,7 @@ const KNOWN_ENTITIES = [
   "Notification",
   "Project",
   "Salary",
+  "SiteProject",
   "Sprint",
   "Tag",
   "Task",
@@ -958,7 +959,8 @@ export async function handleRequest(req, res) {
       ];
 
       if (method === "GET") {
-        return sendJson(res, 200, { posts: posts.filter(p => !p.deleted_at), categories });
+        const sorted = [...posts.filter(p => !p.deleted_at)].sort((a, b) => (Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999)));
+        return sendJson(res, 200, { posts: sorted, categories });
       }
 
       if (method === "POST" && !subPath) {
@@ -966,6 +968,7 @@ export async function handleRequest(req, res) {
         const newPost = {
           id: randomId("post"),
           ...body,
+          sort_order: Number(body.sort_order ?? 0),
           created_by_id: u.id,
           created_date: new Date().toISOString(),
           updated_date: new Date().toISOString(),
@@ -983,7 +986,10 @@ export async function handleRequest(req, res) {
 
         if (method === "PUT") {
           const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
-          Object.assign(existing, body, { updated_date: new Date().toISOString() });
+          Object.assign(existing, body, {
+            sort_order: Number(body.sort_order ?? existing.sort_order ?? 0),
+            updated_date: new Date().toISOString()
+          });
           saveDb();
           return sendJson(res, 200, { success: true, post: existing });
         }
@@ -994,6 +1000,76 @@ export async function handleRequest(req, res) {
           return sendJson(res, 200, { success: true, message: "Post deleted" });
         }
       }
+      return error(res, 405, "Method not allowed");
+    }
+
+    // --- Site content projects fallback (when VITE_MAIN_API_URL is local) ----
+    if (pathStartsWith(path, "/studio/site-content") && !pathStartsWith(path, "/studio/site-content/blog") && !pathStartsWith(path, "/studio/site-content/images")) {
+      const u = getAuthUser(req);
+      if (!requireUser(res, u, "site-content")) return undefined;
+      const subPath = path.replace(/^\/studio\/site-content\/?/, "");
+      const projects = db.entities["SiteProject"] ||= [];
+      const services = [
+        { id: "srv-1", title: "طراحی محصول و UI/UX" },
+        { id: "srv-2", title: "توسعه وب و اپلیکیشن" },
+        { id: "srv-3", title: "برندینگ و هویت بصری" },
+      ];
+
+      if (method === "GET" && !subPath) {
+        const sorted = [...projects.filter(p => !p.deleted_at)].sort((a, b) => (Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999)));
+        return sendJson(res, 200, { projects: sorted, services });
+      }
+
+      if (method === "POST" && subPath === "projects") {
+        const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+        const newProject = {
+          id: randomId("sproj"),
+          ...body,
+          sort_order: Number(body.sort_order ?? 0),
+          created_by_id: u.id,
+          created_date: new Date().toISOString(),
+          updated_date: new Date().toISOString(),
+        };
+        projects.push(newProject);
+        saveDb();
+        return sendJson(res, 201, { success: true, project: newProject });
+      }
+
+      const caseStudyMatch = /^projects\/([^/]+)\/case-study$/.exec(subPath);
+      if (caseStudyMatch && method === "PUT") {
+        const projId = caseStudyMatch[1];
+        const proj = projects.find(p => String(p.id) === String(projId) && !p.deleted_at);
+        if (!proj) return error(res, 404, "Project not found");
+        const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+        proj.case_study = body;
+        proj.updated_date = new Date().toISOString();
+        saveDb();
+        return sendJson(res, 200, { success: true, case_study: body });
+      }
+
+      const projMatch = /^projects\/([^/]+)$/.exec(subPath);
+      if (projMatch) {
+        const projId = projMatch[1];
+        const existing = projects.find(p => String(p.id) === String(projId) && !p.deleted_at);
+        if (!existing) return error(res, 404, "Project not found");
+
+        if (method === "PUT") {
+          const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+          Object.assign(existing, body, {
+            sort_order: Number(body.sort_order ?? existing.sort_order ?? 0),
+            updated_date: new Date().toISOString()
+          });
+          saveDb();
+          return sendJson(res, 200, { success: true, project: existing });
+        }
+
+        if (method === "DELETE") {
+          existing.deleted_at = new Date().toISOString();
+          saveDb();
+          return sendJson(res, 200, { success: true, message: "Project deleted" });
+        }
+      }
+
       return error(res, 405, "Method not allowed");
     }
 

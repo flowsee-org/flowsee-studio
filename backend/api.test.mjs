@@ -55,6 +55,21 @@ test('local authentication, permissions, persistence, uploads and logout', async
   assert.equal((await call(`${base}/auth/reset-password`, 'POST', { reset_token: resetToken, new_password: 'changed-password123' })).status, 200);
   assert.equal((await call(`${base}/entities/User/me`, 'GET', undefined, staff)).status, 401);
   assert.equal((await call(`${base}/auth/reset-password`, 'POST', { reset_token: resetToken, new_password: 'another-password123' })).status, 400);
+  // Site content blog & project priority sorting
+  await call('/api/studio/site-content/blog', 'POST', { title: 'Post B', sort_order: 2 }, admin);
+  await call('/api/studio/site-content/blog', 'POST', { title: 'Post A', sort_order: 1 }, admin);
+  const blogList = await call('/api/studio/site-content/blog', 'GET', undefined, admin);
+  assert.equal(blogList.status, 200);
+  assert.equal(blogList.data.posts[0].title, 'Post A');
+  assert.equal(blogList.data.posts[1].title, 'Post B');
+
+  await call('/api/studio/site-content/projects', 'POST', { name: 'Work B', sort_order: 2 }, admin);
+  await call('/api/studio/site-content/projects', 'POST', { name: 'Work A', sort_order: 1 }, admin);
+  const siteContent = await call('/api/studio/site-content', 'GET', undefined, admin);
+  assert.equal(siteContent.status, 200);
+  assert.equal(siteContent.data.projects[0].name, 'Work A');
+  assert.equal(siteContent.data.projects[1].name, 'Work B');
+
   assert.equal((await call('/api/apps/auth/login')).status, 404);
   assert.equal((await call('/api/apps/auth/logout', 'POST', {}, admin)).status, 200);
   assert.equal((await call(`${base}/entities/User/me`, 'GET', undefined, admin)).status, 401);

@@ -9,6 +9,7 @@ import { loadTeamMembers, filterAssignees } from '@/lib/teamMembers';
 import { toast } from '@/components/ui/use-toast';
 import { formatPersianNumber as faNum } from '@/lib/number-format';
 import { fetchAllTags, persistNewTag, subscribeToTags, getCachedTags } from '@/lib/tags';
+import { normalizeSubtasks } from '@/lib/subtasks';
 
 const priorityLabels = { low: 'کم', medium: 'متوسط', high: 'زیاد' };
 const priorityColors = { low: 'bg-slate-100 text-slate-600', medium: 'bg-amber-100 text-amber-700', high: 'bg-red-100 text-red-700' };
@@ -35,10 +36,18 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
   const { user } = useAuth();
   const userName = user?.full_name || user?.email || '';
   const [employees, setEmployees] = useState([]);
-  const [form, setForm] = useState({ ...task, tags: Array.isArray(task?.tags) ? task.tags : [] });
+  const [form, setForm] = useState(() => ({
+    ...task,
+    tags: Array.isArray(task?.tags) ? task.tags : [],
+    subtasks: normalizeSubtasks(task?.subtasks),
+  }));
   const formRef = useRef(form);
   formRef.current = form;
-  const initialTaskRef = useRef(task);
+  const initialTaskRef = useRef({
+    ...task,
+    tags: Array.isArray(task?.tags) ? task.tags : [],
+    subtasks: normalizeSubtasks(task?.subtasks),
+  });
   const [activities, setActivities] = useState([]);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('details'); // details, comments, activity
@@ -101,6 +110,15 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
 
   useEffect(() => {
     loadTeamMembers().then((members) => setEmployees(filterAssignees(members)));
+    if (task) {
+      const initialForm = {
+        ...task,
+        tags: Array.isArray(task?.tags) ? task.tags : [],
+        subtasks: normalizeSubtasks(task?.subtasks),
+      };
+      setForm(initialForm);
+      initialTaskRef.current = { ...initialForm };
+    }
     setActivities([]);
     let cancelled = false;
     loadActivities(task, (items) => {
@@ -156,7 +174,59 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
   };
 
   const handleSubtaskChange = (newSubtasks) => {
-    setForm({ ...form, subtasks: newSubtasks });
+    setForm((current) => ({ ...current, subtasks: newSubtasks }));
+  };
+
+  const handleConvertToTask = async (subtask, index) => {
+    const subtaskTitle = (subtask?.title || subtask?.name || '').trim();
+    if (!subtaskTitle) {
+      toast({ title: 'خطا', description: 'عنوان زیرتسک نمی‌تواند خالی باشد', variant: 'destructive' });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const currentForm = formRef.current || form;
+      const remainingSubtasks = normalizeSubtasks(currentForm.subtasks).filter((_, i) => i !== index);
+
+      // 1. Create the new main task
+      const newTaskData = {
+        title: subtaskTitle,
+        project_id: currentForm.project_id || '',
+        project_name: currentForm.project_name || '',
+        priority: currentForm.priority || 'medium',
+        status: 'todo',
+        assignees: Array.isArray(currentForm.assignees) ? [...currentForm.assignees] : [],
+        assignee: currentForm.assignee || '',
+        description: `تبدیل‌شده از زیرتسک در تسک: ${currentForm.title}`,
+        tags: Array.isArray(currentForm.tags) ? [...currentForm.tags] : [],
+        subtasks: [],
+      };
+      await studio.entities.Task.create(newTaskData);
+
+      // 2. Update current task without this subtask
+      const updatedForm = { ...currentForm, subtasks: remainingSubtasks };
+      setForm(updatedForm);
+      formRef.current = updatedForm;
+      if (initialTaskRef.current) {
+        initialTaskRef.current.subtasks = remainingSubtasks;
+      }
+
+      const proj = projects.find((p) => p.id === updatedForm.project_id);
+      const data = { ...updatedForm, project_name: proj?.name || updatedForm.project_name || '' };
+      await studio.entities.Task.update(task.id, data);
+
+      toast({
+        title: 'تبدیل به تسک اصلی انجام شد',
+        description: `تسک جدید «${subtaskTitle}» با موفقیت ایجاد شد.`,
+      });
+      onSaved?.();
+    } catch (err) {
+      console.error('Failed to convert subtask to task:', err);
+      toast({ title: 'خطا در تبدیل زیرتسک', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addTime = async (hours) => {
@@ -465,7 +535,11 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
 
               <div>
                 <label className="text-sm font-medium block mb-1.5">زیرتسک‌ها</label>
-                <SubtaskList subtasks={form.subtasks || []} onChange={handleSubtaskChange} />
+                <SubtaskList
+                  subtasks={form.subtasks || []}
+                  onChange={handleSubtaskChange}
+                  onConvertToTask={handleConvertToTask}
+                />
               </div>
 
               <div>
