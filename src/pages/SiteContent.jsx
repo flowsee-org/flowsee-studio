@@ -513,9 +513,13 @@ export default function SiteContent() {
       await apiRequest(`/projects/${project.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...project, sort_order: val }),
+        body: JSON.stringify({
+          ...project,
+          sort_order: val,
+        }),
       });
       setProjects((prev) => prev.map((p) => (p.id === project.id ? { ...p, sort_order: val } : p)));
+      setRefresh((value) => value + 1);
       toast({ title: `اولویت نمایش «${project.name}» به ${val} تغییر یافت` });
     } catch (err) {
       toast({ title: "تغییر اولویت انجام نشد", description: err.message, variant: "destructive" });
@@ -566,7 +570,7 @@ export default function SiteContent() {
         <div className="flex min-h-56 items-center justify-center gap-2 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />در حال دریافت محتوا…
         </div>
-      ) : projects.length === 0 ? (
+      ) : sortedProjects.length === 0 ? (
         <div className="rounded-2xl border border-dashed p-12 text-center text-muted-foreground">هنوز نمونه‌کاری برای سایت ثبت نشده است.</div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
