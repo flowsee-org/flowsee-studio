@@ -26,7 +26,7 @@ Build and run the standalone server behind your HTTPS reverse proxy. Proxy the e
 
 The existing deploy-preview script publishes static assets only. It does not install or start this new server. Do not switch production to this build until the API process and reverse proxy are configured. No production deployment or data migration is performed by pushing this branch.
 
-Existing data is not fetched automatically. Back up the old service, export its entities, and use the administrator restore endpoint to import an `{ "entities": { "Task": [], ... } }` JSON document. User passwords cannot be imported from hosted authentication; create local accounts and remap user IDs in imported records. Test imports on an isolated data directory first. Never import an old development database containing demo users into production.
+Existing data is not fetched automatically. Back up the old service, export its entities, and use the administrator restore endpoint to import an `{ "entities": { "Task": [], ... } }` JSON document. Admin backups can be restored for application entities; the accompanying user directory is informational only, and user accounts, passwords, and the signing secret are not restored. Create local accounts and remap user IDs in imported records. Test imports on an isolated data directory first. Never import an old development database containing demo users into production.
 
 ## Checks
 

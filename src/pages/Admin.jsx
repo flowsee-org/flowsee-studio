@@ -178,46 +178,25 @@ export default function Admin() {
   const exportJsonBackup = async () => {
     try {
       setRestoreMsg("در حال آماده‌سازی فایل بکاپ...");
-      const [u, t, exp, inc, sal, p, a, m, s, wr, lr] = await Promise.all([
-        studio.entities.User.list().catch(() => []),
-        studio.entities.Task.list().catch(() => []),
-        studio.entities.Expense.list().catch(() => []),
-        studio.entities.Income.list().catch(() => []),
-        studio.entities.Salary.list().catch(() => []),
-        studio.entities.Project.list().catch(() => []),
-        studio.entities.Announcement.list().catch(() => []),
-        studio.entities.Meeting.list().catch(() => []),
-        studio.entities.Sprint.list().catch(() => []),
-        studio.entities.WorkReport.list().catch(() => []),
-        studio.entities.LeaveRequest.list().catch(() => []),
-      ]);
+      const token = localStorage.getItem("studio_access_token");
+      const response = await fetch(`/api/apps/${appId}/backup`, {
+        headers: { Authorization: ["Bearer ", token].join("") },
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || "دریافت بکاپ ناموفق بود");
+      }
 
-      const backup = {
-        app: "flowsee-studio",
-        version: "1.0",
-        export_date: new Date().toISOString(),
-        entities: {
-          User: u,
-          Task: t,
-          Expense: exp,
-          Income: inc,
-          Salary: sal,
-          Project: p,
-          Announcement: a,
-          Meeting: m,
-          Sprint: s,
-          WorkReport: wr,
-          LeaveRequest: lr,
-        },
-      };
-
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" });
+      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const aElem = document.createElement("a");
       aElem.href = url;
       aElem.download = `flowsee-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      aElem.style.display = "none";
+      document.body.appendChild(aElem);
       aElem.click();
-      URL.revokeObjectURL(url);
+      aElem.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       setRestoreMsg("✅ فایل بکاپ با موفقیت دانلود شد.");
     } catch (err) {
       setRestoreMsg("❌ خطا در ساخت بکاپ: " + err.message);
@@ -628,7 +607,7 @@ export default function Admin() {
         <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
           <RotateCcw className="w-5 h-5 text-primary" /> پشتیبان‌گیری و بازیابی
         </h2>
-        <p className="text-sm text-muted-foreground mb-4">دانلود یا آپلود کامل دیتابیس (فقط برای مدیرعامل)</p>
+        <p className="text-sm text-muted-foreground mb-4">دانلود یا بازیابی داده‌های برنامه؛ حساب‌های کاربری و رمزها بازیابی نمی‌شوند (فقط برای مدیرعامل)</p>
         <div className="flex gap-3 flex-wrap">
           <button
             type="button"

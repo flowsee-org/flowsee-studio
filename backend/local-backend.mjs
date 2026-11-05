@@ -883,7 +883,8 @@ export async function handleRequest(req, res) {
       const u = getAuthUser(req);
       if (!requireUser(res, u, "backup")) return undefined;
       if (u.role !== "superadmin") return error(res, 403, "Only superadmin can backup");
-      const exportData = { entities: db.entities, users: db.users.map((u) => { const { password_hash, ...rest } = u; return rest; }) };
+      const entities = Object.fromEntries(Object.entries(db.entities).filter(([name]) => name !== "User"));
+      const exportData = { entities, users: db.users.map((u) => { const { password_hash, ...rest } = u; return rest; }) };
       res.setHeader("Content-Type", "application/json");
       res.setHeader("Content-Disposition", `attachment; filename="flowsee-backup-${new Date().toISOString().slice(0,10)}.json"`);
       return res.end(JSON.stringify(exportData, null, 2));
