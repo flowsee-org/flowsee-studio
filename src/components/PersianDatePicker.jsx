@@ -121,7 +121,7 @@ export default function PersianDatePicker({
       <div className="relative w-full">
         <DatePicker
           ref={ref}
-          value={datePickerValue}
+          value={datePickerValue ?? null}
           onChange={handleChange}
           calendar={persian}
           locale={persian_fa}

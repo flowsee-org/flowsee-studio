@@ -200,7 +200,7 @@ export default function Projects() {
             return <div key={project.id} onClick={() => navigate(`/projects/${project.id}`)} className="cursor-pointer rounded-2xl border border-border bg-card p-4 hover:shadow-sm"><div className="flex flex-wrap items-center justify-between gap-2"><span className="font-semibold">{project.name}</span><span className="text-xs text-muted-foreground">{formatPersianDigits(start)} ← {formatPersianDigits(end)}</span></div><div className="relative mt-4 h-3 rounded-full bg-accent"><div className="absolute top-0 h-3 rounded-full" style={{ right: `${left}%`, width: `${width}%`, backgroundColor: project.color || "#FE5400" }} /><div className="absolute top-0 h-3 rounded-full bg-green-600/70" style={{ right: `${left}%`, width: `${width * progress / 100}%` }} /></div><div className="mt-2 flex justify-between text-xs text-muted-foreground"><span>{project.manager || "بدون مدیر"} · {priorityLabels[project.priority || "medium"]}</span><span>{faNum(progress)}٪ تکمیل تسک‌ها</span></div></div>;
           })}</div>}
 
-      {showForm && <ProjectForm editProject={editProject} onClose={() => { setShowForm(false); setEditProject(null); }} onSaved={load} />}
+      <ProjectForm key={editProject?.id ?? "new"} editProject={editProject} isOpen={showForm} onClose={() => setShowForm(false)} onSaved={load} />
       {deleteTarget && <ConfirmDialog title="حذف پروژه" description={`پروژه «${deleteTarget.name}» حذف خواهد شد. تسک‌های مرتبط باقی می‌مانند. ادامه می‌دهید؟`} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} confirmText="بله، حذف شود" />}
     </div>
   );

@@ -6,17 +6,26 @@ import PersianDatePicker from "@/components/PersianDatePicker";
 import SelectControl from "@/components/ui/SelectControl";
 import { toast } from "@/components/ui/use-toast";
 
-export default function ProjectForm({ editProject, onClose, onSaved }) {
+function createEmptyProjectForm() {
+  return { name: "", description: "", color: "#FE5400", status: "active", priority: "medium", archived: false, manager: "", start_date: "", end_date: "", members: [] };
+}
+
+export default function ProjectForm({ editProject, isOpen = true, onClose, onSaved }) {
   const [form, setForm] = useState(
-    editProject || { name: "", description: "", color: "#FE5400", status: "active", priority: "medium", archived: false, manager: "", start_date: "", end_date: "", members: [] }
+    editProject || createEmptyProjectForm()
   );
   const [members, setMembers] = useState([]);
   const [saving, setSaving] = useState(false);
   const colors = ["#FE5400", "#2563eb", "#16a34a", "#ea580c", "#dc2626", "#0891b2", "#7c3aed"];
 
   useEffect(() => {
-    loadTeamMembers().then(setMembers);
-  }, []);
+    if (!isOpen) return;
+    let active = true;
+    loadTeamMembers()
+      .then((loadedMembers) => { if (active) setMembers(loadedMembers); })
+      .catch((error) => { console.error("Could not load project members", error); if (active) setMembers([]); });
+    return () => { active = false; };
+  }, [isOpen]);
 
   const toggleMember = (name) => {
     const current = form.members || [];
@@ -37,6 +46,7 @@ export default function ProjectForm({ editProject, onClose, onSaved }) {
       }
       await onSaved();
       onClose();
+      if (!editProject) setForm(createEmptyProjectForm());
     } catch (error) {
       toast({ title: "ذخیره پروژه انجام نشد", description: error?.message || "دوباره تلاش کنید.", variant: "destructive" });
     } finally {
@@ -47,7 +57,7 @@ export default function ProjectForm({ editProject, onClose, onSaved }) {
   const selectedMembers = form.members || [];
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div aria-hidden={!isOpen} className={`fixed inset-0 bg-black/40 z-50 items-center justify-center p-4 ${isOpen ? "flex" : "hidden"}`} onClick={onClose}>
       <div className="bg-card rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto scrollbar-thin" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-bold text-lg">{editProject ? "ویرایش پروژه" : "پروژه جدید"}</h2>

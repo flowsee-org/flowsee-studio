@@ -23,6 +23,24 @@ const priorityOptions = [
 ];
 const suggestedTags = ["طراحی", "توسعه", "محتوا", "بازاریابی", "پشتیبانی", "فوری"];
 
+function createEmptyTaskForm() {
+  return {
+    title: "",
+    project_id: "",
+    project_name: "",
+    status: "todo",
+    priority: "medium",
+    assignees: [],
+    assignee: "",
+    description: "",
+    due_date: "",
+    subtasks: [],
+    time_spent: 0,
+    recurring_config: null,
+    tags: [],
+  };
+}
+
 function PropertyChip({ icon: Icon, label, value, children, contentClassName = "", open, onOpenChange }) {
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
@@ -39,25 +57,11 @@ function PropertyChip({ icon: Icon, label, value, children, contentClassName = "
   );
 }
 
-export default function TaskForm({ projects, editTask, onClose, onSaved }) {
+export default function TaskForm({ projects, editTask, isOpen = true, onClose, onSaved }) {
   const [employees, setEmployees] = useState([]);
   const [createdProjects, setCreatedProjects] = useState([]);
   const [form, setForm] = useState(() => (
-    editTask ? { ...editTask, tags: Array.isArray(editTask.tags) ? editTask.tags : [] } : {
-      title: "",
-      project_id: "",
-      project_name: "",
-      status: "todo",
-      priority: "medium",
-      assignees: [],
-      assignee: "",
-      description: "",
-      due_date: "",
-      subtasks: [],
-      time_spent: 0,
-      recurring_config: null,
-      tags: [],
-    }
+    editTask ? { ...editTask, tags: Array.isArray(editTask.tags) ? editTask.tags : [] } : createEmptyTaskForm()
   ));
   const [saving, setSaving] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -70,6 +74,7 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
   const showRecurring = !!form.recurring_config;
 
   useEffect(() => {
+    if (!isOpen) return;
     const handleEscape = (event) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
       if (openProperty) {
@@ -80,16 +85,21 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
     };
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [openProperty, onClose]);
+  }, [isOpen, openProperty, onClose]);
 
   useEffect(() => {
+    if (isOpen) document.querySelector('[aria-label="عنوان تسک"]')?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     let active = true;
     loadTeamMembers()
       .then((members) => { if (active) setEmployees(members); })
       .catch((error) => { console.error("Could not load task assignees", error); if (active) setEmployees([]); })
       .finally(() => { if (active) setMembersLoading(false); });
     return () => { active = false; };
-  }, []);
+  }, [isOpen]);
 
   const toggleAssignee = (name) => {
     const current = form.assignees || [];
@@ -160,8 +170,15 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
         await studio.entities.Task.create(data);
       }
       toast({ title: editTask?.id ? "تسک بروزرسانی شد" : "تسک ثبت شد" });
+      if (!editTask?.id) setOpenProperty(null);
       onSaved();
       onClose();
+      if (!editTask?.id) {
+        setForm(createEmptyTaskForm());
+        setAdvancedOpen(false);
+        setTagInput("");
+        setProjectInput("");
+      }
     } catch (err) {
       console.error(err);
       toast({ title: "خطا", description: err.message, variant: "destructive" });
@@ -186,6 +203,10 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
 
   const setTags = (tags) => setForm((current) => ({ ...current, tags: [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))] }));
   const toggleTag = (tag) => setTags(selectedTags.includes(tag) ? selectedTags.filter((item) => item !== tag) : [...selectedTags, tag]);
+  const close = () => {
+    setOpenProperty(null);
+    onClose();
+  };
   const addTag = () => {
     const value = tagInput.trim();
     if (!value) return;
@@ -195,12 +216,13 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3"
+      aria-hidden={!isOpen}
+      className={`fixed inset-0 z-50 items-center justify-center bg-black/50 p-3 ${isOpen ? "flex" : "hidden"}`}
       onPointerDown={(event) => { backdropPointerDown.current = event.target === event.currentTarget; }}
       onPointerUp={(event) => {
         const shouldClose = backdropPointerDown.current && event.target === event.currentTarget;
         backdropPointerDown.current = false;
-        if (shouldClose) onClose();
+        if (shouldClose) close();
       }}
       onPointerCancel={() => { backdropPointerDown.current = false; }}
     >
@@ -211,11 +233,11 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
             <span id="task-form-title" className="truncate font-medium text-foreground">{editTask?.id ? "ویرایش تسک" : "تسک جدید"}</span>
             {selectedProject && <><span aria-hidden="true">›</span><span className="max-w-40 truncate">{selectedProject.name}</span></>}
           </div>
-          <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="بستن پنجره"><X className="h-4 w-4" /></Button>
+          <Button type="button" variant="ghost" size="icon" onClick={close} aria-label="بستن پنجره"><X className="h-4 w-4" /></Button>
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
-          <Input autoFocus aria-label="عنوان تسک" placeholder="عنوان تسک" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="h-12 rounded-xl border border-border bg-background px-4 py-3 text-xl font-semibold shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30 sm:text-2xl" />
+          <Input aria-label="عنوان تسک" placeholder="عنوان تسک" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="h-12 rounded-xl border border-border bg-background px-4 py-3 text-left text-xl font-semibold shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30 sm:text-2xl" />
           <div className="mt-5">
             <div className="mb-2"><span className="text-xs text-muted-foreground">توضیحات</span></div>
             <textarea aria-label="توضیحات تسک" value={form.description || ""} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={8} placeholder="توضیحات را بنویسید…" className="min-h-52 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-sm leading-7 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/30" />

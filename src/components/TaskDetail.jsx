@@ -192,9 +192,10 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
                 </label>
                 <input
                   type="text"
+                  dir="auto"
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full border border-input rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full border border-input rounded-xl px-4 py-2.5 text-left text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
 
