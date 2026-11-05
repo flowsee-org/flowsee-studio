@@ -12,6 +12,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { toast } from "@/components/ui/use-toast";
 import SelectControl from "@/components/ui/SelectControl";
 import { formatPersianNumber as faNum } from "@/lib/number-format";
+import { fetchAllTags, subscribeToTags, getCachedTags } from "@/lib/tags";
 
 const columns = [
   { id: "todo", title: "در انتظار", color: "bg-slate-100" },
@@ -139,6 +140,8 @@ export default function Tasks() {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [projectFilter, setProjectFilter] = useState("");
   const [employeeFilter, setEmployeeFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
+  const [allTags, setAllTags] = useState(() => getCachedTags());
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -165,6 +168,8 @@ export default function Tasks() {
 
   useEffect(() => {
     load();
+    fetchAllTags().then(setAllTags);
+    return subscribeToTags(setAllTags);
   }, []);
 
   useEffect(() => {
@@ -227,16 +232,20 @@ export default function Tasks() {
       if (employeeFilter) {
         if (!matchesTaskOwner(t, employeeFilter)) return false;
       }
+      if (tagFilter) {
+        if (!Array.isArray(t.tags) || !t.tags.includes(tagFilter)) return false;
+      }
       if (dateFrom && t.due_date && t.due_date < dateFrom) return false;
       if (dateTo && t.due_date && t.due_date > dateTo) return false;
       return true;
     });
-  }, [searchFilteredTasks, projectFilter, employeeFilter, dateFrom, dateTo]);
+  }, [searchFilteredTasks, projectFilter, employeeFilter, tagFilter, dateFrom, dateTo]);
 
-  const hasTaskFilters = Boolean(projectFilter || employeeFilter || dateFrom || dateTo || searchQuery);
+  const hasTaskFilters = Boolean(projectFilter || employeeFilter || tagFilter || dateFrom || dateTo || searchQuery);
   const clearTaskFilters = () => {
     setProjectFilter("");
     setEmployeeFilter("");
+    setTagFilter("");
     setDateFrom("");
     setDateTo("");
     setSearchQuery("");
@@ -423,13 +432,14 @@ export default function Tasks() {
       if (query && !task.title.toLowerCase().includes(query) && !(task.description || "").toLowerCase().includes(query) && !(task.task_number || "").toLowerCase().includes(query)) return false;
       if (projectFilter && task.project_id !== projectFilter) return false;
       if (employeeFilter && !matchesTaskOwner(task, employeeFilter)) return false;
+      if (tagFilter && (!Array.isArray(task.tags) || !task.tags.includes(tagFilter))) return false;
       if (dateFrom && task.due_date && task.due_date < dateFrom) return false;
       if (dateTo && task.due_date && task.due_date > dateTo) return false;
       return true;
     });
     result.archived = sortTasks(archived, "priority_created");
     return result;
-  }, [filteredTasks, viewFilteredTasks, columnSort, searchQuery, projectFilter, employeeFilter, dateFrom, dateTo]);
+  }, [filteredTasks, viewFilteredTasks, columnSort, searchQuery, projectFilter, employeeFilter, tagFilter, dateFrom, dateTo]);
 
   const sortedTableTasks = useMemo(() => sortTasks(filteredTasks, tableSort), [filteredTasks, tableSort]);
   const availableBoardColumns = showArchiveColumn ? [...columns, archiveColumn] : columns;
@@ -593,6 +603,16 @@ export default function Tasks() {
                 ))}
               </SelectControl>
             )}
+            <SelectControl
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              className="col-span-2 w-full sm:col-span-1 sm:w-auto border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 sm:min-w-[150px]"
+            >
+              <option value="">همه برچسب‌ها</option>
+              {allTags.map((tag) => (
+                <option key={tag} value={tag}>{tag}</option>
+              ))}
+            </SelectControl>
             <div className="col-span-2 min-w-0 sm:col-span-1 sm:min-w-[180px]">
               <PersianDatePicker label="از تاریخ" value={dateFrom} onChange={setDateFrom} placeholder="از ددلاین" />
             </div>

@@ -62,21 +62,54 @@ function ImageUpload({ value, onChange, token }) {
 }
 
 function PostEditor({ post, categories, onClose, onSaved, token }) {
-  const [form, setForm] = useState(() => ({ ...blankPost(), ...(post || {}), blog_category_id: post?.blog_category_id || "", published_at: toLocalInput(post?.published_at) }));
+  const draftKey = `flowsee_blog_draft_${post?.id || "new"}`;
+  const getInitialPostForm = () => {
+    const base = { ...blankPost(), ...(post || {}), blog_category_id: post?.blog_category_id || "", published_at: toLocalInput(post?.published_at) };
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) {
+        const draft = JSON.parse(raw);
+        if (draft && typeof draft === "object") return { ...base, ...draft };
+      }
+    } catch {}
+    return base;
+  };
+  const [form, setForm] = useState(getInitialPostForm);
   const [slugEdited, setSlugEdited] = useState(Boolean(post)); const [saving, setSaving] = useState(false); const [error, setError] = useState("");
   const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const setTitle = (title) => setForm((current) => ({ ...current, title, ...(!slugEdited ? { slug: slugify(title) } : {}) }));
+
+  useEffect(() => {
+    if (form.title?.trim() || form.content?.trim() || form.excerpt?.trim()) {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify(form));
+      } catch {}
+    }
+  }, [form, draftKey]);
+
+  const handleClose = () => {
+    if (form.title?.trim() || form.content?.trim()) {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify(form));
+      } catch {}
+    }
+    onClose();
+  };
+
   const save = async (event) => {
     event.preventDefault(); setSaving(true); setError("");
     const payload = { ...form, blog_category_id: Number(form.blog_category_id), published_at: form.published_at ? new Date(form.published_at).toISOString() : null };
     try {
       await apiRequest(post ? `/${post.id}` : "", { method: post ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      try {
+        localStorage.removeItem(draftKey);
+      } catch {}
       onSaved();
     } catch (saveError) { setError(saveError.message); }
     finally { setSaving(false); }
   };
   const fieldClass = "w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
-  return <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/55 p-0 sm:items-center sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section role="dialog" aria-modal="true" aria-label={post ? "ویرایش مقاله" : "مقالهٔ جدید"} className="flex max-h-[95vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-2xl sm:rounded-2xl"><header className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4"><div><h2 className="text-lg font-bold">{post ? "ویرایش مقاله" : "نوشتن مقالهٔ جدید"}</h2><p className="mt-1 text-xs text-muted-foreground">پیش‌نویس را ذخیره کنید یا مستقیم منتشر کنید.</p></div><button type="button" onClick={onClose} aria-label="بستن" className="rounded-lg p-2 text-muted-foreground hover:bg-accent"><X className="h-5 w-5" /></button></header><form onSubmit={save} className="space-y-5 overflow-y-auto p-5">
+  return <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/55 p-0 sm:items-center sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) handleClose(); }}><section role="dialog" aria-modal="true" aria-label={post ? "ویرایش مقاله" : "مقالهٔ جدید"} className="flex max-h-[95vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-2xl sm:rounded-2xl"><header className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4"><div><h2 className="text-lg font-bold">{post ? "ویرایش مقاله" : "نوشتن مقالهٔ جدید"}</h2><p className="mt-1 text-xs text-muted-foreground">پیش‌نویس به‌صورت خودکار در مرورگر نگهداری می‌شود.</p></div><button type="button" onClick={handleClose} aria-label="بستن" className="rounded-lg p-2 text-muted-foreground hover:bg-accent"><X className="h-5 w-5" /></button></header><form onSubmit={save} className="space-y-5 overflow-y-auto p-5">
     <div className="grid gap-4 sm:grid-cols-2"><EditorField label="عنوان مقاله" value={form.title} onChange={setTitle} required maxLength={255} /><EditorField label="نشانی کوتاه (Slug)" value={form.slug} dir="ltr" required maxLength={255} onChange={(value) => { setSlugEdited(true); set("slug", slugify(value)); }} /><label className="block space-y-1.5"><span className="text-sm font-medium">دسته‌بندی</span><select required value={form.blog_category_id} onChange={(event) => set("blog_category_id", event.target.value)} className={fieldClass}><option value="">انتخاب دسته‌بندی</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><EditorField label="تاریخ انتشار" value={form.published_at} onChange={(value) => set("published_at", value)} type="datetime-local" dir="ltr" /></div>
     <EditorField label="خلاصهٔ مقاله" value={form.excerpt} onChange={(value) => set("excerpt", value)} multiline maxLength={1000} placeholder="خلاصه‌ای که در کارت‌های بلاگ نمایش داده می‌شود" />
     <ImageUpload value={form.cover_image} onChange={(value) => set("cover_image", value)} token={token} />
@@ -85,18 +118,18 @@ function PostEditor({ post, categories, onClose, onSaved, token }) {
     <div className="grid gap-4 sm:grid-cols-2"><EditorField label="عنوان سئو" value={form.meta_title} onChange={(value) => set("meta_title", value)} maxLength={255} /><EditorField label="توضیحات سئو" value={form.meta_description} onChange={(value) => set("meta_description", value)} multiline maxLength={500} /></div>
     <div className="grid gap-3 sm:grid-cols-2"><label className="flex items-center gap-2 rounded-xl border p-3 text-sm"><input type="checkbox" checked={!!form.is_featured} onChange={(event) => set("is_featured", event.target.checked)} />مقالهٔ پیشنهادی</label><label className="flex items-center gap-2 rounded-xl border p-3 text-sm"><input type="checkbox" checked={!!form.is_published} onChange={(event) => set("is_published", event.target.checked)} />انتشار در سایت</label></div>
     {error && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
-    <footer className="sticky bottom-0 -mx-5 mt-4 flex flex-wrap justify-start gap-3 border-t border-border bg-card px-5 py-4 sm:-mx-6 sm:px-6"><UiButton type="submit" disabled={saving}>{saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}ذخیرهٔ مقاله</UiButton><UiButton type="button" variant="outline" onClick={onClose}>انصراف</UiButton></footer>
+    <footer className="sticky bottom-0 -mx-5 mt-4 flex flex-wrap justify-start gap-3 border-t border-border bg-card px-5 py-4 sm:-mx-6 sm:px-6"><UiButton type="submit" disabled={saving}>{saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}ذخیرهٔ مقاله</UiButton><UiButton type="button" variant="outline" onClick={handleClose}>انصراف</UiButton></footer>
   </form></section></div>;
 }
 
 export default function BlogContent() {
-  const { user, isSuperadmin } = useAuth(); const { toast } = useToast();
+  const { user } = useAuth(); const { toast } = useToast();
   const [posts, setPosts] = useState([]); const [categories, setCategories] = useState([]); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [editor, setEditor] = useState(null); const [refresh, setRefresh] = useState(0);
   const load = useCallback(async () => { setLoading(true); setError(""); try { const result = await apiRequest(); setPosts(result.posts || []); setCategories(result.categories || []); } catch (loadError) { setError(loadError.message); } finally { setLoading(false); } }, []);
   useEffect(() => { if (user && canAccessModule(user, "blog-content")) load(); }, [user, load, refresh]);
   const saved = () => { setEditor(null); setRefresh((value) => value + 1); toast({ title: "مقاله ذخیره شد" }); };
   const remove = async (post) => { if (!window.confirm(`مقالهٔ «${post.title}» حذف شود؟`)) return; try { await apiRequest(`/${post.id}`, { method: "DELETE" }); setRefresh((value) => value + 1); toast({ title: "مقاله حذف شد" }); } catch (deleteError) { toast({ title: "حذف انجام نشد", description: deleteError.message, variant: "destructive" }); } };
-  if (!isSuperadmin && !canAccessModule(user, "blog-content")) return <div dir="rtl" className="mx-auto flex min-h-80 max-w-3xl items-center justify-center rounded-2xl border bg-card p-8 text-center text-muted-foreground">شما به بخش مقالات بلاگ دسترسی ندارید.</div>;
+  if (!canAccessModule(user, "blog-content")) return <div dir="rtl" className="mx-auto flex min-h-80 max-w-3xl items-center justify-center rounded-2xl border bg-card p-8 text-center text-muted-foreground">شما دسترسی به مدیریت مقالات بلاگ را ندارید. برای دریافت دسترسی با مدیر سیستم تماس بگیرید.</div>;
   return <main dir="rtl" className="mx-auto max-w-7xl space-y-5"><header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">مقالات بلاگ</h1><p className="mt-1 text-sm text-muted-foreground">نوشتن، دسته‌بندی و انتشار مقاله‌ها در سایت Flowsee.</p></div><div className="flex gap-2"><UiButton variant="outline" onClick={() => setRefresh((value) => value + 1)} disabled={loading}><RefreshCw className={`ml-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />تازه‌سازی</UiButton><UiButton onClick={() => setEditor({ post: null })}><Plus className="ml-2 h-4 w-4" />مقالهٔ جدید</UiButton></div></header>
     <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-2xl border bg-card p-4"><span className="text-xs text-muted-foreground">همهٔ مقاله‌ها</span><p className="mt-1 text-2xl font-bold">{faNum(posts.length)}</p></div><div className="rounded-2xl border bg-card p-4"><span className="text-xs text-muted-foreground">منتشرشده</span><p className="mt-1 text-2xl font-bold text-emerald-600">{faNum(posts.filter((post) => post.is_published).length)}</p></div><div className="rounded-2xl border bg-card p-4"><span className="text-xs text-muted-foreground">پیش‌نویس</span><p className="mt-1 text-2xl font-bold text-amber-600">{faNum(posts.filter((post) => !post.is_published).length)}</p></div></div>
     {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"><span>{error}</span><UiButton variant="outline" size="sm" onClick={() => setRefresh((value) => value + 1)}>تلاش دوباره</UiButton></div>}

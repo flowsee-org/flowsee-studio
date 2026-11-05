@@ -21,7 +21,27 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAppState();
+    const handleFocus = () => {
+      if (localStorage.getItem("studio_access_token")) {
+        refreshUser();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, []);
+
+  const refreshUser = async () => {
+    try {
+      const currentUser = await studio.auth.me();
+      if (currentUser && currentUser.is_active !== false) {
+        setUser(currentUser);
+        setIsAuthenticated(true);
+        return currentUser;
+      }
+    } catch {
+      // Ignore background refresh errors
+    }
+  };
 
   const checkAppState = async () => {
     setAppPublicSettings({ id: 'studio', public_settings: {} });
@@ -103,6 +123,7 @@ export const AuthProvider = ({ children }) => {
       isActive,
       logout,
       navigateToLogin,
+      refreshUser,
       checkUserAuth,
       checkAppState
     }}>
