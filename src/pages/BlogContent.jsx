@@ -22,7 +22,7 @@ function slugify(value) {
 }
 function authHeaders() { return { Authorization: `Bearer ${localStorage.getItem("studio_access_token") || ""}`, Accept: "application/json" }; }
 async function apiRequest(path = "", options = {}) {
-  const response = await fetch(`${API}${path}`, { ...options, headers: { ...authHeaders(), ...options.headers } });
+  const response = await fetch(`${API}${path}`, { cache: "no-store", ...options, headers: { ...authHeaders(), ...options.headers } });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
     const firstError = Object.values(result.errors || {}).flat()[0];

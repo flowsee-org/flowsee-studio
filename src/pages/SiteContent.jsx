@@ -507,6 +507,27 @@ export default function SiteContent() {
     }
   };
 
+  const updatePriority = async (project, newOrder) => {
+    const val = Math.max(0, parseInt(newOrder, 10) || 0);
+    try {
+      await apiRequest(`/projects/${project.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...project, sort_order: val }),
+      });
+      setProjects((prev) => prev.map((p) => (p.id === project.id ? { ...p, sort_order: val } : p)));
+      toast({ title: `اولویت نمایش «${project.name}» به ${val} تغییر یافت` });
+    } catch (err) {
+      toast({ title: "تغییر اولویت انجام نشد", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const sortedProjects = [...projects].sort((a, b) => {
+    const aOrder = a.sort_order > 0 ? a.sort_order : 999999;
+    const bOrder = b.sort_order > 0 ? b.sort_order : 999999;
+    return aOrder - bOrder || (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0);
+  });
+
   if (!canAccessModule(user, "site-content")) {
     return (
       <div dir="rtl" className="mx-auto flex min-h-80 max-w-3xl items-center justify-center rounded-2xl border bg-card p-8 text-center text-muted-foreground">
@@ -549,7 +570,7 @@ export default function SiteContent() {
         <div className="rounded-2xl border border-dashed p-12 text-center text-muted-foreground">هنوز نمونه‌کاری برای سایت ثبت نشده است.</div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {projects.map((project) => (
+          {sortedProjects.map((project) => (
             <article key={project.id} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm flex flex-col">
               <div className="relative h-44 bg-accent">
                 <ImagePreview path={project.cover_image} alt={project.name} className="h-full w-full object-cover" />
@@ -599,15 +620,29 @@ export default function SiteContent() {
                       مشاهده در سایت <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setEditor({ type: "case-study", project })}>
-                      <FileImage className="ml-1 h-3.5 w-3.5" />
-                      {project.case_study ? "ویرایش نمونه‌کار" : "ساخت نمونه‌کار"}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => deleteProject(project)} className="mr-auto text-destructive hover:bg-destructive/10">
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">حذف نمونه‌کار</span>
-                    </Button>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <Button variant="outline" size="sm" onClick={() => setEditor({ type: "case-study", project })}>
+                        <FileImage className="ml-1 h-3.5 w-3.5" />
+                        {project.case_study ? "ویرایش" : "ساخت"}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => deleteProject(project)} className="text-destructive hover:bg-destructive/10">
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">حذف</span>
+                      </Button>
+                    </div>
+                    <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <span>اولویت:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        defaultValue={project.sort_order ?? 0}
+                        onBlur={(e) => updatePriority(project, e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.currentTarget.blur(); } }}
+                        title="اولویت نمایش در صفحه اصلی (۱ اول از همه نمایش داده می‌شود)"
+                        className="h-7 w-14 rounded-lg border border-input bg-background px-1.5 text-center text-xs font-semibold text-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </label>
                   </div>
                 </div>
               </div>

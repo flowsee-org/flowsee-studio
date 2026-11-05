@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { Plus, Trash2, Pencil, ArrowDownUp, LayoutTemplate, Filter, X, Send, CheckCircle, Clock, Search, Archive, Eye, RotateCcw, Table2, Columns3, GanttChart, UserRound, SquarePen, UsersRound } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowDownUp, LayoutTemplate, Filter, X, Send, CheckCircle, Clock, Search, Archive, Eye, RotateCcw, Table2, Columns3, GanttChart, UserRound, SquarePen, UsersRound, ListChecks } from "lucide-react";
 import TaskForm from "@/components/TaskForm";
 import TemplatePicker from "@/components/TemplatePicker";
 import TaskRequestModal from "@/components/TaskRequestModal";
@@ -834,9 +834,9 @@ export default function Tasks() {
                                   {t.task_number && (
                                     <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">{t.task_number}</span>
                                   )}
-                                  <p title={t.title} className="font-medium text-sm leading-snug flex-1 min-w-0 truncate">{t.title}</p>
+                                  <p title={t.title} dir="auto" className="font-medium text-sm leading-snug flex-1 min-w-0 truncate text-right">{t.title}</p>
                                 </div>
-                                {longPressedTaskId === t.id && <div role="tooltip" className="absolute inset-x-2 top-12 z-30 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-lg">
+                                {longPressedTaskId === t.id && <div role="tooltip" className="absolute inset-x-2 top-12 z-30 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-lg text-right" dir="rtl">
                                   <p className="font-semibold text-sm whitespace-normal break-words">{t.title}</p>
                                   {t.description && <p className="mt-1 text-xs leading-relaxed whitespace-pre-wrap break-words">{t.description}</p>}
                                 </div>}
@@ -844,6 +844,23 @@ export default function Tasks() {
                                   {t.priority && (
                                     <span className={`text-xs px-1.5 py-0.5 rounded-full ${priorityColors[t.priority]}`}>{priorityLabels[t.priority]}</span>
                                   )}
+                                  {Array.isArray(t.subtasks) && t.subtasks.length > 0 && (() => {
+                                    const doneCount = t.subtasks.filter((s) => s.done).length;
+                                    const isComplete = doneCount === t.subtasks.length;
+                                    return (
+                                      <span
+                                        title={`زیرتسک‌ها: ${faNum(doneCount)} از ${faNum(t.subtasks.length)}`}
+                                        className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-medium ${
+                                          isComplete
+                                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                            : "bg-muted text-muted-foreground"
+                                        }`}
+                                      >
+                                        <ListChecks className="w-3 h-3" />
+                                        <span>{faNum(doneCount)}/{faNum(t.subtasks.length)}</span>
+                                      </span>
+                                    );
+                                  })()}
                                   {(Array.isArray(t.tags) ? t.tags : []).slice(0, 3).map((tag) => (
                                     <span key={tag} className="max-w-24 truncate rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{tag}</span>
                                   ))}

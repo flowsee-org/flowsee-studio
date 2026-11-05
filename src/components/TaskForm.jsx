@@ -268,6 +268,7 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
         } catch {}
       }
       toast({ title: editTask?.id ? "تسک بروزرسانی شد" : "تسک ثبت شد" });
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
       onSaved();
       onClose();
     } catch (err) {
@@ -297,6 +298,8 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
   const addTag = async () => {
     const value = tagInput.trim();
     if (!value) return;
+    saveCustomTag(value);
+    setAllSuggestedTags((prev) => [...new Set([...prev, value])]);
     setTags([...selectedTags, value]);
     setTagInput("");
     await persistNewTag(value);
@@ -361,8 +364,27 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
                   <div className="flex flex-wrap gap-1.5">{[...new Set([...availableTags, ...selectedTags])].map((tag) => <Button type="button" key={tag} variant={selectedTags.includes(tag) ? "secondary" : "outline"} size="sm" onClick={() => toggleTag(tag)} className="h-7 px-2 text-xs">{selectedTags.includes(tag) && <Check className="h-3 w-3" />}{tag}</Button>)}</div>
                 </div>
               </PropertyChip>
-              <PropertyChip open={openProperty === "dueDate"} onOpenChange={(open) => setPropertyOpen("dueDate", open)} icon={CalendarDays} label="موعد" value={form.due_date || "موعد سررسید"} contentClassName="w-72 overflow-visible">
-                <div className="space-y-2 p-2"><span className="block text-xs font-medium">موعد سررسید</span><PersianDatePicker value={form.due_date || ""} onChange={(value) => { setForm((current) => ({ ...current, due_date: value })); if (value) setPropertyOpen("dueDate", false); }} placeholder="انتخاب تاریخ" /><Button type="button" variant="ghost" size="sm" onClick={() => { setForm((current) => ({ ...current, due_date: "" })); setPropertyOpen("dueDate", false); }}>پاک کردن تاریخ</Button></div>
+              <PropertyChip open={openProperty === "dueDate"} onOpenChange={(open) => setPropertyOpen("dueDate", open)} icon={CalendarDays} label="موعد" value={form.due_date || "موعد سررسید"} contentClassName="w-80 overflow-visible p-3">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <span className="text-xs font-semibold text-foreground">انتخاب تاریخ موعد سررسید</span>
+                    {form.due_date && (
+                      <button type="button" onClick={() => { setForm((current) => ({ ...current, due_date: "" })); setPropertyOpen("dueDate", false); }} className="text-xs text-destructive hover:underline">
+                        پاک کردن
+                      </button>
+                    )}
+                  </div>
+                  <PersianDatePicker
+                    value={form.due_date || ""}
+                    onChange={(value) => {
+                      if (value) {
+                        setForm((current) => ({ ...current, due_date: value }));
+                        setPropertyOpen("dueDate", false);
+                      }
+                    }}
+                    placeholder="انتخاب تاریخ از تقویم"
+                  />
+                </div>
               </PropertyChip>
               <Button type="button" variant="ghost" size="sm" onClick={() => setAdvancedOpen((open) => !open)} className="h-8 px-2 text-muted-foreground"><MoreHorizontal className="h-4 w-4" />{advancedOpen ? "بستن تنظیمات" : "بیشتر"}</Button>
             </div>
