@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { studio } from "@/api/studioClient";
-import { CalendarDays, Check, CheckCircle2, Circle, CircleDot, Clock3, Flag, FolderKanban, ListChecks, MoreHorizontal, Plus, Repeat2, Tag, UserRound, X } from "lucide-react";
+import { CalendarDays, Check, CheckCircle2, Circle, CircleDot, Clock3, Flag, FolderKanban, ListChecks, MoreHorizontal, Plus, Repeat2, Tag, UserRound, X, RotateCcw } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
-import { loadTeamMembers } from "@/lib/teamMembers";
+import { loadTeamMembers, filterAssignees } from "@/lib/teamMembers";
 import SubtaskList from "./SubtaskList";
 import { toast } from "@/components/ui/use-toast";
 import SelectControl from "@/components/ui/SelectControl";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { fetchAllTags, persistNewTag, subscribeToTags, getCachedTags } from "@/lib/tags";
 
 const statusOptions = [
   { value: "todo", label: "در انتظار", Icon: Circle },
@@ -21,7 +22,42 @@ const priorityOptions = [
   { value: "medium", label: "متوسط" },
   { value: "low", label: "کم" },
 ];
-const suggestedTags = ["طراحی", "توسعه", "محتوا", "بازاریابی", "پشتیبانی", "فوری"];
+
+const TASK_DRAFT_KEY = "flowsee_task_form_draft";
+
+const blankTaskForm = () => ({
+  title: "",
+  project_id: "",
+  project_name: "",
+  status: "todo",
+  priority: "medium",
+  assignees: [],
+  assignee: "",
+  description: "",
+  due_date: "",
+  subtasks: [],
+  time_spent: 0,
+  recurring_config: null,
+  tags: [],
+});
+
+function getInitialForm(editTask) {
+  if (editTask) {
+    return { ...editTask, tags: Array.isArray(editTask.tags) ? editTask.tags : [] };
+  }
+  try {
+    const raw = localStorage.getItem(TASK_DRAFT_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        return { ...blankTaskForm(), ...parsed };
+      }
+    }
+  } catch {
+    // Ignore draft read issues
+  }
+  return blankTaskForm();
+}
 
 function PropertyChip({ icon: Icon, label, value, children, contentClassName = "", open, onOpenChange }) {
   return (
@@ -42,32 +78,96 @@ function PropertyChip({ icon: Icon, label, value, children, contentClassName = "
 export default function TaskForm({ projects, editTask, onClose, onSaved }) {
   const [employees, setEmployees] = useState([]);
   const [createdProjects, setCreatedProjects] = useState([]);
-  const [form, setForm] = useState(() => (
-    editTask ? { ...editTask, tags: Array.isArray(editTask.tags) ? editTask.tags : [] } : {
-      title: "",
-      project_id: "",
-      project_name: "",
-      status: "todo",
-      priority: "medium",
-      assignees: [],
-      assignee: "",
-      description: "",
-      due_date: "",
-      subtasks: [],
-      time_spent: 0,
-      recurring_config: null,
-      tags: [],
+  const [form, setForm] = useState(() => getInitialForm(editTask));
+  const formRef = useRef(form);
+  formRef.current = form;
+  const initialTaskRef = useRef(editTask);
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(() => {
+    if (editTask) return false;
+    try {
+      const raw = localStorage.getItem(TASK_DRAFT_KEY);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      return Boolean(parsed?.title || parsed?.description || parsed?.tags?.length);
+    } catch {
+      return false;
     }
-  ));
+  });
+
   const [saving, setSaving] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [availableTags, setAvailableTags] = useState(() => getCachedTags());
   const [projectInput, setProjectInput] = useState("");
   const [creatingProject, setCreatingProject] = useState(false);
   const [openProperty, setOpenProperty] = useState(null);
   const [membersLoading, setMembersLoading] = useState(true);
   const backdropPointerDown = useRef(false);
   const showRecurring = !!form.recurring_config;
+
+  // Persist draft for new task as user types
+  useEffect(() => {
+    if (!editTask) {
+      const hasContent = form.title?.trim() || form.description?.trim() || form.tags?.length || form.assignees?.length;
+      if (hasContent) {
+        try {
+          localStorage.setItem(TASK_DRAFT_KEY, JSON.stringify(form));
+        } catch {}
+      }
+    }
+  }, [form, editTask]);
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(TASK_DRAFT_KEY);
+    } catch {}
+    setForm(blankTaskForm());
+    setHasRestoredDraft(false);
+    toast({ title: "پیش‌نویس پاک شد" });
+  };
+
+  const handleClose = async () => {
+    if (editTask?.id) {
+      const t = initialTaskRef.current || {};
+      const f = formRef.current;
+      const isDirty = (
+        f.title !== t.title ||
+        f.description !== (t.description || "") ||
+        f.project_id !== (t.project_id || "") ||
+        f.status !== t.status ||
+        f.priority !== t.priority ||
+        f.due_date !== (t.due_date || "") ||
+        f.time_spent !== (t.time_spent || 0) ||
+        JSON.stringify(f.assignees || []) !== JSON.stringify(t.assignees || []) ||
+        JSON.stringify(f.tags || []) !== JSON.stringify(t.tags || []) ||
+        JSON.stringify(f.subtasks || []) !== JSON.stringify(t.subtasks || [])
+      );
+      if (isDirty && f.title?.trim() && !saving) {
+        setSaving(true);
+        try {
+          const proj = [...projects, ...createdProjects].find((p) => String(p.id) === String(f.project_id));
+          const data = { ...f, project_name: proj?.name || f.project_name || "" };
+          await studio.entities.Task.update(editTask.id, data);
+          toast({ title: "تغییرات تسک ذخیره شد" });
+          onSaved?.();
+        } catch (err) {
+          console.error("Auto-save editTask on close failed", err);
+          toast({ title: "خطا در ذخیره خودکار", description: err.message, variant: "destructive" });
+        } finally {
+          setSaving(false);
+        }
+      }
+    } else {
+      // New task: save draft immediately so reopening never loses data
+      const f = formRef.current;
+      if (f.title?.trim() || f.description?.trim() || f.tags?.length || f.assignees?.length) {
+        try {
+          localStorage.setItem(TASK_DRAFT_KEY, JSON.stringify(f));
+        } catch {}
+      }
+    }
+    onClose();
+  };
 
   useEffect(() => {
     const handleEscape = (event) => {
@@ -76,16 +176,21 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
         setOpenProperty(null);
         return;
       }
-      onClose();
+      handleClose();
     };
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [openProperty, onClose]);
+  }, [openProperty]);
+
+  useEffect(() => {
+    fetchAllTags().then(setAvailableTags);
+    return subscribeToTags(setAvailableTags);
+  }, []);
 
   useEffect(() => {
     let active = true;
     loadTeamMembers()
-      .then((members) => { if (active) setEmployees(members); })
+      .then((members) => { if (active) setEmployees(filterAssignees(members)); })
       .catch((error) => { console.error("Could not load task assignees", error); if (active) setEmployees([]); })
       .finally(() => { if (active) setMembersLoading(false); });
     return () => { active = false; };
@@ -158,6 +263,9 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
         await studio.entities.Task.update(editTask.id, data);
       } else {
         await studio.entities.Task.create(data);
+        try {
+          localStorage.removeItem(TASK_DRAFT_KEY);
+        } catch {}
       }
       toast({ title: editTask?.id ? "تسک بروزرسانی شد" : "تسک ثبت شد" });
       onSaved();
@@ -186,11 +294,12 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
 
   const setTags = (tags) => setForm((current) => ({ ...current, tags: [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))] }));
   const toggleTag = (tag) => setTags(selectedTags.includes(tag) ? selectedTags.filter((item) => item !== tag) : [...selectedTags, tag]);
-  const addTag = () => {
+  const addTag = async () => {
     const value = tagInput.trim();
     if (!value) return;
     setTags([...selectedTags, value]);
     setTagInput("");
+    await persistNewTag(value);
   };
 
   return (
@@ -200,7 +309,7 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
       onPointerUp={(event) => {
         const shouldClose = backdropPointerDown.current && event.target === event.currentTarget;
         backdropPointerDown.current = false;
-        if (shouldClose) onClose();
+        if (shouldClose) handleClose();
       }}
       onPointerCancel={() => { backdropPointerDown.current = false; }}
     >
@@ -211,10 +320,19 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
             <span id="task-form-title" className="truncate font-medium text-foreground">{editTask?.id ? "ویرایش تسک" : "تسک جدید"}</span>
             {selectedProject && <><span aria-hidden="true">›</span><span className="max-w-40 truncate">{selectedProject.name}</span></>}
           </div>
-          <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="بستن پنجره"><X className="h-4 w-4" /></Button>
+          <Button type="button" variant="ghost" size="icon" onClick={handleClose} aria-label="بستن پنجره"><X className="h-4 w-4" /></Button>
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
+          {hasRestoredDraft && (
+            <div className="mb-4 flex items-center justify-between rounded-xl bg-amber-500/10 border border-amber-500/20 px-3.5 py-2 text-xs text-amber-800 dark:text-amber-400">
+              <span>پیش‌نویس ذخیره‌شده بازیابی شد</span>
+              <button type="button" onClick={clearDraft} className="inline-flex items-center gap-1 font-medium hover:underline">
+                <RotateCcw className="h-3.5 w-3.5" />
+                پاک کردن پیش‌نویس
+              </button>
+            </div>
+          )}
           <Input autoFocus aria-label="عنوان تسک" placeholder="عنوان تسک" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="h-12 rounded-xl border border-border bg-background px-4 py-3 text-xl font-semibold shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30 sm:text-2xl" />
           <div className="mt-5">
             <div className="mb-2"><span className="text-xs text-muted-foreground">توضیحات</span></div>
@@ -240,7 +358,7 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
                 <div className="space-y-2 p-2">
                   <form onSubmit={(event) => { event.preventDefault(); addTag(); }} className="flex items-center gap-2"><Input autoFocus value={tagInput} onChange={(event) => setTagInput(event.target.value)} placeholder="افزودن برچسب…" className="h-9" /><Button type="submit" size="icon" aria-label="افزودن برچسب" disabled={!tagInput.trim()}><Plus className="h-4 w-4" /></Button></form>
                   <p className="px-1 text-xs text-muted-foreground">پیشنهادها</p>
-                  <div className="flex flex-wrap gap-1.5">{[...new Set([...suggestedTags, ...selectedTags])].map((tag) => <Button type="button" key={tag} variant={selectedTags.includes(tag) ? "secondary" : "outline"} size="sm" onClick={() => toggleTag(tag)} className="h-7 px-2 text-xs">{selectedTags.includes(tag) && <Check className="h-3 w-3" />}{tag}</Button>)}</div>
+                  <div className="flex flex-wrap gap-1.5">{[...new Set([...availableTags, ...selectedTags])].map((tag) => <Button type="button" key={tag} variant={selectedTags.includes(tag) ? "secondary" : "outline"} size="sm" onClick={() => toggleTag(tag)} className="h-7 px-2 text-xs">{selectedTags.includes(tag) && <Check className="h-3 w-3" />}{tag}</Button>)}</div>
                 </div>
               </PropertyChip>
               <PropertyChip open={openProperty === "dueDate"} onOpenChange={(open) => setPropertyOpen("dueDate", open)} icon={CalendarDays} label="موعد" value={form.due_date || "موعد سررسید"} contentClassName="w-72 overflow-visible">

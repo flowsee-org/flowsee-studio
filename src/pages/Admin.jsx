@@ -6,6 +6,8 @@ import { roleLabel, roleColor } from "@/lib/roles";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { appId } from "@/api/studioClient";
 import EmployeeForm from "@/components/EmployeeForm";
+import EmployeeProfile from "@/components/EmployeeProfile";
+import { MODULES } from "@/lib/permissions";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
 import { formatPersianNumber as formatFaNum } from "@/lib/number-format";
 
@@ -28,6 +30,7 @@ export default function Admin() {
   const [digestMsg, setDigestMsg] = useState("");
   const [showUserForm, setShowUserForm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [profileFor, setProfileFor] = useState(null);
 
   // ConfirmDialog states
   const [deactivateTarget, setDeactivateTarget] = useState(null);
@@ -79,7 +82,11 @@ export default function Admin() {
 
   const handleRoleChange = async (userId, newRole) => {
     try {
-      await studio.entities.User.update(userId, { role: newRole });
+      const updateData = { role: newRole };
+      if (newRole === "admin") {
+        updateData.module_access = MODULES.map((m) => m.id);
+      }
+      await studio.entities.User.update(userId, updateData);
       load();
     } catch (err) {
       console.error(err);
@@ -558,6 +565,19 @@ export default function Admin() {
                     </button>
                   )}
 
+                  {/* Permissions button */}
+                  <button
+                    onClick={() => setProfileFor({
+                      ...u,
+                      name: u.full_name || u.email,
+                      module_access: u.module_access,
+                    })}
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                    title="مدیریت دسترسی‌ها و پروفایل"
+                  >
+                    <Shield className="w-3.5 h-3.5" /> دسترسی‌ها
+                  </button>
+
                   {/* Force logout button - for all except self */}
                   {!isSelf && (
                     <button
@@ -692,6 +712,15 @@ export default function Admin() {
         </button>
         {digestMsg && <p className={`text-sm mt-3 ${digestMsg.startsWith("✅") ? "text-green-600" : "text-red-500"}`}>{digestMsg}</p>}
       </div>
+
+      {profileFor && (
+        <EmployeeProfile
+          employee={profileFor}
+          canEdit={true}
+          onClose={() => setProfileFor(null)}
+          onSaved={() => { setProfileFor(null); load(); }}
+        />
+      )}
     </div>
   );
 }

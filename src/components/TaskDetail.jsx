@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { studio } from '@/api/studioClient';
-import { X, Clock, ArrowUpRight, MessageSquare, FileText } from 'lucide-react';
+import { X, Clock, ArrowUpRight, MessageSquare, FileText, Tag, Plus, Check } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import SubtaskList from './SubtaskList';
 import TaskComments from './TaskComments';
 import PersianDatePicker from '@/components/PersianDatePicker';
-import { loadTeamMembers } from '@/lib/teamMembers';
+import { loadTeamMembers, filterAssignees } from '@/lib/teamMembers';
 import { toast } from '@/components/ui/use-toast';
 import { formatPersianNumber as faNum } from '@/lib/number-format';
+import { fetchAllTags, persistNewTag, subscribeToTags, getCachedTags } from '@/lib/tags';
 
 const priorityLabels = { low: 'کم', medium: 'متوسط', high: 'زیاد' };
 const priorityColors = { low: 'bg-slate-100 text-slate-600', medium: 'bg-amber-100 text-amber-700', high: 'bg-red-100 text-red-700' };
@@ -34,22 +35,72 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
   const { user } = useAuth();
   const userName = user?.full_name || user?.email || '';
   const [employees, setEmployees] = useState([]);
-  const [form, setForm] = useState({ ...task });
+  const [form, setForm] = useState({ ...task, tags: Array.isArray(task?.tags) ? task.tags : [] });
+  const formRef = useRef(form);
+  formRef.current = form;
+  const initialTaskRef = useRef(task);
   const [activities, setActivities] = useState([]);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('details'); // details, comments, activity
+  const [availableTags, setAvailableTags] = useState(() => getCachedTags());
+  const [newTagInput, setNewTagInput] = useState('');
+  const [showTagPicker, setShowTagPicker] = useState(false);
   const backdropPointerDown = useRef(false);
+
+  const isDirty = () => {
+    const t = initialTaskRef.current || {};
+    const f = formRef.current;
+    if (!f) return false;
+    return (
+      f.title !== t.title ||
+      f.description !== (t.description || '') ||
+      f.project_id !== (t.project_id || '') ||
+      f.status !== t.status ||
+      f.priority !== t.priority ||
+      f.due_date !== (t.due_date || '') ||
+      f.time_spent !== (t.time_spent || 0) ||
+      f.archived !== !!t.archived ||
+      JSON.stringify(f.assignees || []) !== JSON.stringify(t.assignees || []) ||
+      JSON.stringify(f.tags || []) !== JSON.stringify(t.tags || []) ||
+      JSON.stringify(f.subtasks || []) !== JSON.stringify(t.subtasks || [])
+    );
+  };
+
+  const handleClose = async () => {
+    if (isDirty() && formRef.current.title?.trim() && !saving) {
+      setSaving(true);
+      try {
+        const currentForm = formRef.current;
+        const proj = projects.find((p) => p.id === currentForm.project_id);
+        const data = { ...currentForm, project_name: proj?.name || currentForm.project_name || '' };
+        await studio.entities.Task.update(task.id, data);
+        toast({ title: 'تغییرات تسک ذخیره شد' });
+        onSaved?.();
+      } catch (err) {
+        console.error('Auto-save on close error:', err);
+        toast({ title: 'خطا در ذخیره خودکار تغییرات', description: err.message, variant: 'destructive' });
+      } finally {
+        setSaving(false);
+      }
+    }
+    onClose();
+  };
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') handleClose();
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, []);
 
   useEffect(() => {
-    loadTeamMembers().then((members) => setEmployees(members.filter((member) => !/\(ادمین\)/i.test(member.name || ''))));
+    fetchAllTags().then(setAvailableTags);
+    return subscribeToTags(setAvailableTags);
+  }, []);
+
+  useEffect(() => {
+    loadTeamMembers().then((members) => setEmployees(filterAssignees(members)));
     setActivities([]);
     let cancelled = false;
     loadActivities(task, (items) => {
@@ -119,12 +170,24 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
     }
   };
 
+  const selectedTags = Array.isArray(form.tags) ? form.tags : [];
+  const setTags = (tags) => setForm((cur) => ({ ...cur, tags: [...new Set(tags.map((t) => t.trim()).filter(Boolean))] }));
+  const toggleTag = (tag) => setTags(selectedTags.includes(tag) ? selectedTags.filter((t) => t !== tag) : [...selectedTags, tag]);
+  const handleAddTag = async (e) => {
+    e?.preventDefault?.();
+    const val = newTagInput.trim();
+    if (!val) return;
+    setTags([...selectedTags, val]);
+    setNewTagInput('');
+    await persistNewTag(val);
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3"
       onPointerDown={(event) => { backdropPointerDown.current = event.target === event.currentTarget; }}
       onPointerUp={(event) => {
-        if (backdropPointerDown.current && event.target === event.currentTarget) onClose();
+        if (backdropPointerDown.current && event.target === event.currentTarget) handleClose();
         backdropPointerDown.current = false;
       }}
       onPointerCancel={() => { backdropPointerDown.current = false; }}
@@ -133,25 +196,30 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-border">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span className={`text-xs px-2 py-1 rounded-full ${statusColors[task?.status] || statusColors.todo}`}>
-              {statusLabels[task?.status] || task?.status}
+            <span className={`text-xs px-2 py-1 rounded-full ${statusColors[form?.status || task?.status] || statusColors.todo}`}>
+              {statusLabels[form?.status || task?.status] || form?.status}
             </span>
             {task?.task_number && (
               <span className="text-xs text-muted-foreground bg-accent px-2 py-0.5 rounded-full font-mono">
                 {task.task_number}
               </span>
             )}
-            {task?.priority && (
-              <span className={`text-xs px-2 py-1 rounded-full ${priorityColors[task.priority]}`}>
-                {priorityLabels[task.priority]}
+            {(form?.priority || task?.priority) && (
+              <span className={`text-xs px-2 py-1 rounded-full ${priorityColors[form?.priority || task?.priority]}`}>
+                {priorityLabels[form?.priority || task?.priority]}
               </span>
             )}
-            {(Array.isArray(task?.tags) ? task.tags : []).map((tag) => (
-              <span key={tag} className="max-w-32 truncate rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">{tag}</span>
+            {selectedTags.map((tag) => (
+              <span key={tag} className="inline-flex max-w-32 items-center gap-1 truncate rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                {tag}
+                <button type="button" onClick={() => toggleTag(tag)} className="rounded hover:text-destructive" aria-label={`حذف برچسب ${tag}`}>
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={onClose} className="p-2 hover:bg-accent rounded-lg">
+            <button onClick={handleClose} aria-label="بستن پنجره" className="p-2 hover:bg-accent rounded-lg">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -248,6 +316,78 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
                     closeOnSelect
                   />
                 </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    <Tag className="w-4 h-4 text-muted-foreground" />
+                    برچسب‌ها
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowTagPicker(!showTagPicker)}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {showTagPicker ? "بستن انتخابگر" : "+ مدیریت برچسب‌ها"}
+                  </button>
+                </div>
+                {showTagPicker && (
+                  <div className="p-3 mb-2 rounded-xl border border-border bg-accent/20 space-y-2.5">
+                    <form onSubmit={handleAddTag} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newTagInput}
+                        onChange={(e) => setNewTagInput(e.target.value)}
+                        placeholder="افزودن برچسب جدید…"
+                        className="flex-1 border border-input rounded-xl px-3 py-1.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!newTagInput.trim()}
+                        className="bg-primary text-primary-foreground px-3 py-1.5 rounded-xl text-xs font-medium hover:opacity-90 disabled:opacity-50"
+                      >
+                        <Plus className="w-3.5 h-3.5 inline ml-1" /> افزودن
+                      </button>
+                    </form>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[...new Set([...availableTags, ...selectedTags])].map((tag) => {
+                        const isChecked = selectedTags.includes(tag);
+                        return (
+                          <button
+                            type="button"
+                            key={tag}
+                            onClick={() => toggleTag(tag)}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition ${
+                              isChecked
+                                ? "bg-primary/10 border-primary text-primary"
+                                : "bg-card border-border text-muted-foreground hover:bg-accent"
+                            }`}
+                          >
+                            {isChecked && <Check className="w-3 h-3 text-primary" />}
+                            {tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {!showTagPicker && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedTags.length === 0 ? (
+                      <span className="text-xs text-muted-foreground">برچسبی انتخاب نشده است</span>
+                    ) : (
+                      selectedTags.map((tag) => (
+                        <span key={tag} className="inline-flex items-center gap-1 rounded-lg bg-primary/10 border border-primary/20 px-2.5 py-1 text-xs text-primary font-medium">
+                          {tag}
+                          <button type="button" onClick={() => toggleTag(tag)} className="hover:text-destructive">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>

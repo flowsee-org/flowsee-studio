@@ -64,6 +64,7 @@ export default function Employees() {
           bio: u.bio || extra.bio || "",
           availability_status: u.availability_status || "available",
           is_active: u.is_active !== false,
+          module_access: u.module_access,
         };
       });
       setEmployees(merged);

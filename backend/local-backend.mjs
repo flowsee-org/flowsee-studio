@@ -95,6 +95,8 @@ const KNOWN_ENTITIES = [
   "Comment",
   "ActivityLog",
   "AccountingPeriodLock",
+  "BlogCategory",
+  "BlogPost",
   "Employee",
   "Expense",
   "Goal",
@@ -105,6 +107,7 @@ const KNOWN_ENTITIES = [
   "Project",
   "Salary",
   "Sprint",
+  "Tag",
   "Task",
   "TaskTemplate",
   "User",
@@ -941,6 +944,70 @@ export async function handleRequest(req, res) {
 
     // --- Superadmin protection on role change -----------------------------
     // (handled inline in the PUT entity route below, but add explicit check)
+
+    // --- Site content blog fallback (when VITE_MAIN_API_URL is local) ----
+    if (pathStartsWith(path, "/studio/site-content/blog")) {
+      const u = getAuthUser(req);
+      if (!requireUser(res, u, "blog")) return undefined;
+      const subPath = path.replace(/^\/studio\/site-content\/blog\/?/, "");
+      const posts = db.entities["BlogPost"] ||= [];
+      const categories = db.entities["BlogCategory"] ||= [
+        { id: 1, name: "تکنولوژی و وب" },
+        { id: 2, name: "کسب‌وکار و مدیریت" },
+        { id: 3, name: "طراحی محصول" },
+      ];
+
+      if (method === "GET") {
+        return sendJson(res, 200, { posts: posts.filter(p => !p.deleted_at), categories });
+      }
+
+      if (method === "POST" && !subPath) {
+        const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+        const newPost = {
+          id: randomId("post"),
+          ...body,
+          created_by_id: u.id,
+          created_date: new Date().toISOString(),
+          updated_date: new Date().toISOString(),
+        };
+        posts.unshift(newPost);
+        saveDb();
+        return sendJson(res, 201, { success: true, post: newPost });
+      }
+
+      const postMatch = /^([^/]+)$/.exec(subPath);
+      if (postMatch) {
+        const postId = postMatch[1];
+        const existing = posts.find(p => String(p.id) === String(postId) && !p.deleted_at);
+        if (!existing) return error(res, 404, "Post not found");
+
+        if (method === "PUT") {
+          const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+          Object.assign(existing, body, { updated_date: new Date().toISOString() });
+          saveDb();
+          return sendJson(res, 200, { success: true, post: existing });
+        }
+
+        if (method === "DELETE") {
+          existing.deleted_at = new Date().toISOString();
+          saveDb();
+          return sendJson(res, 200, { success: true, message: "Post deleted" });
+        }
+      }
+      return error(res, 405, "Method not allowed");
+    }
+
+    if (pathStartsWith(path, "/studio/site-content/images") && method === "POST") {
+      const u = getAuthUser(req);
+      if (!requireUser(res, u, "images")) return undefined;
+      const raw = await readBody(req);
+      const contentType = String(req.headers["content-type"] || "");
+      const parts = parseMultipart(raw, contentType);
+      const filePart = parts.find((p) => p.data && p.data.length > 0) || parts[0];
+      if (!filePart) return error(res, 400, "No image provided");
+      const dataUrl = `data:${filePart.contentType || "image/png"};base64,${filePart.data.toString("base64")}`;
+      return sendJson(res, 200, { path: dataUrl, url: dataUrl });
+    }
 
     // --- Integrations ------------------------------------------------
     if (method === "POST" && /^\/apps\/[^/]+\/integration-endpoints\/Core\/UploadFile$/.test(path)) {
