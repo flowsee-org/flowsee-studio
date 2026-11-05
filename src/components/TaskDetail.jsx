@@ -40,13 +40,29 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
   const [activeTab, setActiveTab] = useState('details'); // details, comments, activity
   const backdropPointerDown = useRef(false);
 
+  const handleClose = async () => {
+    const isDirty = JSON.stringify(form) !== JSON.stringify(task);
+    if (isDirty && form.title && !saving) {
+      try {
+        const proj = (projects || []).find((p) => p.id === form.project_id);
+        const data = { ...form, project_name: proj?.name || form.project_name || '' };
+        await studio.entities.Task.update(task.id, data);
+        onSaved?.();
+        toast({ title: 'تغییرات تسک ذخیره شد' });
+      } catch (err) {
+        console.error('Auto-save on close error:', err);
+      }
+    }
+    onClose();
+  };
+
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') handleClose();
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [form, task, saving, projects]);
 
   useEffect(() => {
     loadTeamMembers().then((members) => setEmployees(members.filter((member) => !/\(ادمین\)/i.test(member.name || ''))));
@@ -124,12 +140,12 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3"
       onPointerDown={(event) => { backdropPointerDown.current = event.target === event.currentTarget; }}
       onPointerUp={(event) => {
-        if (backdropPointerDown.current && event.target === event.currentTarget) onClose();
+        if (backdropPointerDown.current && event.target === event.currentTarget) handleClose();
         backdropPointerDown.current = false;
       }}
       onPointerCancel={() => { backdropPointerDown.current = false; }}
     >
-      <div className="flex h-[min(calc(100dvh-1.5rem),52rem)] max-h-[min(calc(100dvh-1.5rem),52rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-overlay" onClick={(e) => e.stopPropagation()}>
+      <div dir="rtl" className="flex h-[min(calc(100dvh-1.5rem),52rem)] max-h-[min(calc(100dvh-1.5rem),52rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-overlay text-right" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-border">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -151,7 +167,7 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={onClose} className="p-2 hover:bg-accent rounded-lg">
+            <button onClick={handleClose} aria-label="بستن" className="p-2 hover:bg-accent rounded-lg">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -192,9 +208,10 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
                 </label>
                 <input
                   type="text"
+                  dir="rtl"
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full border border-input rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full border border-input rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-right font-medium"
                 />
               </div>
 

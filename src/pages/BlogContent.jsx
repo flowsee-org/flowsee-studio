@@ -22,7 +22,7 @@ function slugify(value) {
 }
 function authHeaders() { return { Authorization: `Bearer ${localStorage.getItem("studio_access_token") || ""}`, Accept: "application/json" }; }
 async function apiRequest(path = "", options = {}) {
-  const response = await fetch(`${API}${path}`, { ...options, headers: { ...authHeaders(), ...options.headers } });
+  const response = await fetch(`${API}${path}`, { cache: "no-store", ...options, headers: { ...authHeaders(), ...options.headers } });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
     const firstError = Object.values(result.errors || {}).flat()[0];
@@ -96,7 +96,7 @@ export default function BlogContent() {
   useEffect(() => { if (user && canAccessModule(user, "blog-content")) load(); }, [user, load, refresh]);
   const saved = () => { setEditor(null); setRefresh((value) => value + 1); toast({ title: "مقاله ذخیره شد" }); };
   const remove = async (post) => { if (!window.confirm(`مقالهٔ «${post.title}» حذف شود؟`)) return; try { await apiRequest(`/${post.id}`, { method: "DELETE" }); setRefresh((value) => value + 1); toast({ title: "مقاله حذف شد" }); } catch (deleteError) { toast({ title: "حذف انجام نشد", description: deleteError.message, variant: "destructive" }); } };
-  if (!isSuperadmin) return <div dir="rtl" className="mx-auto flex min-h-80 max-w-3xl items-center justify-center rounded-2xl border bg-card p-8 text-center text-muted-foreground">مدیریت بلاگ فقط برای مدیر اصلی Studio فعال است.</div>;
+  if (!isSuperadmin && !canAccessModule(user, "blog-content")) return <div dir="rtl" className="mx-auto flex min-h-80 max-w-3xl items-center justify-center rounded-2xl border bg-card p-8 text-center text-muted-foreground">شما به بخش مقالات بلاگ دسترسی ندارید.</div>;
   return <main dir="rtl" className="mx-auto max-w-7xl space-y-5"><header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold">مقالات بلاگ</h1><p className="mt-1 text-sm text-muted-foreground">نوشتن، دسته‌بندی و انتشار مقاله‌ها در سایت Flowsee.</p></div><div className="flex gap-2"><UiButton variant="outline" onClick={() => setRefresh((value) => value + 1)} disabled={loading}><RefreshCw className={`ml-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />تازه‌سازی</UiButton><UiButton onClick={() => setEditor({ post: null })}><Plus className="ml-2 h-4 w-4" />مقالهٔ جدید</UiButton></div></header>
     <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-2xl border bg-card p-4"><span className="text-xs text-muted-foreground">همهٔ مقاله‌ها</span><p className="mt-1 text-2xl font-bold">{faNum(posts.length)}</p></div><div className="rounded-2xl border bg-card p-4"><span className="text-xs text-muted-foreground">منتشرشده</span><p className="mt-1 text-2xl font-bold text-emerald-600">{faNum(posts.filter((post) => post.is_published).length)}</p></div><div className="rounded-2xl border bg-card p-4"><span className="text-xs text-muted-foreground">پیش‌نویس</span><p className="mt-1 text-2xl font-bold text-amber-600">{faNum(posts.filter((post) => !post.is_published).length)}</p></div></div>
     {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"><span>{error}</span><UiButton variant="outline" size="sm" onClick={() => setRefresh((value) => value + 1)}>تلاش دوباره</UiButton></div>}

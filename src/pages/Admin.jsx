@@ -177,48 +177,72 @@ export default function Admin() {
 
   const exportJsonBackup = async () => {
     try {
-      setRestoreMsg("در حال آماده‌سازی فایل بکاپ...");
-      const [u, t, exp, inc, sal, p, a, m, s, wr, lr] = await Promise.all([
-        studio.entities.User.list().catch(() => []),
-        studio.entities.Task.list().catch(() => []),
-        studio.entities.Expense.list().catch(() => []),
-        studio.entities.Income.list().catch(() => []),
-        studio.entities.Salary.list().catch(() => []),
-        studio.entities.Project.list().catch(() => []),
-        studio.entities.Announcement.list().catch(() => []),
-        studio.entities.Meeting.list().catch(() => []),
-        studio.entities.Sprint.list().catch(() => []),
-        studio.entities.WorkReport.list().catch(() => []),
-        studio.entities.LeaveRequest.list().catch(() => []),
-      ]);
+      setRestoreMsg("در حال آماده‌سازی فایل کامل بکاپ پایگاه داده...");
+      const token = localStorage.getItem("studio_access_token");
+      let backupData = null;
 
-      const backup = {
-        app: "flowsee-studio",
-        version: "1.0",
-        export_date: new Date().toISOString(),
-        entities: {
-          User: u,
-          Task: t,
-          Expense: exp,
-          Income: inc,
-          Salary: sal,
-          Project: p,
-          Announcement: a,
-          Meeting: m,
-          Sprint: s,
-          WorkReport: wr,
-          LeaveRequest: lr,
-        },
-      };
+      try {
+        const res = await fetch(`/api/apps/${appId}/backup`, {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        });
+        if (res.ok) {
+          backupData = await res.json();
+        }
+      } catch {}
 
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" });
+      if (!backupData || !backupData.entities) {
+        const [u, t, exp, inc, sal, p, a, m, s, wr, lr, logs] = await Promise.all([
+          studio.entities.User.list().catch(() => []),
+          studio.entities.Task.list().catch(() => []),
+          studio.entities.Expense.list().catch(() => []),
+          studio.entities.Income.list().catch(() => []),
+          studio.entities.Salary.list().catch(() => []),
+          studio.entities.Project.list().catch(() => []),
+          studio.entities.Announcement.list().catch(() => []),
+          studio.entities.Meeting.list().catch(() => []),
+          studio.entities.Sprint.list().catch(() => []),
+          studio.entities.WorkReport.list().catch(() => []),
+          studio.entities.LeaveRequest.list().catch(() => []),
+          studio.entities.ActivityLog.list().catch(() => []),
+        ]);
+
+        backupData = {
+          app: "flowsee-studio",
+          version: "2.0",
+          export_date: new Date().toISOString(),
+          summary: {
+            users_count: u.length,
+            tasks_count: t.length,
+            expenses_count: exp.length,
+            incomes_count: inc.length,
+            projects_count: p.length,
+          },
+          entities: {
+            User: u,
+            Task: t,
+            Expense: exp,
+            Income: inc,
+            Salary: sal,
+            Project: p,
+            Announcement: a,
+            Meeting: m,
+            Sprint: s,
+            WorkReport: wr,
+            LeaveRequest: lr,
+            ActivityLog: logs,
+          },
+          users: u.map(({ password_hash: _ph, ...rest }) => rest),
+        };
+      }
+
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const aElem = document.createElement("a");
       aElem.href = url;
       aElem.download = `flowsee-backup-${new Date().toISOString().slice(0, 10)}.json`;
       aElem.click();
       URL.revokeObjectURL(url);
-      setRestoreMsg("✅ فایل بکاپ با موفقیت دانلود شد.");
+      setRestoreMsg("✅ فایل بکاپ جامع با موفقیت دانلود شد.");
     } catch (err) {
       setRestoreMsg("❌ خطا در ساخت بکاپ: " + err.message);
     }

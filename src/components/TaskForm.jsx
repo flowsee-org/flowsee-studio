@@ -22,6 +22,26 @@ const priorityOptions = [
   { value: "low", label: "کم" },
 ];
 const suggestedTags = ["طراحی", "توسعه", "محتوا", "بازاریابی", "پشتیبانی", "فوری"];
+const DRAFT_KEY = "studio_task_form_draft";
+const CUSTOM_TAGS_KEY = "studio_custom_tags";
+
+function getStoredTags() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_TAGS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomTag(tag) {
+  try {
+    const existing = getStoredTags();
+    if (!existing.includes(tag)) {
+      localStorage.setItem(CUSTOM_TAGS_KEY, JSON.stringify([...existing, tag]));
+    }
+  } catch {}
+}
 
 function PropertyChip({ icon: Icon, label, value, children, contentClassName = "", open, onOpenChange }) {
   return (
@@ -42,8 +62,38 @@ function PropertyChip({ icon: Icon, label, value, children, contentClassName = "
 export default function TaskForm({ projects, editTask, onClose, onSaved }) {
   const [employees, setEmployees] = useState([]);
   const [createdProjects, setCreatedProjects] = useState([]);
-  const [form, setForm] = useState(() => (
-    editTask ? { ...editTask, tags: Array.isArray(editTask.tags) ? editTask.tags : [] } : {
+  const [allSuggestedTags, setAllSuggestedTags] = useState(() => [
+    ...new Set([...suggestedTags, ...getStoredTags()]),
+  ]);
+  const [form, setForm] = useState(() => {
+    if (editTask) {
+      return { ...editTask, tags: Array.isArray(editTask.tags) ? editTask.tags : [] };
+    }
+    try {
+      const savedDraft = localStorage.getItem(DRAFT_KEY);
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed && typeof parsed === "object") {
+          return {
+            title: "",
+            project_id: "",
+            project_name: "",
+            status: "todo",
+            priority: "medium",
+            assignees: [],
+            assignee: "",
+            description: "",
+            due_date: "",
+            subtasks: [],
+            time_spent: 0,
+            recurring_config: null,
+            tags: [],
+            ...parsed,
+          };
+        }
+      }
+    } catch {}
+    return {
       title: "",
       project_id: "",
       project_name: "",
@@ -57,8 +107,16 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
       time_spent: 0,
       recurring_config: null,
       tags: [],
+    };
+  });
+
+  useEffect(() => {
+    if (!editTask) {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
+      } catch {}
     }
-  ));
+  }, [form, editTask]);
   const [saving, setSaving] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
@@ -160,6 +218,7 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
         await studio.entities.Task.create(data);
       }
       toast({ title: editTask?.id ? "تسک بروزرسانی شد" : "تسک ثبت شد" });
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
       onSaved();
       onClose();
     } catch (err) {
@@ -189,6 +248,8 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
   const addTag = () => {
     const value = tagInput.trim();
     if (!value) return;
+    saveCustomTag(value);
+    setAllSuggestedTags((prev) => [...new Set([...prev, value])]);
     setTags([...selectedTags, value]);
     setTagInput("");
   };
@@ -215,7 +276,7 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
-          <Input autoFocus aria-label="عنوان تسک" placeholder="عنوان تسک" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="h-12 rounded-xl border border-border bg-background px-4 py-3 text-xl font-semibold shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30 sm:text-2xl" />
+          <Input autoFocus dir="rtl" aria-label="عنوان تسک" placeholder="عنوان تسک" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="h-12 rounded-xl border border-border bg-background px-4 py-3 text-right text-xl font-semibold shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30 sm:text-2xl" />
           <div className="mt-5">
             <div className="mb-2"><span className="text-xs text-muted-foreground">توضیحات</span></div>
             <textarea aria-label="توضیحات تسک" value={form.description || ""} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={8} placeholder="توضیحات را بنویسید…" className="min-h-52 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-sm leading-7 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/30" />
@@ -240,11 +301,30 @@ export default function TaskForm({ projects, editTask, onClose, onSaved }) {
                 <div className="space-y-2 p-2">
                   <form onSubmit={(event) => { event.preventDefault(); addTag(); }} className="flex items-center gap-2"><Input autoFocus value={tagInput} onChange={(event) => setTagInput(event.target.value)} placeholder="افزودن برچسب…" className="h-9" /><Button type="submit" size="icon" aria-label="افزودن برچسب" disabled={!tagInput.trim()}><Plus className="h-4 w-4" /></Button></form>
                   <p className="px-1 text-xs text-muted-foreground">پیشنهادها</p>
-                  <div className="flex flex-wrap gap-1.5">{[...new Set([...suggestedTags, ...selectedTags])].map((tag) => <Button type="button" key={tag} variant={selectedTags.includes(tag) ? "secondary" : "outline"} size="sm" onClick={() => toggleTag(tag)} className="h-7 px-2 text-xs">{selectedTags.includes(tag) && <Check className="h-3 w-3" />}{tag}</Button>)}</div>
+                  <div className="flex flex-wrap gap-1.5">{[...new Set([...allSuggestedTags, ...selectedTags])].map((tag) => <Button type="button" key={tag} variant={selectedTags.includes(tag) ? "secondary" : "outline"} size="sm" onClick={() => toggleTag(tag)} className="h-7 px-2 text-xs">{selectedTags.includes(tag) && <Check className="h-3 w-3" />}{tag}</Button>)}</div>
                 </div>
               </PropertyChip>
-              <PropertyChip open={openProperty === "dueDate"} onOpenChange={(open) => setPropertyOpen("dueDate", open)} icon={CalendarDays} label="موعد" value={form.due_date || "موعد سررسید"} contentClassName="w-72 overflow-visible">
-                <div className="space-y-2 p-2"><span className="block text-xs font-medium">موعد سررسید</span><PersianDatePicker value={form.due_date || ""} onChange={(value) => { setForm((current) => ({ ...current, due_date: value })); if (value) setPropertyOpen("dueDate", false); }} placeholder="انتخاب تاریخ" /><Button type="button" variant="ghost" size="sm" onClick={() => { setForm((current) => ({ ...current, due_date: "" })); setPropertyOpen("dueDate", false); }}>پاک کردن تاریخ</Button></div>
+              <PropertyChip open={openProperty === "dueDate"} onOpenChange={(open) => setPropertyOpen("dueDate", open)} icon={CalendarDays} label="موعد" value={form.due_date || "موعد سررسید"} contentClassName="w-80 overflow-visible p-3">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <span className="text-xs font-semibold text-foreground">انتخاب تاریخ موعد سررسید</span>
+                    {form.due_date && (
+                      <button type="button" onClick={() => { setForm((current) => ({ ...current, due_date: "" })); setPropertyOpen("dueDate", false); }} className="text-xs text-destructive hover:underline">
+                        پاک کردن
+                      </button>
+                    )}
+                  </div>
+                  <PersianDatePicker
+                    value={form.due_date || ""}
+                    onChange={(value) => {
+                      if (value) {
+                        setForm((current) => ({ ...current, due_date: value }));
+                        setPropertyOpen("dueDate", false);
+                      }
+                    }}
+                    placeholder="انتخاب تاریخ از تقویم"
+                  />
+                </div>
               </PropertyChip>
               <Button type="button" variant="ghost" size="sm" onClick={() => setAdvancedOpen((open) => !open)} className="h-8 px-2 text-muted-foreground"><MoreHorizontal className="h-4 w-4" />{advancedOpen ? "بستن تنظیمات" : "بیشتر"}</Button>
             </div>
