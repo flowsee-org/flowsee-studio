@@ -7,7 +7,6 @@ test("DEFAULT_TAGS includes baseline Persian tags", () => {
   assert.ok(DEFAULT_TAGS.includes("توسعه"));
   assert.ok(DEFAULT_TAGS.includes("فوری"));
 });
-
 test("getCachedTags returns baseline tags in node environment", () => {
   const tags = getCachedTags();
   assert.ok(Array.isArray(tags));

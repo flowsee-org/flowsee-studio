@@ -17,7 +17,6 @@ test("normalizeSubtask handles strings, legacy objects, and standard subtask obj
   assert.equal(fromStandard.title, "طراحی پوستر");
   assert.equal(fromStandard.done, true);
 });
-
 test("normalizeSubtasks parses json strings, comma/newline separated text, and arrays", () => {
   assert.deepEqual(normalizeSubtasks(null), []);
   assert.deepEqual(normalizeSubtasks(""), []);

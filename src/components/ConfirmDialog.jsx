@@ -30,16 +30,18 @@ export default function ConfirmDialog({
         </AlertDialogTrigger>
       ) : null}
       <AlertDialogContent dir="rtl" className="text-right">
-        <AlertDialogHeader className="text-right sm:text-right">
-          <AlertDialogTitle className="text-right">{title}</AlertDialogTitle>
-          <AlertDialogDescription className="text-right text-muted-foreground">{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter className="flex flex-row justify-start gap-2 sm:justify-start">
-          <AlertDialogAction onClick={() => { setOpen(false); onConfirm?.(); }} className={variant === "destructive" ? "bg-red-600 hover:bg-red-700" : ""}>
-            {confirmText}
-          </AlertDialogAction>
-          <AlertDialogCancel>{cancelText}</AlertDialogCancel>
-        </AlertDialogFooter>
+        <div dir="rtl" className="grid gap-4">
+          <AlertDialogHeader className="text-right sm:text-right">
+            <AlertDialogTitle className="text-right">{title}</AlertDialogTitle>
+            <AlertDialogDescription className="text-right text-muted-foreground">{description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-row justify-start gap-2 sm:justify-start">
+            <AlertDialogAction onClick={() => { setOpen(false); onConfirm?.(); }} className={variant === "destructive" ? "bg-red-600 hover:bg-red-700" : ""}>
+              {confirmText}
+            </AlertDialogAction>
+            <AlertDialogCancel>{cancelText}</AlertDialogCancel>
+          </AlertDialogFooter>
+        </div>
       </AlertDialogContent>
     </AlertDialog>
   );

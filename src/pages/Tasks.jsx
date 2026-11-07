@@ -181,15 +181,15 @@ export default function Tasks() {
     return () => mediaQuery.removeEventListener("change", updateMobileBoard);
   }, []);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     const [t, p] = await Promise.all([
       studio.entities.Task.list("-created_date"),
       studio.entities.Project.list(),
     ]);
     setTasks(t);
     setProjects(p);
-    setLoading(false);
+    if (showSpinner) setLoading(false);
   };
 
   // Base visible tasks based on role
@@ -837,10 +837,10 @@ export default function Tasks() {
                                   {t.task_number && (
                                     <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">{t.task_number}</span>
                                   )}
-                                  <p title={t.title} dir="auto" className="font-medium text-sm leading-snug flex-1 min-w-0 truncate text-right">{t.title}</p>
+                                  <p dir="auto" title={t.title} className="font-medium text-start text-sm leading-snug flex-1 min-w-0 truncate">{t.title}</p>
                                 </div>
-                                {longPressedTaskId === t.id && <div role="tooltip" className="absolute inset-x-2 top-12 z-30 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-lg text-right" dir="rtl">
-                                  <p className="font-semibold text-sm whitespace-normal break-words">{t.title}</p>
+                                {longPressedTaskId === t.id && <div role="tooltip" dir="rtl" className="absolute inset-x-2 top-12 z-30 rounded-lg border border-border bg-popover p-3 text-popover-foreground text-right shadow-lg">
+                                  <p dir="auto" className="font-semibold text-start text-sm whitespace-normal break-words">{t.title}</p>
                                   {t.description && <p className="mt-1 text-xs leading-relaxed whitespace-pre-wrap break-words">{t.description}</p>}
                                 </div>}
                                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
@@ -899,7 +899,14 @@ export default function Tasks() {
                                   })()}
                                 </div>
                                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
-                                  <AssigneeAvatars task={t} />
+                                  <div className="flex items-center gap-2">
+                                    <AssigneeAvatars task={t} />
+                                    {Array.isArray(t.subtasks) && t.subtasks.length > 0 && (
+                                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" aria-label={`${faNum(t.subtasks.length)} زیرتسک`}>
+                                        <ListChecks className="h-3.5 w-3.5" />{faNum(t.subtasks.length)}
+                                      </span>
+                                    )}
+                                  </div>
                                   {t.time_spent && (
                                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                                       <Clock className="w-3 h-3" /> {t.time_spent}h
@@ -938,7 +945,7 @@ export default function Tasks() {
                   {sortedTableTasks.map((task) => <tr key={task.id} className="hover:bg-accent/20">
                     <td className="p-3">
                       <div className="flex items-center flex-wrap gap-1">
-                        <button onClick={() => handleViewDetail(task)} className="text-right font-medium hover:text-primary">{task.title}</button>
+                        <button dir="auto" onClick={() => handleViewDetail(task)} className="block w-full text-start font-medium hover:text-primary">{task.title}</button>
                         {task.subtasks?.length > 0 && (() => {
                           const stats = getSubtaskStats(task.subtasks);
                           return stats.hasSubtasks ? (
@@ -967,7 +974,7 @@ export default function Tasks() {
                 {[...sortedTableTasks].sort((a, b) => (a.due_date || "9999").localeCompare(b.due_date || "9999")).map((task) => <div key={task.id} className="relative pr-10">
                   <span className={`absolute right-[11px] top-4 h-2.5 w-2.5 rounded-full ring-4 ring-background ${task.status === "done" ? "bg-green-500" : task.status === "in_progress" ? "bg-blue-500" : "bg-amber-500"}`} />
                   <button onClick={() => handleViewDetail(task)} className="w-full rounded-xl border border-border bg-card p-4 text-right hover:border-primary/40 hover:shadow-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-semibold">{task.title}</span><span className="text-xs text-muted-foreground">{task.due_date ? `سررسید ${task.due_date}` : "بدون ددلاین"}</span></div>
+                    <div className="flex flex-wrap items-center justify-between gap-2"><span dir="auto" className="text-left font-semibold">{task.title}</span><span className="text-xs text-muted-foreground">{task.due_date ? `سررسید ${task.due_date}` : "بدون ددلاین"}</span></div>
                     <div className="mt-2 flex flex-wrap gap-2"><span className={`rounded-full px-2 py-0.5 text-xs ${priorityColors[task.priority]}`}>{priorityLabels[task.priority]}</span><span className="text-xs text-muted-foreground">{columns.find((column) => column.id === task.status)?.title}</span></div>
                   </button>
                 </div>)}
@@ -977,15 +984,14 @@ export default function Tasks() {
         </div>
       )}
 
-      {showForm && (
-        <TaskForm
-          projects={projects}
-          userName={userName}
-          editTask={editTask}
-          onClose={() => { setShowForm(false); setEditTask(null); }}
-          onSaved={load}
-        />
-      )}
+      <TaskForm
+        key={editTask?.id ?? (editTask ? JSON.stringify(editTask) : "new")}
+        projects={projects}
+        editTask={editTask}
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        onSaved={() => load(false)}
+      />
 
       {showTemplates && (
         <TemplatePicker

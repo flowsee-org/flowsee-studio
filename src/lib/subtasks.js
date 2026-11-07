@@ -22,7 +22,6 @@ export function normalizeSubtask(item, index = 0) {
   }
   return null;
 }
-
 export function normalizeSubtasks(raw) {
   if (!raw) return [];
   let parsed = raw;
