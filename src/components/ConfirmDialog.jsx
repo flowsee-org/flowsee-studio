@@ -29,16 +29,16 @@ export default function ConfirmDialog({
           {children}
         </AlertDialogTrigger>
       ) : null}
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
+      <AlertDialogContent dir="rtl" className="text-right">
+        <AlertDialogHeader className="text-right sm:text-right">
+          <AlertDialogTitle className="text-right">{title}</AlertDialogTitle>
+          <AlertDialogDescription className="text-right text-muted-foreground">{description}</AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{cancelText}</AlertDialogCancel>
+        <AlertDialogFooter className="flex flex-row justify-start gap-2 sm:justify-start">
           <AlertDialogAction onClick={() => { setOpen(false); onConfirm?.(); }} className={variant === "destructive" ? "bg-red-600 hover:bg-red-700" : ""}>
             {confirmText}
           </AlertDialogAction>
+          <AlertDialogCancel>{cancelText}</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
