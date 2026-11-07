@@ -5,6 +5,7 @@ import { studio } from "@/api/studioClient";
 import PersianDatePicker from "@/components/PersianDatePicker";
 import { toast } from "@/components/ui/use-toast";
 import { imageFileToDataUrl } from "@/lib/image-file";
+import { useAuth } from "@/lib/AuthContext";
 
 const availabilityOptions = [
   { value: "available", label: "حاضر", color: "bg-green-100 text-green-700" },
@@ -16,6 +17,7 @@ export const availabilityLabel = (v) => availabilityOptions.find((o) => o.value 
 export const availabilityColor = (v) => availabilityOptions.find((o) => o.value === v)?.color || "bg-green-100 text-green-700";
 
 export default function EmployeeProfile({ employee, canEdit, onClose, onSaved }) {
+  const { user, refreshUser } = useAuth();
   const [form, setForm] = useState({
     full_name: employee.name || "",
     role: employee.role || "user",
@@ -54,6 +56,10 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
         skills: form.skills.split(",").map((s) => s.trim()).filter(Boolean),
         bio: form.bio.trim(),
       });
+      if (employee.id === user?.id && typeof refreshUser === "function") {
+        await refreshUser();
+      }
+      toast({ title: "پروفایل با موفقیت ذخیره شد" });
       onSaved?.();
       onClose();
     } catch (err) {

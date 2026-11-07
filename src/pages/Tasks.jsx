@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { Plus, Trash2, Pencil, ArrowDownUp, LayoutTemplate, Filter, X, Send, CheckCircle, Clock, Search, Archive, Eye, RotateCcw, Table2, Columns3, GanttChart, UserRound, SquarePen, UsersRound, ListChecks } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowDownUp, LayoutTemplate, Filter, X, Send, CheckCircle, Clock, Search, Archive, Eye, RotateCcw, Table2, Columns3, GanttChart, UserRound, SquarePen, UsersRound, ListChecks, CheckSquare } from "lucide-react";
 import TaskForm from "@/components/TaskForm";
 import TemplatePicker from "@/components/TemplatePicker";
 import TaskRequestModal from "@/components/TaskRequestModal";
@@ -12,6 +12,8 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { toast } from "@/components/ui/use-toast";
 import SelectControl from "@/components/ui/SelectControl";
 import { formatPersianNumber as faNum } from "@/lib/number-format";
+import { fetchAllTags, subscribeToTags, getCachedTags } from "@/lib/tags";
+import { getSubtaskStats } from "@/lib/subtasks";
 
 const columns = [
   { id: "todo", title: "در انتظار", color: "bg-slate-100" },
@@ -139,6 +141,8 @@ export default function Tasks() {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [projectFilter, setProjectFilter] = useState("");
   const [employeeFilter, setEmployeeFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
+  const [allTags, setAllTags] = useState(() => getCachedTags());
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -165,6 +169,8 @@ export default function Tasks() {
 
   useEffect(() => {
     load();
+    fetchAllTags().then(setAllTags);
+    return subscribeToTags(setAllTags);
   }, []);
 
   useEffect(() => {
@@ -227,16 +233,20 @@ export default function Tasks() {
       if (employeeFilter) {
         if (!matchesTaskOwner(t, employeeFilter)) return false;
       }
+      if (tagFilter) {
+        if (!Array.isArray(t.tags) || !t.tags.includes(tagFilter)) return false;
+      }
       if (dateFrom && t.due_date && t.due_date < dateFrom) return false;
       if (dateTo && t.due_date && t.due_date > dateTo) return false;
       return true;
     });
-  }, [searchFilteredTasks, projectFilter, employeeFilter, dateFrom, dateTo]);
+  }, [searchFilteredTasks, projectFilter, employeeFilter, tagFilter, dateFrom, dateTo]);
 
-  const hasTaskFilters = Boolean(projectFilter || employeeFilter || dateFrom || dateTo || searchQuery);
+  const hasTaskFilters = Boolean(projectFilter || employeeFilter || tagFilter || dateFrom || dateTo || searchQuery);
   const clearTaskFilters = () => {
     setProjectFilter("");
     setEmployeeFilter("");
+    setTagFilter("");
     setDateFrom("");
     setDateTo("");
     setSearchQuery("");
@@ -384,12 +394,14 @@ export default function Tasks() {
   };
 
   const useTemplate = (template) => {
-    const checklistText = (template.checklist || []).length > 0
-      ? (template.description ? template.description + "\n\n" : "") + "📋 چک‌لیست:\n" + template.checklist.map((item) => `☐ ${item}`).join("\n")
+    const checklistItems = template.checklist || [];
+    const checklistText = checklistItems.length > 0
+      ? (template.description ? template.description + "\n\n" : "") + "📋 چک‌لیست:\n" + checklistItems.map((item) => `☐ ${item}`).join("\n")
       : template.description || "";
     setEditTask({
       title: template.title,
       description: checklistText,
+      subtasks: checklistItems.map((item) => ({ title: item, done: false })),
       project_id: template.project_id || "",
       project_name: template.project_name || "",
       priority: template.priority || "medium",
@@ -423,13 +435,14 @@ export default function Tasks() {
       if (query && !task.title.toLowerCase().includes(query) && !(task.description || "").toLowerCase().includes(query) && !(task.task_number || "").toLowerCase().includes(query)) return false;
       if (projectFilter && task.project_id !== projectFilter) return false;
       if (employeeFilter && !matchesTaskOwner(task, employeeFilter)) return false;
+      if (tagFilter && (!Array.isArray(task.tags) || !task.tags.includes(tagFilter))) return false;
       if (dateFrom && task.due_date && task.due_date < dateFrom) return false;
       if (dateTo && task.due_date && task.due_date > dateTo) return false;
       return true;
     });
     result.archived = sortTasks(archived, "priority_created");
     return result;
-  }, [filteredTasks, viewFilteredTasks, columnSort, searchQuery, projectFilter, employeeFilter, dateFrom, dateTo]);
+  }, [filteredTasks, viewFilteredTasks, columnSort, searchQuery, projectFilter, employeeFilter, tagFilter, dateFrom, dateTo]);
 
   const sortedTableTasks = useMemo(() => sortTasks(filteredTasks, tableSort), [filteredTasks, tableSort]);
   const availableBoardColumns = showArchiveColumn ? [...columns, archiveColumn] : columns;
@@ -593,6 +606,16 @@ export default function Tasks() {
                 ))}
               </SelectControl>
             )}
+            <SelectControl
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              className="col-span-2 w-full sm:col-span-1 sm:w-auto border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 sm:min-w-[150px]"
+            >
+              <option value="">همه برچسب‌ها</option>
+              {allTags.map((tag) => (
+                <option key={tag} value={tag}>{tag}</option>
+              ))}
+            </SelectControl>
             <div className="col-span-2 min-w-0 sm:col-span-1 sm:min-w-[180px]">
               <PersianDatePicker label="از تاریخ" value={dateFrom} onChange={setDateFrom} placeholder="از ددلاین" />
             </div>
@@ -814,16 +837,33 @@ export default function Tasks() {
                                   {t.task_number && (
                                     <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">{t.task_number}</span>
                                   )}
-                                  <p dir="auto" title={t.title} className="font-medium text-left text-sm leading-snug flex-1 min-w-0 truncate">{t.title}</p>
+                                  <p dir="auto" title={t.title} className="font-medium text-start text-sm leading-snug flex-1 min-w-0 truncate">{t.title}</p>
                                 </div>
-                                {longPressedTaskId === t.id && <div role="tooltip" className="absolute inset-x-2 top-12 z-30 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-lg">
-                                  <p dir="auto" className="font-semibold text-left text-sm whitespace-normal break-words">{t.title}</p>
+                                {longPressedTaskId === t.id && <div role="tooltip" dir="rtl" className="absolute inset-x-2 top-12 z-30 rounded-lg border border-border bg-popover p-3 text-popover-foreground text-right shadow-lg">
+                                  <p dir="auto" className="font-semibold text-start text-sm whitespace-normal break-words">{t.title}</p>
                                   {t.description && <p className="mt-1 text-xs leading-relaxed whitespace-pre-wrap break-words">{t.description}</p>}
                                 </div>}
                                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                                   {t.priority && (
                                     <span className={`text-xs px-1.5 py-0.5 rounded-full ${priorityColors[t.priority]}`}>{priorityLabels[t.priority]}</span>
                                   )}
+                                  {Array.isArray(t.subtasks) && t.subtasks.length > 0 && (() => {
+                                    const doneCount = t.subtasks.filter((s) => s.done).length;
+                                    const isComplete = doneCount === t.subtasks.length;
+                                    return (
+                                      <span
+                                        title={`زیرتسک‌ها: ${faNum(doneCount)} از ${faNum(t.subtasks.length)}`}
+                                        className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-medium ${
+                                          isComplete
+                                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                            : "bg-muted text-muted-foreground"
+                                        }`}
+                                      >
+                                        <ListChecks className="w-3 h-3" />
+                                        <span>{faNum(doneCount)}/{faNum(t.subtasks.length)}</span>
+                                      </span>
+                                    );
+                                  })()}
                                   {(Array.isArray(t.tags) ? t.tags : []).slice(0, 3).map((tag) => (
                                     <span key={tag} className="max-w-24 truncate rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{tag}</span>
                                   ))}
@@ -841,6 +881,22 @@ export default function Tasks() {
                                       <RotateCcw className="w-3 h-3" /> تکراری
                                     </span>
                                   )}
+                                  {t.subtasks && t.subtasks.length > 0 && (() => {
+                                    const stats = getSubtaskStats(t.subtasks);
+                                    return stats.hasSubtasks ? (
+                                      <span
+                                        title={`پیشرفت زیرتسک‌ها: ${faNum(stats.completed)} از ${faNum(stats.total)}`}
+                                        className={`text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1 font-medium ${
+                                          stats.allDone
+                                            ? "bg-emerald-100 text-emerald-800"
+                                            : "bg-accent text-muted-foreground"
+                                        }`}
+                                      >
+                                        <CheckSquare className="w-3 h-3" />
+                                        {faNum(stats.completed)}/{faNum(stats.total)}
+                                      </span>
+                                    ) : null;
+                                  })()}
                                 </div>
                                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
                                   <div className="flex items-center gap-2">
@@ -887,7 +943,21 @@ export default function Tasks() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {sortedTableTasks.map((task) => <tr key={task.id} className="hover:bg-accent/20">
-                    <td className="p-3"><button dir="auto" onClick={() => handleViewDetail(task)} className="block w-full text-left font-medium hover:text-primary">{task.title}</button>{task.task_number && <div className="text-xs text-muted-foreground mt-1">{task.task_number}</div>}</td>
+                    <td className="p-3">
+                      <div className="flex items-center flex-wrap gap-1">
+                        <button dir="auto" onClick={() => handleViewDetail(task)} className="block w-full text-start font-medium hover:text-primary">{task.title}</button>
+                        {task.subtasks?.length > 0 && (() => {
+                          const stats = getSubtaskStats(task.subtasks);
+                          return stats.hasSubtasks ? (
+                            <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full ${stats.allDone ? 'bg-emerald-100 text-emerald-800' : 'bg-muted text-muted-foreground'}`}>
+                              <CheckSquare className="w-3 h-3" />
+                              {faNum(stats.completed)}/{faNum(stats.total)}
+                            </span>
+                          ) : null;
+                        })()}
+                      </div>
+                      {task.task_number && <div className="text-xs text-muted-foreground mt-1">{task.task_number}</div>}
+                    </td>
                     <td className="p-3"><SelectControl aria-label={`وضعیت ${task.title}`} value={task.status} onChange={async (e) => { await studio.entities.Task.update(task.id, { status: e.target.value }); await load(); }} className="h-8">{columns.map((column) => <option key={column.id} value={column.id}>{column.title}</option>)}</SelectControl></td>
                     <td className="p-3"><span className={`rounded-full px-2 py-1 text-xs ${priorityColors[task.priority]}`}>{priorityLabels[task.priority]}</span></td>
                     <td className="p-3">{(task.assignees || (task.assignee ? [task.assignee] : [])).join("، ") || "—"}</td>

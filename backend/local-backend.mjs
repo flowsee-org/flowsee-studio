@@ -95,6 +95,8 @@ const KNOWN_ENTITIES = [
   "Comment",
   "ActivityLog",
   "AccountingPeriodLock",
+  "BlogCategory",
+  "BlogPost",
   "Employee",
   "Expense",
   "Goal",
@@ -104,7 +106,9 @@ const KNOWN_ENTITIES = [
   "Notification",
   "Project",
   "Salary",
+  "SiteProject",
   "Sprint",
+  "Tag",
   "Task",
   "TaskTemplate",
   "User",
@@ -941,6 +945,145 @@ export async function handleRequest(req, res) {
 
     // --- Superadmin protection on role change -----------------------------
     // (handled inline in the PUT entity route below, but add explicit check)
+
+    // --- Site content blog fallback (when VITE_MAIN_API_URL is local) ----
+    if (pathStartsWith(path, "/studio/site-content/blog")) {
+      const u = getAuthUser(req);
+      if (!requireUser(res, u, "blog")) return undefined;
+      const subPath = path.replace(/^\/studio\/site-content\/blog\/?/, "");
+      const posts = db.entities["BlogPost"] ||= [];
+      const categories = db.entities["BlogCategory"] ||= [
+        { id: 1, name: "تکنولوژی و وب" },
+        { id: 2, name: "کسب‌وکار و مدیریت" },
+        { id: 3, name: "طراحی محصول" },
+      ];
+
+      if (method === "GET") {
+        const sorted = [...posts.filter(p => !p.deleted_at)].sort((a, b) => (Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999)));
+        return sendJson(res, 200, { posts: sorted, categories });
+      }
+
+      if (method === "POST" && !subPath) {
+        const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+        const newPost = {
+          id: randomId("post"),
+          ...body,
+          sort_order: Number(body.sort_order ?? 0),
+          created_by_id: u.id,
+          created_date: new Date().toISOString(),
+          updated_date: new Date().toISOString(),
+        };
+        posts.unshift(newPost);
+        saveDb();
+        return sendJson(res, 201, { success: true, post: newPost });
+      }
+
+      const postMatch = /^([^/]+)$/.exec(subPath);
+      if (postMatch) {
+        const postId = postMatch[1];
+        const existing = posts.find(p => String(p.id) === String(postId) && !p.deleted_at);
+        if (!existing) return error(res, 404, "Post not found");
+
+        if (method === "PUT") {
+          const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+          Object.assign(existing, body, {
+            sort_order: Number(body.sort_order ?? existing.sort_order ?? 0),
+            updated_date: new Date().toISOString()
+          });
+          saveDb();
+          return sendJson(res, 200, { success: true, post: existing });
+        }
+
+        if (method === "DELETE") {
+          existing.deleted_at = new Date().toISOString();
+          saveDb();
+          return sendJson(res, 200, { success: true, message: "Post deleted" });
+        }
+      }
+      return error(res, 405, "Method not allowed");
+    }
+
+    // --- Site content projects fallback (when VITE_MAIN_API_URL is local) ----
+    if (pathStartsWith(path, "/studio/site-content") && !pathStartsWith(path, "/studio/site-content/blog") && !pathStartsWith(path, "/studio/site-content/images")) {
+      const u = getAuthUser(req);
+      if (!requireUser(res, u, "site-content")) return undefined;
+      const subPath = path.replace(/^\/studio\/site-content\/?/, "");
+      const projects = db.entities["SiteProject"] ||= [];
+      const services = [
+        { id: "srv-1", title: "طراحی محصول و UI/UX" },
+        { id: "srv-2", title: "توسعه وب و اپلیکیشن" },
+        { id: "srv-3", title: "برندینگ و هویت بصری" },
+      ];
+
+      if (method === "GET" && !subPath) {
+        const sorted = [...projects.filter(p => !p.deleted_at)].sort((a, b) => (Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999)));
+        return sendJson(res, 200, { projects: sorted, services });
+      }
+
+      if (method === "POST" && subPath === "projects") {
+        const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+        const newProject = {
+          id: randomId("sproj"),
+          ...body,
+          sort_order: Number(body.sort_order ?? 0),
+          created_by_id: u.id,
+          created_date: new Date().toISOString(),
+          updated_date: new Date().toISOString(),
+        };
+        projects.push(newProject);
+        saveDb();
+        return sendJson(res, 201, { success: true, project: newProject });
+      }
+
+      const caseStudyMatch = /^projects\/([^/]+)\/case-study$/.exec(subPath);
+      if (caseStudyMatch && method === "PUT") {
+        const projId = caseStudyMatch[1];
+        const proj = projects.find(p => String(p.id) === String(projId) && !p.deleted_at);
+        if (!proj) return error(res, 404, "Project not found");
+        const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+        proj.case_study = body;
+        proj.updated_date = new Date().toISOString();
+        saveDb();
+        return sendJson(res, 200, { success: true, case_study: body });
+      }
+
+      const projMatch = /^projects\/([^/]+)$/.exec(subPath);
+      if (projMatch) {
+        const projId = projMatch[1];
+        const existing = projects.find(p => String(p.id) === String(projId) && !p.deleted_at);
+        if (!existing) return error(res, 404, "Project not found");
+
+        if (method === "PUT") {
+          const body = JSON.parse((await readBody(req)).toString("utf8") || "{}");
+          Object.assign(existing, body, {
+            sort_order: Number(body.sort_order ?? existing.sort_order ?? 0),
+            updated_date: new Date().toISOString()
+          });
+          saveDb();
+          return sendJson(res, 200, { success: true, project: existing });
+        }
+
+        if (method === "DELETE") {
+          existing.deleted_at = new Date().toISOString();
+          saveDb();
+          return sendJson(res, 200, { success: true, message: "Project deleted" });
+        }
+      }
+
+      return error(res, 405, "Method not allowed");
+    }
+
+    if (pathStartsWith(path, "/studio/site-content/images") && method === "POST") {
+      const u = getAuthUser(req);
+      if (!requireUser(res, u, "images")) return undefined;
+      const raw = await readBody(req);
+      const contentType = String(req.headers["content-type"] || "");
+      const parts = parseMultipart(raw, contentType);
+      const filePart = parts.find((p) => p.data && p.data.length > 0) || parts[0];
+      if (!filePart) return error(res, 400, "No image provided");
+      const dataUrl = `data:${filePart.contentType || "image/png"};base64,${filePart.data.toString("base64")}`;
+      return sendJson(res, 200, { path: dataUrl, url: dataUrl });
+    }
 
     // --- Integrations ------------------------------------------------
     if (method === "POST" && /^\/apps\/[^/]+\/integration-endpoints\/Core\/UploadFile$/.test(path)) {

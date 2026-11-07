@@ -85,3 +85,8 @@ export async function loadTeamMembers() {
 
   return merged;
 }
+
+export function filterAssignees(members) {
+  if (!Array.isArray(members)) return [];
+  return members.filter((member) => member && member.name && !excludedTaskAssigneeNames.has(normalizeKey(member.name)));
+}

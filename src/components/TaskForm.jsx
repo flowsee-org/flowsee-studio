@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { studio } from "@/api/studioClient";
-import { CalendarDays, Check, CheckCircle2, Circle, CircleDot, Clock3, Flag, FolderKanban, ListChecks, MoreHorizontal, Plus, Repeat2, Tag, UserRound, X } from "lucide-react";
+import { CalendarDays, Check, CheckCircle2, Circle, CircleDot, Clock3, Flag, FolderKanban, ListChecks, MoreHorizontal, Plus, Repeat2, Tag, UserRound, X, RotateCcw } from "lucide-react";
 import PersianDatePicker from "@/components/PersianDatePicker";
-import { loadTeamMembers } from "@/lib/teamMembers";
+import { loadTeamMembers, filterAssignees } from "@/lib/teamMembers";
 import SubtaskList from "./SubtaskList";
 import { toast } from "@/components/ui/use-toast";
 import SelectControl from "@/components/ui/SelectControl";
@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { fetchAllTags, persistNewTag, subscribeToTags, getCachedTags } from "@/lib/tags";
+import { normalizeSubtasks } from "@/lib/subtasks";
 
 const statusOptions = [
   { value: "todo", label: "در انتظار", Icon: Circle },
@@ -21,7 +23,51 @@ const priorityOptions = [
   { value: "medium", label: "متوسط" },
   { value: "low", label: "کم" },
 ];
-const suggestedTags = ["طراحی", "توسعه", "محتوا", "بازاریابی", "پشتیبانی", "فوری"];
+
+const TASK_DRAFT_KEY = "flowsee_task_form_draft";
+
+const blankTaskForm = () => ({
+  title: "",
+  project_id: "",
+  project_name: "",
+  status: "todo",
+  priority: "medium",
+  assignees: [],
+  assignee: "",
+  description: "",
+  due_date: "",
+  subtasks: [],
+  time_spent: 0,
+  recurring_config: null,
+  tags: [],
+});
+
+function getInitialForm(editTask) {
+  if (editTask) {
+    return {
+      ...editTask,
+      tags: Array.isArray(editTask.tags) ? editTask.tags : [],
+      subtasks: normalizeSubtasks(editTask.subtasks),
+    };
+  }
+  try {
+    const raw = localStorage.getItem(TASK_DRAFT_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        return {
+          ...blankTaskForm(),
+          ...parsed,
+          tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+          subtasks: normalizeSubtasks(parsed.subtasks),
+        };
+      }
+    }
+  } catch {
+    // Ignore draft read issues
+  }
+  return blankTaskForm();
+}
 
 function createEmptyTaskForm() {
   return {
@@ -60,18 +106,96 @@ function PropertyChip({ icon: Icon, label, value, children, contentClassName = "
 export default function TaskForm({ projects, editTask, isOpen = true, onClose, onSaved }) {
   const [employees, setEmployees] = useState([]);
   const [createdProjects, setCreatedProjects] = useState([]);
-  const [form, setForm] = useState(() => (
-    editTask ? { ...editTask, tags: Array.isArray(editTask.tags) ? editTask.tags : [] } : createEmptyTaskForm()
-  ));
+  const [form, setForm] = useState(() => getInitialForm(editTask));
+  const formRef = useRef(form);
+  formRef.current = form;
+  const initialTaskRef = useRef(editTask);
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(() => {
+    if (editTask) return false;
+    try {
+      const raw = localStorage.getItem(TASK_DRAFT_KEY);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      return Boolean(parsed?.title || parsed?.description || parsed?.tags?.length);
+    } catch {
+      return false;
+    }
+  });
+
   const [saving, setSaving] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [availableTags, setAvailableTags] = useState(() => getCachedTags());
   const [projectInput, setProjectInput] = useState("");
   const [creatingProject, setCreatingProject] = useState(false);
   const [openProperty, setOpenProperty] = useState(null);
   const [membersLoading, setMembersLoading] = useState(true);
   const backdropPointerDown = useRef(false);
   const showRecurring = !!form.recurring_config;
+
+  // Persist draft for new task as user types
+  useEffect(() => {
+    if (!editTask) {
+      const hasContent = form.title?.trim() || form.description?.trim() || form.tags?.length || form.assignees?.length;
+      if (hasContent) {
+        try {
+          localStorage.setItem(TASK_DRAFT_KEY, JSON.stringify(form));
+        } catch {}
+      }
+    }
+  }, [form, editTask]);
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(TASK_DRAFT_KEY);
+    } catch {}
+    setForm(blankTaskForm());
+    setHasRestoredDraft(false);
+    toast({ title: "پیش‌نویس پاک شد" });
+  };
+
+  const handleClose = async () => {
+    if (editTask?.id) {
+      const t = initialTaskRef.current || {};
+      const f = formRef.current;
+      const isDirty = (
+        f.title !== t.title ||
+        f.description !== (t.description || "") ||
+        f.project_id !== (t.project_id || "") ||
+        f.status !== t.status ||
+        f.priority !== t.priority ||
+        f.due_date !== (t.due_date || "") ||
+        f.time_spent !== (t.time_spent || 0) ||
+        JSON.stringify(f.assignees || []) !== JSON.stringify(t.assignees || []) ||
+        JSON.stringify(f.tags || []) !== JSON.stringify(t.tags || []) ||
+        JSON.stringify(f.subtasks || []) !== JSON.stringify(t.subtasks || [])
+      );
+      if (isDirty && f.title?.trim() && !saving) {
+        setSaving(true);
+        try {
+          const proj = [...projects, ...createdProjects].find((p) => String(p.id) === String(f.project_id));
+          const data = { ...f, project_name: proj?.name || f.project_name || "" };
+          await studio.entities.Task.update(editTask.id, data);
+          toast({ title: "تغییرات تسک ذخیره شد" });
+          onSaved?.();
+        } catch (err) {
+          console.error("Auto-save editTask on close failed", err);
+          toast({ title: "خطا در ذخیره خودکار", description: err.message, variant: "destructive" });
+        } finally {
+          setSaving(false);
+        }
+      }
+    } else {
+      // New task: save draft immediately so reopening never loses data
+      const f = formRef.current;
+      if (f.title?.trim() || f.description?.trim() || f.tags?.length || f.assignees?.length) {
+        try {
+          localStorage.setItem(TASK_DRAFT_KEY, JSON.stringify(f));
+        } catch {}
+      }
+    }
+    onClose();
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -81,11 +205,16 @@ export default function TaskForm({ projects, editTask, isOpen = true, onClose, o
         setOpenProperty(null);
         return;
       }
-      onClose();
+      handleClose();
     };
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [isOpen, openProperty, onClose]);
+  }, [isOpen, openProperty, handleClose]);
+
+  useEffect(() => {
+    fetchAllTags().then(setAvailableTags);
+    return subscribeToTags(setAvailableTags);
+  }, []);
 
   useEffect(() => {
     if (isOpen) document.querySelector('[aria-label="عنوان تسک"]')?.focus();
@@ -95,7 +224,7 @@ export default function TaskForm({ projects, editTask, isOpen = true, onClose, o
     if (!isOpen) return;
     let active = true;
     loadTeamMembers()
-      .then((members) => { if (active) setEmployees(members); })
+      .then((members) => { if (active) setEmployees(filterAssignees(members)); })
       .catch((error) => { console.error("Could not load task assignees", error); if (active) setEmployees([]); })
       .finally(() => { if (active) setMembersLoading(false); });
     return () => { active = false; };
@@ -110,7 +239,62 @@ export default function TaskForm({ projects, editTask, isOpen = true, onClose, o
   };
 
   const handleSubtaskChange = (newSubtasks) => {
-    setForm({ ...form, subtasks: newSubtasks });
+    setForm((current) => ({ ...current, subtasks: newSubtasks }));
+  };
+
+  const handleConvertToTask = async (subtask, index) => {
+    const subtaskTitle = (subtask?.title || subtask?.name || "").trim();
+    if (!subtaskTitle) {
+      toast({ title: "خطا", description: "عنوان زیرتسک نمی‌تواند خالی باشد", variant: "destructive" });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const currentForm = formRef.current || form;
+      const remainingSubtasks = normalizeSubtasks(currentForm.subtasks).filter((_, i) => i !== index);
+
+      // 1. Create the new main task
+      const newTaskData = {
+        title: subtaskTitle,
+        project_id: currentForm.project_id || "",
+        project_name: currentForm.project_name || "",
+        priority: currentForm.priority || "medium",
+        status: "todo",
+        assignees: Array.isArray(currentForm.assignees) ? [...currentForm.assignees] : [],
+        assignee: currentForm.assignee || "",
+        description: `تبدیل‌شده از زیرتسک در تسک: ${currentForm.title || "بدون عنوان"}`,
+        tags: Array.isArray(currentForm.tags) ? [...currentForm.tags] : [],
+        subtasks: [],
+      };
+      await studio.entities.Task.create(newTaskData);
+
+      // 2. Update form subtasks
+      const updatedForm = { ...currentForm, subtasks: remainingSubtasks };
+      setForm(updatedForm);
+      formRef.current = updatedForm;
+
+      // If editing an existing task, persist to DB as well
+      if (editTask?.id) {
+        if (initialTaskRef.current) {
+          initialTaskRef.current.subtasks = remainingSubtasks;
+        }
+        const proj = availableProjects.find((p) => String(p.id) === String(updatedForm.project_id));
+        const data = { ...updatedForm, project_name: proj?.name || updatedForm.project_name || "" };
+        await studio.entities.Task.update(editTask.id, data);
+      }
+
+      toast({
+        title: "تبدیل به تسک اصلی انجام شد",
+        description: `تسک جدید «${subtaskTitle}» با موفقیت ایجاد شد.`,
+      });
+      onSaved?.();
+    } catch (err) {
+      console.error("Failed to convert subtask to task:", err);
+      toast({ title: "خطا در تبدیل زیرتسک", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleRecurringChange = (config) => {
@@ -168,9 +352,15 @@ export default function TaskForm({ projects, editTask, isOpen = true, onClose, o
         await studio.entities.Task.update(editTask.id, data);
       } else {
         await studio.entities.Task.create(data);
+        try {
+          localStorage.removeItem(TASK_DRAFT_KEY);
+        } catch {}
       }
       toast({ title: editTask?.id ? "تسک بروزرسانی شد" : "تسک ثبت شد" });
-      if (!editTask?.id) setOpenProperty(null);
+      if (!editTask?.id) {
+        setOpenProperty(null);
+        setHasRestoredDraft(false);
+      }
       onSaved();
       onClose();
       if (!editTask?.id) {
@@ -205,13 +395,15 @@ export default function TaskForm({ projects, editTask, isOpen = true, onClose, o
   const toggleTag = (tag) => setTags(selectedTags.includes(tag) ? selectedTags.filter((item) => item !== tag) : [...selectedTags, tag]);
   const close = () => {
     setOpenProperty(null);
-    onClose();
+    handleClose();
   };
-  const addTag = () => {
+  const addTag = async () => {
     const value = tagInput.trim();
     if (!value) return;
     setTags([...selectedTags, value]);
+    setAvailableTags((current) => [...new Set([...current, value])]);
     setTagInput("");
+    await persistNewTag(value);
   };
 
   return (
@@ -237,7 +429,16 @@ export default function TaskForm({ projects, editTask, isOpen = true, onClose, o
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
-          <Input aria-label="عنوان تسک" placeholder="عنوان تسک" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="h-12 rounded-xl border border-border bg-background px-4 py-3 text-left text-xl font-semibold shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30 sm:text-2xl" />
+          {hasRestoredDraft && (
+            <div className="mb-4 flex items-center justify-between rounded-xl bg-amber-500/10 border border-amber-500/20 px-3.5 py-2 text-xs text-amber-800 dark:text-amber-400">
+              <span>پیش‌نویس ذخیره‌شده بازیابی شد</span>
+              <button type="button" onClick={clearDraft} className="inline-flex items-center gap-1 font-medium hover:underline">
+                <RotateCcw className="h-3.5 w-3.5" />
+                پاک کردن پیش‌نویس
+              </button>
+            </div>
+          )}
+          <Input autoFocus dir="auto" aria-label="عنوان تسک" placeholder="عنوان تسک" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="h-12 rounded-xl border border-border bg-background px-4 py-3 text-xl font-semibold shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30 sm:text-2xl" />
           <div className="mt-5">
             <div className="mb-2"><span className="text-xs text-muted-foreground">توضیحات</span></div>
             <textarea aria-label="توضیحات تسک" value={form.description || ""} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={8} placeholder="توضیحات را بنویسید…" className="min-h-52 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-sm leading-7 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/30" />
@@ -262,11 +463,30 @@ export default function TaskForm({ projects, editTask, isOpen = true, onClose, o
                 <div className="space-y-2 p-2">
                   <form onSubmit={(event) => { event.preventDefault(); addTag(); }} className="flex items-center gap-2"><Input autoFocus value={tagInput} onChange={(event) => setTagInput(event.target.value)} placeholder="افزودن برچسب…" className="h-9" /><Button type="submit" size="icon" aria-label="افزودن برچسب" disabled={!tagInput.trim()}><Plus className="h-4 w-4" /></Button></form>
                   <p className="px-1 text-xs text-muted-foreground">پیشنهادها</p>
-                  <div className="flex flex-wrap gap-1.5">{[...new Set([...suggestedTags, ...selectedTags])].map((tag) => <Button type="button" key={tag} variant={selectedTags.includes(tag) ? "secondary" : "outline"} size="sm" onClick={() => toggleTag(tag)} className="h-7 px-2 text-xs">{selectedTags.includes(tag) && <Check className="h-3 w-3" />}{tag}</Button>)}</div>
+                  <div className="flex flex-wrap gap-1.5">{[...new Set([...availableTags, ...selectedTags])].map((tag) => <Button type="button" key={tag} variant={selectedTags.includes(tag) ? "secondary" : "outline"} size="sm" onClick={() => toggleTag(tag)} className="h-7 px-2 text-xs">{selectedTags.includes(tag) && <Check className="h-3 w-3" />}{tag}</Button>)}</div>
                 </div>
               </PropertyChip>
-              <PropertyChip open={openProperty === "dueDate"} onOpenChange={(open) => setPropertyOpen("dueDate", open)} icon={CalendarDays} label="موعد" value={form.due_date || "موعد سررسید"} contentClassName="w-72 overflow-visible">
-                <div className="space-y-2 p-2"><span className="block text-xs font-medium">موعد سررسید</span><PersianDatePicker value={form.due_date || ""} onChange={(value) => { setForm((current) => ({ ...current, due_date: value })); if (value) setPropertyOpen("dueDate", false); }} placeholder="انتخاب تاریخ" /><Button type="button" variant="ghost" size="sm" onClick={() => { setForm((current) => ({ ...current, due_date: "" })); setPropertyOpen("dueDate", false); }}>پاک کردن تاریخ</Button></div>
+              <PropertyChip open={openProperty === "dueDate"} onOpenChange={(open) => setPropertyOpen("dueDate", open)} icon={CalendarDays} label="موعد" value={form.due_date || "موعد سررسید"} contentClassName="w-80 overflow-visible p-3">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <span className="text-xs font-semibold text-foreground">انتخاب تاریخ موعد سررسید</span>
+                    {form.due_date && (
+                      <button type="button" onClick={() => { setForm((current) => ({ ...current, due_date: "" })); setPropertyOpen("dueDate", false); }} className="text-xs text-destructive hover:underline">
+                        پاک کردن
+                      </button>
+                    )}
+                  </div>
+                  <PersianDatePicker
+                    value={form.due_date || ""}
+                    onChange={(value) => {
+                      if (value) {
+                        setForm((current) => ({ ...current, due_date: value }));
+                        setPropertyOpen("dueDate", false);
+                      }
+                    }}
+                    placeholder="انتخاب تاریخ از تقویم"
+                  />
+                </div>
               </PropertyChip>
               <Button type="button" variant="ghost" size="sm" onClick={() => setAdvancedOpen((open) => !open)} className="h-8 px-2 text-muted-foreground"><MoreHorizontal className="h-4 w-4" />{advancedOpen ? "بستن تنظیمات" : "بیشتر"}</Button>
             </div>
@@ -282,7 +502,7 @@ export default function TaskForm({ projects, editTask, isOpen = true, onClose, o
               {form.recurring_config?.frequency === "weekly" && <label className="space-y-1.5 text-xs text-muted-foreground">روز هفته<SelectControl value={form.recurring_config?.day_of_week ?? 0} onChange={(event) => handleRecurringChange({ ...form.recurring_config, day_of_week: Number(event.target.value) })} className="w-full"><option value={0}>یکشنبه</option><option value={1}>دوشنبه</option><option value={2}>سه‌شنبه</option><option value={3}>چهارشنبه</option><option value={4}>پنج‌شنبه</option><option value={5}>جمعه</option><option value={6}>شنبه</option></SelectControl></label>}
               {form.recurring_config?.frequency === "monthly" && <label className="space-y-1.5 text-xs text-muted-foreground">روز ماه<SelectControl value={form.recurring_config?.day_of_month || 1} onChange={(event) => handleRecurringChange({ ...form.recurring_config, day_of_month: Number(event.target.value) })} className="w-full">{[...Array(31)].map((_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}</SelectControl></label>}
             </div>}
-            <div><h3 className="mb-2 flex items-center gap-2 text-sm font-medium"><ListChecks className="h-4 w-4 text-muted-foreground" />زیرتسک‌ها</h3><SubtaskList subtasks={form.subtasks || []} onChange={handleSubtaskChange} /></div>
+            <div><h3 className="mb-2 flex items-center gap-2 text-sm font-medium"><ListChecks className="h-4 w-4 text-muted-foreground" />زیرتسک‌ها</h3><SubtaskList subtasks={form.subtasks || []} onChange={handleSubtaskChange} onConvertToTask={handleConvertToTask} /></div>
           </div>}
         </div>
 

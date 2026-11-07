@@ -6,6 +6,8 @@ import { roleLabel, roleColor } from "@/lib/roles";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { appId } from "@/api/studioClient";
 import EmployeeForm from "@/components/EmployeeForm";
+import EmployeeProfile from "@/components/EmployeeProfile";
+import { MODULES } from "@/lib/permissions";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
 import { formatPersianNumber as formatFaNum } from "@/lib/number-format";
 
@@ -28,6 +30,7 @@ export default function Admin() {
   const [digestMsg, setDigestMsg] = useState("");
   const [showUserForm, setShowUserForm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [profileFor, setProfileFor] = useState(null);
 
   // ConfirmDialog states
   const [deactivateTarget, setDeactivateTarget] = useState(null);
@@ -79,7 +82,11 @@ export default function Admin() {
 
   const handleRoleChange = async (userId, newRole) => {
     try {
-      await studio.entities.User.update(userId, { role: newRole });
+      const updateData = { role: newRole };
+      if (newRole === "admin") {
+        updateData.module_access = MODULES.map((m) => m.id);
+      }
+      await studio.entities.User.update(userId, updateData);
       load();
     } catch (err) {
       console.error(err);
@@ -177,48 +184,72 @@ export default function Admin() {
 
   const exportJsonBackup = async () => {
     try {
-      setRestoreMsg("در حال آماده‌سازی فایل بکاپ...");
-      const [u, t, exp, inc, sal, p, a, m, s, wr, lr] = await Promise.all([
-        studio.entities.User.list().catch(() => []),
-        studio.entities.Task.list().catch(() => []),
-        studio.entities.Expense.list().catch(() => []),
-        studio.entities.Income.list().catch(() => []),
-        studio.entities.Salary.list().catch(() => []),
-        studio.entities.Project.list().catch(() => []),
-        studio.entities.Announcement.list().catch(() => []),
-        studio.entities.Meeting.list().catch(() => []),
-        studio.entities.Sprint.list().catch(() => []),
-        studio.entities.WorkReport.list().catch(() => []),
-        studio.entities.LeaveRequest.list().catch(() => []),
-      ]);
+      setRestoreMsg("در حال آماده‌سازی فایل کامل بکاپ پایگاه داده...");
+      const token = localStorage.getItem("studio_access_token");
+      let backupData = null;
 
-      const backup = {
-        app: "flowsee-studio",
-        version: "1.0",
-        export_date: new Date().toISOString(),
-        entities: {
-          User: u,
-          Task: t,
-          Expense: exp,
-          Income: inc,
-          Salary: sal,
-          Project: p,
-          Announcement: a,
-          Meeting: m,
-          Sprint: s,
-          WorkReport: wr,
-          LeaveRequest: lr,
-        },
-      };
+      try {
+        const res = await fetch(`/api/apps/${appId}/backup`, {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        });
+        if (res.ok) {
+          backupData = await res.json();
+        }
+      } catch {}
 
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" });
+      if (!backupData || !backupData.entities) {
+        const [u, t, exp, inc, sal, p, a, m, s, wr, lr, logs] = await Promise.all([
+          studio.entities.User.list().catch(() => []),
+          studio.entities.Task.list().catch(() => []),
+          studio.entities.Expense.list().catch(() => []),
+          studio.entities.Income.list().catch(() => []),
+          studio.entities.Salary.list().catch(() => []),
+          studio.entities.Project.list().catch(() => []),
+          studio.entities.Announcement.list().catch(() => []),
+          studio.entities.Meeting.list().catch(() => []),
+          studio.entities.Sprint.list().catch(() => []),
+          studio.entities.WorkReport.list().catch(() => []),
+          studio.entities.LeaveRequest.list().catch(() => []),
+          studio.entities.ActivityLog.list().catch(() => []),
+        ]);
+
+        backupData = {
+          app: "flowsee-studio",
+          version: "2.0",
+          export_date: new Date().toISOString(),
+          summary: {
+            users_count: u.length,
+            tasks_count: t.length,
+            expenses_count: exp.length,
+            incomes_count: inc.length,
+            projects_count: p.length,
+          },
+          entities: {
+            User: u,
+            Task: t,
+            Expense: exp,
+            Income: inc,
+            Salary: sal,
+            Project: p,
+            Announcement: a,
+            Meeting: m,
+            Sprint: s,
+            WorkReport: wr,
+            LeaveRequest: lr,
+            ActivityLog: logs,
+          },
+          users: u.map(({ password_hash: _ph, ...rest }) => rest),
+        };
+      }
+
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const aElem = document.createElement("a");
       aElem.href = url;
       aElem.download = `flowsee-backup-${new Date().toISOString().slice(0, 10)}.json`;
       aElem.click();
       URL.revokeObjectURL(url);
-      setRestoreMsg("✅ فایل بکاپ با موفقیت دانلود شد.");
+      setRestoreMsg("✅ فایل بکاپ جامع با موفقیت دانلود شد.");
     } catch (err) {
       setRestoreMsg("❌ خطا در ساخت بکاپ: " + err.message);
     }
@@ -558,6 +589,19 @@ export default function Admin() {
                     </button>
                   )}
 
+                  {/* Permissions button */}
+                  <button
+                    onClick={() => setProfileFor({
+                      ...u,
+                      name: u.full_name || u.email,
+                      module_access: u.module_access,
+                    })}
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                    title="مدیریت دسترسی‌ها و پروفایل"
+                  >
+                    <Shield className="w-3.5 h-3.5" /> دسترسی‌ها
+                  </button>
+
                   {/* Force logout button - for all except self */}
                   {!isSelf && (
                     <button
@@ -692,6 +736,15 @@ export default function Admin() {
         </button>
         {digestMsg && <p className={`text-sm mt-3 ${digestMsg.startsWith("✅") ? "text-green-600" : "text-red-500"}`}>{digestMsg}</p>}
       </div>
+
+      {profileFor && (
+        <EmployeeProfile
+          employee={profileFor}
+          canEdit={true}
+          onClose={() => setProfileFor(null)}
+          onSaved={() => { setProfileFor(null); load(); }}
+        />
+      )}
     </div>
   );
 }
