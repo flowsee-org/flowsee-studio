@@ -52,4 +52,3 @@ export function getSubtaskStats(rawSubtasks) {
     allDone: total > 0 && completed === total,
   };
 }
-

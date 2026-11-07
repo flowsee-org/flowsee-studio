@@ -66,4 +66,3 @@ test("getSubtaskStats calculates totals, done count, and completion percent corr
   assert.equal(allDone.percent, 100);
   assert.equal(allDone.allDone, true);
 });
-

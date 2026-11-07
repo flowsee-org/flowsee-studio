@@ -45,6 +45,13 @@ test('local authentication, permissions, persistence, uploads and logout', async
   assert.equal(backup.status, 200);
   assert.equal(backup.data.secret, undefined);
   assert.equal(backup.data.users[0].password_hash, undefined);
+  assert.equal(backup.data.entities.Task.some((item) => item.title === 'Updated'), true);
+  assert.equal(Object.hasOwn(backup.data.entities, 'User'), false);
+  const backupResponse = await fetch(origin + `${base}/backup`, { headers: { Authorization: ['Bearer ', admin].join('') } });
+  assert.match(backupResponse.headers.get('content-disposition'), /attachment; filename="flowsee-backup-\d{4}-\d{2}-\d{2}\.json"/);
+  const backupFile = new FormData();
+  backupFile.append('file', new Blob([await backupResponse.text()], { type: 'application/json' }), 'flowsee-backup.json');
+  assert.equal((await fetch(origin + `${base}/restore`, { method: 'POST', headers: { Authorization: ['Bearer ', admin].join('') }, body: backupFile })).status, 200);
   const restore = new FormData(); restore.append('file', new Blob([JSON.stringify({ entities: { Project: [{ id: 'imported', name: 'Import' }] } })]), 'backup.json');
   assert.equal((await fetch(origin + `${base}/restore`, { method: 'POST', headers: { Authorization: `Bearer ${admin}` }, body: restore })).status, 200);
   assert.equal((await call(`${base}/entities/Project/imported`, 'GET', undefined, admin)).data.name, 'Import');
