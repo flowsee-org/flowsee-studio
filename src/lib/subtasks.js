@@ -10,13 +10,13 @@ export function normalizeSubtask(item, index = 0) {
     };
   }
   if (typeof item === 'object') {
-    const title = String(item.title ?? item.name ?? item.text ?? '').trim();
-    if (!title && !item.id) return null;
+    const rawTitle = String(item.title ?? item.name ?? item.text ?? '');
+    if (!rawTitle.trim() && !item.id) return null;
     const done = Boolean(item.done || item.completed);
-    const id = item.id ? String(item.id) : `subtask-${index}-${title.slice(0, 12)}`;
+    const id = item.id ? String(item.id) : `subtask-${index}-${rawTitle.trim().slice(0, 12)}`;
     return {
       id,
-      title,
+      title: rawTitle,
       done,
     };
   }

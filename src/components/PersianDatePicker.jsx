@@ -43,6 +43,7 @@ export default function PersianDatePicker({
   restrictToToday = false,
   disabled = false,
   closeOnSelect = false,
+  hideQuickButtons = false,
 }) {
   const ref = useRef();
   const wrapperRef = useRef(null);
@@ -145,7 +146,7 @@ export default function PersianDatePicker({
           onClick={() => ref.current?.openCalendar()}
         />
       </div>
-      {!range && !onlyMonthPicker && !onlyYearPicker && !timePicker && !restrictToToday && !disabled && (
+      {!hideQuickButtons && !range && !onlyMonthPicker && !onlyYearPicker && !timePicker && !restrictToToday && !disabled && (
         <div className="flex gap-1.5 mt-1.5 flex-wrap">
           {quickButtons.map((btn) => (
             <button

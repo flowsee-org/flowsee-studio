@@ -438,10 +438,10 @@ export default function TaskForm({ projects, editTask, isOpen = true, onClose, o
               </button>
             </div>
           )}
-          <Input autoFocus dir="auto" aria-label="عنوان تسک" placeholder="عنوان تسک" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="h-12 rounded-xl border border-border bg-background px-4 py-3 text-xl font-semibold shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30 sm:text-2xl" />
+          <Input autoFocus dir="rtl" aria-label="عنوان تسک" placeholder="عنوان تسک" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="h-12 rounded-xl border border-border bg-background px-4 py-3 text-xl font-semibold shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30 sm:text-2xl text-right" />
           <div className="mt-5">
             <div className="mb-2"><span className="text-xs text-muted-foreground">توضیحات</span></div>
-            <textarea aria-label="توضیحات تسک" value={form.description || ""} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={8} placeholder="توضیحات را بنویسید…" className="min-h-52 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-sm leading-7 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            <textarea dir="rtl" aria-label="توضیحات تسک" value={form.description || ""} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={8} placeholder="توضیحات را بنویسید…" className="min-h-52 w-full resize-y rounded-xl border border-border bg-background px-4 py-3 text-sm leading-7 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/30 text-right" />
           </div>
 
           {selectedTags.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{selectedTags.map((tag) => <span key={tag} className="inline-flex items-center gap-1 rounded-md bg-primary-subtle px-2 py-1 text-xs text-primary-subtle-foreground">{tag}<button type="button" onClick={() => toggleTag(tag)} aria-label={`حذف برچسب ${tag}`} className="rounded-sm hover:text-destructive"><X className="h-3 w-3" /></button></span>)}</div>}

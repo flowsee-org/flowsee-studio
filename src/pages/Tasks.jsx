@@ -79,8 +79,20 @@ function normalizeOwnerKey(value) {
 }
 
 function taskOwnerValues(task) {
+  const assignees = Array.isArray(task.assignees)
+    ? task.assignees
+    : typeof task.assignees === "string"
+    ? (() => {
+        try {
+          const parsed = JSON.parse(task.assignees);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {}
+        return task.assignees.split(",").map((s) => s.trim()).filter(Boolean);
+      })()
+    : [];
+
   return [
-    ...(Array.isArray(task.assignees) ? task.assignees : []),
+    ...assignees,
     task.assignee,
     task.process_owner,
     task.process_owner_name,
@@ -89,6 +101,63 @@ function taskOwnerValues(task) {
     task.process_owner_email,
     task.owner_email,
   ].filter(Boolean);
+}
+
+function normalizeDateString(dateVal) {
+  if (!dateVal) return "";
+  const persianDigits = "۰۱۲۳۴۵۶۷۸۹";
+  const arabicDigits = "٠١٢٣٤٥٦٧٨٩";
+  return String(dateVal)
+    .replace(/[۰-۹]/g, (d) => persianDigits.indexOf(d))
+    .replace(/[٠-٩]/g, (d) => arabicDigits.indexOf(d))
+    .slice(0, 10)
+    .replace(/-/g, "/");
+}
+
+function matchesCustomFilters(task, { projectFilter, employeeFilter, tagFilter, dateFrom, dateTo }) {
+  if (projectFilter) {
+    const projId = String(projectFilter);
+    const matchesProj =
+      String(task.project_id ?? "") === projId ||
+      String(task.project?.id ?? "") === projId ||
+      String(task.project_name ?? "") === projId;
+    if (!matchesProj) return false;
+  }
+
+  if (employeeFilter) {
+    if (!matchesTaskOwner(task, employeeFilter)) return false;
+  }
+
+  if (tagFilter) {
+    let taskTags = [];
+    if (Array.isArray(task.tags)) {
+      taskTags = task.tags;
+    } else if (typeof task.tags === "string") {
+      try {
+        const parsed = JSON.parse(task.tags);
+        if (Array.isArray(parsed)) taskTags = parsed;
+      } catch {
+        taskTags = task.tags.split(",").map((s) => s.trim()).filter(Boolean);
+      }
+    }
+    if (!taskTags.includes(tagFilter)) return false;
+  }
+
+  if (dateFrom) {
+    if (!task.due_date) return false;
+    const taskDue = normalizeDateString(task.due_date);
+    const from = normalizeDateString(dateFrom);
+    if (taskDue < from) return false;
+  }
+
+  if (dateTo) {
+    if (!task.due_date) return false;
+    const taskDue = normalizeDateString(task.due_date);
+    const to = normalizeDateString(dateTo);
+    if (taskDue > to) return false;
+  }
+
+  return true;
 }
 
 function matchesTaskOwner(task, value) {
@@ -147,7 +216,7 @@ export default function Tasks() {
   const [dateTo, setDateTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [creatorNames] = useState({});
-  const [viewMode, setViewMode] = useState("assigned");
+  const [viewMode, setViewMode] = useState(() => (isAdmin ? "all" : "assigned"));
   const [showArchived, setShowArchived] = useState(false);
   const [showArchiveColumn, setShowArchiveColumn] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -172,6 +241,12 @@ export default function Tasks() {
     fetchAllTags().then(setAllTags);
     return subscribeToTags(setAllTags);
   }, []);
+
+  useEffect(() => {
+    if (isAdmin) {
+      setViewMode("all");
+    }
+  }, [isAdmin]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 767px)");
@@ -228,18 +303,9 @@ export default function Tasks() {
 
   // Apply other filters
   const filteredTasks = useMemo(() => {
-    return searchFilteredTasks.filter((t) => {
-      if (projectFilter && t.project_id !== projectFilter) return false;
-      if (employeeFilter) {
-        if (!matchesTaskOwner(t, employeeFilter)) return false;
-      }
-      if (tagFilter) {
-        if (!Array.isArray(t.tags) || !t.tags.includes(tagFilter)) return false;
-      }
-      if (dateFrom && t.due_date && t.due_date < dateFrom) return false;
-      if (dateTo && t.due_date && t.due_date > dateTo) return false;
-      return true;
-    });
+    return searchFilteredTasks.filter((t) =>
+      matchesCustomFilters(t, { projectFilter, employeeFilter, tagFilter, dateFrom, dateTo })
+    );
   }, [searchFilteredTasks, projectFilter, employeeFilter, tagFilter, dateFrom, dateTo]);
 
   const hasTaskFilters = Boolean(projectFilter || employeeFilter || tagFilter || dateFrom || dateTo || searchQuery);
@@ -433,12 +499,7 @@ export default function Tasks() {
     const archived = viewFilteredTasks.filter((task) => {
       if (!task.archived) return false;
       if (query && !task.title.toLowerCase().includes(query) && !(task.description || "").toLowerCase().includes(query) && !(task.task_number || "").toLowerCase().includes(query)) return false;
-      if (projectFilter && task.project_id !== projectFilter) return false;
-      if (employeeFilter && !matchesTaskOwner(task, employeeFilter)) return false;
-      if (tagFilter && (!Array.isArray(task.tags) || !task.tags.includes(tagFilter))) return false;
-      if (dateFrom && task.due_date && task.due_date < dateFrom) return false;
-      if (dateTo && task.due_date && task.due_date > dateTo) return false;
-      return true;
+      return matchesCustomFilters(task, { projectFilter, employeeFilter, tagFilter, dateFrom, dateTo });
     });
     result.archived = sortTasks(archived, "priority_created");
     return result;
@@ -532,10 +593,11 @@ export default function Tasks() {
             aria-expanded={showFilters}
             aria-label="فیلتر تسک‌ها"
             title="فیلتر تسک‌ها"
-            className={`relative col-start-5 row-start-1 h-10 w-10 justify-self-center border rounded-xl font-medium inline-flex items-center justify-center transition-colors ${showFilters || hasTaskFilters ? "border-primary/40 text-primary bg-primary/5" : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"}`}
+            className={`relative col-start-5 row-start-1 h-10 w-10 sm:h-auto sm:w-auto sm:px-3 sm:py-2 justify-self-center border rounded-xl font-medium inline-flex items-center justify-center gap-1.5 transition-colors ${showFilters || hasTaskFilters ? "border-primary/40 text-primary bg-primary/5" : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"}`}
           >
             <Filter className="w-4 h-4" />
-            {hasTaskFilters && <span className="absolute -top-1 -left-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background" aria-label="فیلتر فعال" />}
+            <span className="hidden sm:inline text-sm">فیلترها</span>
+            {hasTaskFilters && <span className="h-2 w-2 rounded-full bg-primary" aria-label="فیلتر فعال" />}
           </button>
           <button
             onClick={() => { setShowArchived((v) => !v); setSelectedTasks(new Set()); }}
@@ -587,7 +649,7 @@ export default function Tasks() {
             <SelectControl
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
-              className="col-span-2 w-full sm:col-span-1 sm:w-auto border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 sm:min-w-[180px]"
+              className="col-span-2 w-full sm:col-span-1 sm:w-auto text-sm sm:min-w-[170px]"
             >
               <option value="">همه پروژه‌ها</option>
               {projects.map((p) => (
@@ -598,7 +660,7 @@ export default function Tasks() {
               <SelectControl
                 value={employeeFilter}
                 onChange={(e) => setEmployeeFilter(e.target.value)}
-                className="col-span-2 w-full sm:col-span-1 sm:w-auto border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 sm:min-w-[180px]"
+                className="col-span-2 w-full sm:col-span-1 sm:w-auto text-sm sm:min-w-[170px]"
               >
                 <option value="">همه کارمندان</option>
                 {uniqueOwnerOptions(baseVisibleTasks).map((name) => (
@@ -609,23 +671,23 @@ export default function Tasks() {
             <SelectControl
               value={tagFilter}
               onChange={(e) => setTagFilter(e.target.value)}
-              className="col-span-2 w-full sm:col-span-1 sm:w-auto border border-input rounded-xl px-3 py-2 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 sm:min-w-[150px]"
+              className="col-span-2 w-full sm:col-span-1 sm:w-auto text-sm sm:min-w-[140px]"
             >
               <option value="">همه برچسب‌ها</option>
               {allTags.map((tag) => (
                 <option key={tag} value={tag}>{tag}</option>
               ))}
             </SelectControl>
-            <div className="col-span-2 min-w-0 sm:col-span-1 sm:min-w-[180px]">
-              <PersianDatePicker label="از تاریخ" value={dateFrom} onChange={setDateFrom} placeholder="از ددلاین" />
+            <div className="col-span-2 min-w-0 sm:col-span-1 sm:w-44">
+              <PersianDatePicker value={dateFrom} onChange={setDateFrom} placeholder="از ددلاین" hideQuickButtons />
             </div>
-            <div className="col-span-2 min-w-0 sm:col-span-1 sm:min-w-[180px]">
-              <PersianDatePicker label="تا تاریخ" value={dateTo} onChange={setDateTo} placeholder="تا ددلاین" />
+            <div className="col-span-2 min-w-0 sm:col-span-1 sm:w-44">
+              <PersianDatePicker value={dateTo} onChange={setDateTo} placeholder="تا ددلاین" hideQuickButtons />
             </div>
             {hasTaskFilters && (
               <button
                 onClick={clearTaskFilters}
-                className="text-xs text-primary hover:underline flex items-center gap-1 ml-auto"
+                className="text-xs text-primary hover:underline flex items-center gap-1 col-span-2 sm:col-span-1 sm:mr-auto"
               >
                 <X className="w-3.5 h-3.5" /> پاک کردن فیلترها
               </button>
@@ -837,10 +899,10 @@ export default function Tasks() {
                                   {t.task_number && (
                                     <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">{t.task_number}</span>
                                   )}
-                                  <p dir="auto" title={t.title} className="font-medium text-start text-sm leading-snug flex-1 min-w-0 truncate">{t.title}</p>
+                                  <p dir="rtl" title={t.title} className="font-medium text-right text-sm leading-snug flex-1 min-w-0 truncate">{t.title}</p>
                                 </div>
                                 {longPressedTaskId === t.id && <div role="tooltip" dir="rtl" className="absolute inset-x-2 top-12 z-30 rounded-lg border border-border bg-popover p-3 text-popover-foreground text-right shadow-lg">
-                                  <p dir="auto" className="font-semibold text-start text-sm whitespace-normal break-words">{t.title}</p>
+                                  <p dir="rtl" className="font-semibold text-right text-sm whitespace-normal break-words">{t.title}</p>
                                   {t.description && <p className="mt-1 text-xs leading-relaxed whitespace-pre-wrap break-words">{t.description}</p>}
                                 </div>}
                                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
@@ -945,7 +1007,7 @@ export default function Tasks() {
                   {sortedTableTasks.map((task) => <tr key={task.id} className="hover:bg-accent/20">
                     <td className="p-3">
                       <div className="flex items-center flex-wrap gap-1">
-                        <button dir="auto" onClick={() => handleViewDetail(task)} className="block w-full text-start font-medium hover:text-primary">{task.title}</button>
+                        <button dir="rtl" onClick={() => handleViewDetail(task)} className="block w-full text-right font-medium hover:text-primary">{task.title}</button>
                         {task.subtasks?.length > 0 && (() => {
                           const stats = getSubtaskStats(task.subtasks);
                           return stats.hasSubtasks ? (
@@ -974,7 +1036,7 @@ export default function Tasks() {
                 {[...sortedTableTasks].sort((a, b) => (a.due_date || "9999").localeCompare(b.due_date || "9999")).map((task) => <div key={task.id} className="relative pr-10">
                   <span className={`absolute right-[11px] top-4 h-2.5 w-2.5 rounded-full ring-4 ring-background ${task.status === "done" ? "bg-green-500" : task.status === "in_progress" ? "bg-blue-500" : "bg-amber-500"}`} />
                   <button onClick={() => handleViewDetail(task)} className="w-full rounded-xl border border-border bg-card p-4 text-right hover:border-primary/40 hover:shadow-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-2"><span dir="auto" className="text-left font-semibold">{task.title}</span><span className="text-xs text-muted-foreground">{task.due_date ? `سررسید ${task.due_date}` : "بدون ددلاین"}</span></div>
+                    <div className="flex flex-wrap items-center justify-between gap-2"><span dir="rtl" className="text-right font-semibold">{task.title}</span><span className="text-xs text-muted-foreground">{task.due_date ? `سررسید ${task.due_date}` : "بدون ددلاین"}</span></div>
                     <div className="mt-2 flex flex-wrap gap-2"><span className={`rounded-full px-2 py-0.5 text-xs ${priorityColors[task.priority]}`}>{priorityLabels[task.priority]}</span><span className="text-xs text-muted-foreground">{columns.find((column) => column.id === task.status)?.title}</span></div>
                   </button>
                 </div>)}

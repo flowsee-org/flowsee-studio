@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
-import { Shield, UserPlus, Mail, Users, TrendingUp, TrendingDown, LogOut, RotateCcw, Key, Activity, ShieldCheck, UserX, Upload, Plus, Trash2 } from "lucide-react";
+import { Shield, UserPlus, Mail, Users, TrendingUp, TrendingDown, LogOut, RotateCcw, Key, Activity, ShieldCheck, UserX, Upload, Plus, Trash2, FileSpreadsheet } from "lucide-react";
 import { roleLabel, roleColor } from "@/lib/roles";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { appId } from "@/api/studioClient";
@@ -10,6 +10,7 @@ import EmployeeProfile from "@/components/EmployeeProfile";
 import { MODULES } from "@/lib/permissions";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
 import { formatPersianNumber as formatFaNum } from "@/lib/number-format";
+import { buildUsersWorkbook, buildTasksWorkbook, buildExpensesWorkbook, downloadWorkbook } from "@/lib/excelExport";
 
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
 
@@ -210,95 +211,48 @@ export default function Admin() {
     }
   };
 
-  const exportUsersCsv = async () => {
+  const exportUsersExcel = async () => {
     try {
-      setRestoreMsg("در حال دریافت اطلاعات کاربران...");
+      setRestoreMsg("در حال دریافت اطلاعات و آماده‌سازی فایل اکسل کاربران...");
       const userList = await studio.entities.User.list().catch(() => users);
-      const headers = ["شناسه", "نام و نام خانوادگی", "ایمیل", "نقش", "شماره تماس", "بخش", "سمت", "وضعیت"];
-      const escape = (val) => `"${String(val ?? "").replace(/"/g, '""')}"`;
-      const rows = userList.map((u) => [
-        escape(u.id),
-        escape(u.full_name || u.name),
-        escape(u.email),
-        escape(u.role),
-        escape(u.phone),
-        escape(u.department),
-        escape(u.position),
-        escape(u.is_active === false ? "غیرفعال" : "فعال"),
-      ].join(","));
-
-      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setRestoreMsg("✅ خروجی کاربران با موفقیت دانلود شد.");
+      const wb = buildUsersWorkbook(userList);
+      const dateStr = new Date().toISOString().slice(0, 10);
+      downloadWorkbook(wb, `flowsee-users-${dateStr}.xlsx`);
+      setRestoreMsg("✅ فایل اکسل کاربران با موفقیت دانلود شد.");
     } catch (err) {
-      setRestoreMsg("❌ خطا در اکسپورت کاربران: " + err.message);
+      setRestoreMsg("❌ خطا در خروجی اکسل کاربران: " + err.message);
     }
   };
 
-  const exportTasksCsv = async () => {
+  const exportTasksExcel = async () => {
     try {
-      setRestoreMsg("در حال دریافت اطلاعات تسک‌ها...");
-      const taskList = await studio.entities.Task.list().catch(() => tasks);
-      const headers = ["شناسه", "عنوان تسک", "پروژه", "وضعیت", "اولویت", "مسئولین", "مهلت", "تاریخ ایجاد"];
-      const escape = (val) => `"${String(val ?? "").replace(/"/g, '""')}"`;
-      const rows = taskList.map((t) => [
-        escape(t.id),
-        escape(t.title),
-        escape(t.project_name || t.project_id),
-        escape(t.status),
-        escape(t.priority),
-        escape((t.assignees || [t.assignee]).filter(Boolean).join(" - ")),
-        escape(t.due_date),
-        escape(t.created_at || t.created_date),
-      ].join(","));
-
-      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `tasks-${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setRestoreMsg("✅ خروجی تسک‌ها با موفقیت دانلود شد.");
+      setRestoreMsg("در حال دریافت اطلاعات و آماده‌سازی فایل اکسل تسک‌ها...");
+      const [taskList, projectList] = await Promise.all([
+        studio.entities.Task.list("-created_date").catch(() => []),
+        studio.entities.Project.list().catch(() => []),
+      ]);
+      const wb = buildTasksWorkbook(taskList, projectList);
+      const dateStr = new Date().toISOString().slice(0, 10);
+      downloadWorkbook(wb, `flowsee-tasks-${dateStr}.xlsx`);
+      setRestoreMsg("✅ فایل اکسل تسک‌ها با موفقیت دانلود شد.");
     } catch (err) {
-      setRestoreMsg("❌ خطا در اکسپورت تسک‌ها: " + err.message);
+      setRestoreMsg("❌ خطا در خروجی اکسل تسک‌ها: " + err.message);
     }
   };
 
-  const exportExpensesCsv = async () => {
+  const exportExpensesExcel = async () => {
     try {
-      setRestoreMsg("در حال دریافت اطلاعات هزینه‌ها...");
-      const expList = await studio.entities.Expense.list().catch(() => expenses);
-      const headers = ["شناسه", "عنوان هزینه", "مبلغ (تومان)", "دسته‌بندی", "پروژه", "تاریخ", "وضعیت"];
-      const escape = (val) => `"${String(val ?? "").replace(/"/g, '""')}"`;
-      const rows = expList.map((e) => [
-        escape(e.id),
-        escape(e.title),
-        escape(e.amount),
-        escape(e.category),
-        escape(e.project_name),
-        escape(e.date),
-        escape(e.status),
-      ].join(","));
-
-      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `expenses-${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setRestoreMsg("✅ خروجی هزینه‌ها با موفقیت دانلود شد.");
+      setRestoreMsg("در حال دریافت اطلاعات و آماده‌سازی فایل اکسل هزینه‌ها...");
+      const [expList, projectList] = await Promise.all([
+        studio.entities.Expense.list("-date").catch(() => expenses),
+        studio.entities.Project.list().catch(() => []),
+      ]);
+      const wb = buildExpensesWorkbook(expList, projectList);
+      const dateStr = new Date().toISOString().slice(0, 10);
+      downloadWorkbook(wb, `flowsee-expenses-${dateStr}.xlsx`);
+      setRestoreMsg("✅ فایل اکسل هزینه‌ها با موفقیت دانلود شد.");
     } catch (err) {
-      setRestoreMsg("❌ خطا در اکسپورت هزینه‌ها: " + err.message);
+      setRestoreMsg("❌ خطا در خروجی اکسل هزینه‌ها: " + err.message);
     }
   };
 
@@ -638,24 +592,24 @@ export default function Admin() {
           </button>
           <button
             type="button"
-            onClick={exportUsersCsv}
-            className="bg-green-600 text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2 cursor-pointer shadow-sm"
+            onClick={exportUsersExcel}
+            className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2 cursor-pointer shadow-sm"
           >
-            <Users className="w-5 h-5" /> اکسپورت کاربران (CSV)
+            <FileSpreadsheet className="w-5 h-5" /> اکسپورت کاربران (Excel)
           </button>
           <button
             type="button"
-            onClick={exportTasksCsv}
+            onClick={exportTasksExcel}
             className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2 cursor-pointer shadow-sm"
           >
-            <Shield className="w-5 h-5" /> اکسپورت تسک‌ها (CSV)
+            <FileSpreadsheet className="w-5 h-5" /> اکسپورت تسک‌ها (Excel)
           </button>
           <button
             type="button"
-            onClick={exportExpensesCsv}
+            onClick={exportExpensesExcel}
             className="bg-amber-600 text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2 cursor-pointer shadow-sm"
           >
-            <TrendingDown className="w-5 h-5" /> اکسپورت هزینه‌ها (CSV)
+            <FileSpreadsheet className="w-5 h-5" /> اکسپورت هزینه‌ها (Excel)
           </button>
         </div>
       </div>

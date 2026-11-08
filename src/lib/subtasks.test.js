@@ -16,6 +16,9 @@ test("normalizeSubtask handles strings, legacy objects, and standard subtask obj
   assert.equal(fromStandard.id, "custom-1");
   assert.equal(fromStandard.title, "طراحی پوستر");
   assert.equal(fromStandard.done, true);
+
+  const preservingTrailingSpace = normalizeSubtask({ id: "custom-2", title: "جمله با فاصله در انتها ", done: false }, 3);
+  assert.equal(preservingTrailingSpace.title, "جمله با فاصله در انتها ");
 });
 test("normalizeSubtasks parses json strings, comma/newline separated text, and arrays", () => {
   assert.deepEqual(normalizeSubtasks(null), []);
