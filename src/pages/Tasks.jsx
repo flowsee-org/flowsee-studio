@@ -830,7 +830,7 @@ export default function Tasks() {
                                 ref={prov.innerRef}
                                 {...prov.draggableProps}
                                 {...prov.dragHandleProps}
-                                className={`relative bg-card border border-border rounded-xl p-2.5 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${
+                                className={`relative bg-card border border-border rounded-xl p-2.5 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-primary/30 transition-all ${
                                   selectedTasks.has(t.id) ? "ring-2 ring-primary ring-offset-2" : ""
                                 }`}
                                 onClick={(e) => {
@@ -876,16 +876,16 @@ export default function Tasks() {
                                     className="w-4 h-4 accent-primary mt-0.5 shrink-0"
                                   />
                                   <div className="flex gap-0.5 shrink-0">
-                                    <button onClick={(e) => { e.stopPropagation(); handleEdit(t); }} className="p-1 text-muted-foreground hover:text-primary rounded" title="ویرایش">
+                                    <button onClick={(e) => { e.stopPropagation(); handleEdit(t); }} className="p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary rounded-lg transition-colors" title="ویرایش">
                                       <Pencil className="w-3.5 h-3.5" />
                                     </button>
-                                    <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(t); }} className="p-1 text-muted-foreground hover:text-red-500 rounded" title="حذف">
+                                    <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(t); }} className="p-1.5 text-muted-foreground hover:bg-red-50/10 hover:text-red-600 rounded-lg transition-colors" title="حذف">
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
-                                    <button onClick={(e) => { e.stopPropagation(); toggleArchiveTask(t); }} className="p-1 text-muted-foreground hover:text-amber-600 rounded" title={t.archived ? "خروج از بایگانی" : "بایگانی"}>
+                                    <button onClick={(e) => { e.stopPropagation(); toggleArchiveTask(t); }} className="p-1.5 text-muted-foreground hover:bg-amber-50/10 hover:text-amber-600 rounded-lg transition-colors" title={t.archived ? "خروج از بایگانی" : "بایگانی"}>
                                       {t.archived ? <RotateCcw className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
                                     </button>
-                                    <button onClick={(e) => { e.stopPropagation(); handleViewDetail(t); }} className="p-1 text-muted-foreground hover:text-primary rounded" title="مشاهده جزئیات">
+                                    <button onClick={(e) => { e.stopPropagation(); handleViewDetail(t); }} className="p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary rounded-lg transition-colors" title="مشاهده جزئیات">
                                       <Eye className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
@@ -907,31 +907,10 @@ export default function Tasks() {
                                 </div>}
                                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                                   {t.priority && (
-                                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${priorityColors[t.priority]}`}>{priorityLabels[t.priority]}</span>
+                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${priorityColors[t.priority]}`}>{priorityLabels[t.priority]}</span>
                                   )}
-                                  {Array.isArray(t.subtasks) && t.subtasks.length > 0 && (() => {
-                                    const doneCount = t.subtasks.filter((s) => s.done).length;
-                                    const isComplete = doneCount === t.subtasks.length;
-                                    return (
-                                      <span
-                                        title={`زیرتسک‌ها: ${faNum(doneCount)} از ${faNum(t.subtasks.length)}`}
-                                        className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 font-medium ${
-                                          isComplete
-                                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
-                                            : "bg-muted text-muted-foreground"
-                                        }`}
-                                      >
-                                        <ListChecks className="w-3 h-3" />
-                                        <span>{faNum(doneCount)}/{faNum(t.subtasks.length)}</span>
-                                      </span>
-                                    );
-                                  })()}
-                                  {(Array.isArray(t.tags) ? t.tags : []).slice(0, 3).map((tag) => (
-                                    <span key={tag} className="max-w-24 truncate rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{tag}</span>
-                                  ))}
-                                  {Array.isArray(t.tags) && t.tags.length > 3 && <span className="text-xs text-muted-foreground">+{faNum(t.tags.length - 3)}</span>}
                                   {t.project_name && (
-                                    <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full truncate max-w-[90px]">{t.project_name}</span>
+                                    <span className="text-xs bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full truncate max-w-[80px]">{t.project_name}</span>
                                   )}
                                   {t.due_date && (
                                     <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -939,18 +918,18 @@ export default function Tasks() {
                                     </span>
                                   )}
                                   {t.recurring_config && (
-                                    <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                                    <span className="text-xs bg-purple-100 text-purple-700 border border-purple/20 px-2 py-0.5 rounded-full flex items-center gap-1">
                                       <RotateCcw className="w-3 h-3" /> تکراری
                                     </span>
                                   )}
-                                  {t.subtasks && t.subtasks.length > 0 && (() => {
+                                  {Array.isArray(t.subtasks) && t.subtasks.length > 0 && (() => {
                                     const stats = getSubtaskStats(t.subtasks);
                                     return stats.hasSubtasks ? (
                                       <span
                                         title={`پیشرفت زیرتسک‌ها: ${faNum(stats.completed)} از ${faNum(stats.total)}`}
-                                        className={`text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1 font-medium ${
+                                        className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
                                           stats.allDone
-                                            ? "bg-emerald-100 text-emerald-800"
+                                            ? "bg-emerald-100 text-emerald-800 border border-emerald/20"
                                             : "bg-accent text-muted-foreground"
                                         }`}
                                       >
@@ -959,9 +938,13 @@ export default function Tasks() {
                                       </span>
                                     ) : null;
                                   })()}
+                                  {(Array.isArray(t.tags) ? t.tags : []).slice(0, 3).map((tag) => (
+                                    <span key={tag} className="max-w-24 truncate rounded-md bg-muted border border-border/60 px-1.5 py-0.5 text-xs text-muted-foreground">{tag}</span>
+                                  ))}
+                                  {Array.isArray(t.tags) && t.tags.length > 3 && <span className="text-xs text-muted-foreground">+{faNum(t.tags.length - 3)}</span>}
                                 </div>
-                                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
-                                  <div className="flex items-center gap-2">
+                                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/60">
+                                  <div className="flex items-center gap-2.5">
                                     <AssigneeAvatars task={t} />
                                     {Array.isArray(t.subtasks) && t.subtasks.length > 0 && (
                                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" aria-label={`${faNum(t.subtasks.length)} زیرتسک`}>

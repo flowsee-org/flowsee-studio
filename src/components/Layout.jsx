@@ -25,6 +25,8 @@ const allNavItems = [
   { to: "/website-messages", label: "پیام‌های سایت", icon: Inbox, adminOnly: true, module: "website-messages" },
   { to: "/site-content", label: "نمونه‌کارها", icon: BriefcaseBusiness, adminOnly: true, module: "site-content" },
   { to: "/blog-content", label: "مقالات بلاگ", icon: FileText, adminOnly: true, module: "blog-content" },
+  { to: "/crm", label: "CRM مشتریان", icon: Users, adminOnly: false, module: "crm" },
+  { to: "/passwords-documents", label: "رموز و اسناد", icon: Key, adminOnly: false, module: "passwords-documents" },
 ];
 
 const navGroups = [
@@ -32,6 +34,7 @@ const navGroups = [
   { label: "پروژه و برنامه‌ریزی", routes: ["/projects", "/tasks", "/sprints", "/meetings", "/work-reports"] },
   { label: "مالی و گزارش‌ها", routes: ["/accounting", "/reports"] },
   { label: "مدیریت و تیم", routes: ["/employees", "/leave-requests", "/admin", "/settings"] },
+  { label: "ارتباطات و امنیت", routes: ["/crm", "/passwords-documents"] },
 ];
 function NavigationGroup({ group, items, pathname, onNavigate }) {
   const active = items.some(item => pathname === item.to || pathname.startsWith(item.to + "/"));

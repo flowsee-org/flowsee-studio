@@ -133,17 +133,43 @@ export default function TaskForm({ projects, editTask, isOpen = true, onClose, o
   const backdropPointerDown = useRef(false);
   const showRecurring = !!form.recurring_config;
 
-  // Persist draft for new task as user types
+  const draftHasContent = (f) => Boolean(
+    f.title?.trim() ||
+    f.description?.trim() ||
+    f.tags?.length ||
+    f.assignees?.length ||
+    f.subtasks?.length ||
+    (f.time_spent || 0) > 0 ||
+    f.due_date ||
+    f.project_id ||
+    f.status !== "todo" ||
+    f.priority !== "medium"
+  );
+
+  // Persist draft for new task as user types — every field is kept so closing
+  // the modal never loses entered/edited data.
   useEffect(() => {
     if (!editTask) {
-      const hasContent = form.title?.trim() || form.description?.trim() || form.tags?.length || form.assignees?.length;
-      if (hasContent) {
+      if (draftHasContent(form)) {
         try {
           localStorage.setItem(TASK_DRAFT_KEY, JSON.stringify(form));
         } catch {}
       }
     }
   }, [form, editTask]);
+
+  // Safety net: persist draft if the tab/window is closed while the form is open.
+  useEffect(() => {
+    if (!isOpen || editTask) return;
+    const beforeUnload = () => {
+      const f = formRef.current;
+      if (draftHasContent(f)) {
+        try { localStorage.setItem(TASK_DRAFT_KEY, JSON.stringify(f)); } catch {}
+      }
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => window.removeEventListener("beforeunload", beforeUnload);
+  }, [isOpen, editTask]);
 
   const clearDraft = () => {
     try {
@@ -188,7 +214,7 @@ export default function TaskForm({ projects, editTask, isOpen = true, onClose, o
     } else {
       // New task: save draft immediately so reopening never loses data
       const f = formRef.current;
-      if (f.title?.trim() || f.description?.trim() || f.tags?.length || f.assignees?.length) {
+      if (draftHasContent(f)) {
         try {
           localStorage.setItem(TASK_DRAFT_KEY, JSON.stringify(f));
         } catch {}

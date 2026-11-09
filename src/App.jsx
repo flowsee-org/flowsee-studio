@@ -34,6 +34,8 @@ import Announcements from '@/pages/Announcements';
 import Sprints from '@/pages/Sprints';
 import LeaveRequests from '@/pages/LeaveRequests';
 import AppSettings from '@/pages/AppSettings';
+import Crm from '@/pages/Crm';
+import PasswordsDocuments from '@/pages/PasswordsDocuments';
 import DailyReportReminder from '@/hooks/useDailyReportReminder.jsx';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
@@ -103,6 +105,8 @@ const AuthenticatedApp = () => {
             <Route path="/sprints" element={<Sprints />} />
             <Route path="/leave-requests" element={<LeaveRequests />} />
             <Route path="/settings" element={<AppSettings />} />
+            <Route path="/crm" element={<Crm />} />
+            <Route path="/passwords-documents" element={<PasswordsDocuments />} />
             <Route element={<AdminRoute />}>
               <Route path="/admin" element={<Admin />} />
             </Route>

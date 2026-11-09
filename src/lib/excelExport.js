@@ -264,3 +264,160 @@ export function buildExpensesWorkbook(expenseList = [], projectList = []) {
 
   return createRtlWorkbook("هزینه‌ها", rows, columns);
 }
+
+/**
+ * Generates an Excel workbook for Incomes
+ */
+export function buildIncomesWorkbook(incomeList = [], projectList = []) {
+  const projMap = new Map();
+  projectList.forEach((p) => {
+    if (p?.id) projMap.set(String(p.id), p.name);
+  });
+
+  const columns = [
+    { header: "ردیف", minWidth: 8 },
+    { header: "عنوان درآمد", minWidth: 26 },
+    { header: "مبلغ (تومان)", minWidth: 16 },
+    { header: "دسته‌بندی", minWidth: 18 },
+    { header: "پروژه مربوطه", minWidth: 20 },
+    { header: "تاریخ", minWidth: 16 },
+    { header: "وضعیت", minWidth: 14 },
+    { header: "کد پیگیری / سند", minWidth: 18 },
+    { header: "ثبت‌کننده / گیرنده", minWidth: 22 },
+    { header: "توضیحات و یادداشت", minWidth: 35 },
+    { header: "شناسه درآمد", minWidth: 14 },
+  ];
+
+  const rows = incomeList.map((i, index) => {
+    const projName = projMap.get(String(i.project_id)) || i.project_name || "—";
+    const catName = CATEGORY_LABELS[i.category] || i.category || "سایر";
+
+    let statusText = "تأیید شده";
+    if (i.status === "rejected") statusText = "رد شده";
+    else if (i.status === "pending") statusText = "در انتظار تأیید";
+
+    return {
+      "ردیف": index + 1,
+      "عنوان درآمد": i.title || "بدون عنوان",
+      "مبلغ (تومان)": Number(i.amount || 0),
+      "دسته‌بندی": catName,
+      "پروژه مربوطه": projName,
+      "تاریخ": i.date || "—",
+      "وضعیت": statusText,
+      "کد پیگیری / سند": i.tracking_code || i.invoice_number || i.receipt_id || "—",
+      "ثبت‌کننده / گیرنده": i.payer || i.user_name || i.created_by_name || "—",
+      "توضیحات و یادداشت": i.notes || i.description || "—",
+      "شناسه درآمد": String(i.id ?? ""),
+    };
+  });
+
+  return createRtlWorkbook("درآمدها", rows, columns);
+}
+
+/**
+ * Generates a single RTL workbook with both Expenses and Incomes sheets
+ */
+export function buildExpensesAndIncomesWorkbook(expenseList = [], incomeList = [], projectList = []) {
+  const wb = XLSX.utils.book_new();
+  const projMap = new Map();
+  projectList.forEach((p) => {
+    if (p?.id) projMap.set(String(p.id), p.name);
+  });
+
+  const expenseRows = buildExpenseRows(expenseList, projMap);
+  const incomeRows = buildIncomeRows(incomeList, projMap);
+
+  const expenseWs = XLSX.utils.json_to_sheet(expenseRows);
+  expenseWs["!views"] = [{ rightToLeft: true }];
+  expenseWs["!cols"] = buildExpenseColumns().map((col) => ({
+    wch: Math.min(Math.max(col.header.length + 4, col.minWidth || 12), 60),
+  }));
+
+  const incomeWs = XLSX.utils.json_to_sheet(incomeRows);
+  incomeWs["!views"] = [{ rightToLeft: true }];
+  incomeWs["!cols"] = buildIncomeColumns().map((col) => ({
+    wch: Math.min(Math.max(col.header.length + 4, col.minWidth || 12), 60),
+  }));
+
+  XLSX.utils.book_append_sheet(wb, expenseWs, "هزینه‌ها");
+  XLSX.utils.book_append_sheet(wb, incomeWs, "درآمدها");
+  return wb;
+}
+
+function buildExpenseColumns() {
+  return [
+    { header: "ردیف", minWidth: 8 },
+    { header: "عنوان هزینه", minWidth: 26 },
+    { header: "مبلغ (تومان)", minWidth: 16 },
+    { header: "دسته‌بندی", minWidth: 18 },
+    { header: "پروژه مربوطه", minWidth: 20 },
+    { header: "تاریخ", minWidth: 16 },
+    { header: "وضعیت", minWidth: 14 },
+    { header: "کد پیگیری / سند", minWidth: 18 },
+    { header: "ثبت‌کننده / پرداخت‌کننده", minWidth: 22 },
+    { header: "توضیحات و یادداشت", minWidth: 35 },
+    { header: "شناسه هزینه", minWidth: 14 },
+  ];
+}
+
+function buildExpenseRows(expenseList, projMap) {
+  return expenseList.map((e, index) => {
+    const projName = projMap.get(String(e.project_id)) || e.project_name || "—";
+    const catName = CATEGORY_LABELS[e.category] || e.category || "سایر";
+    let statusText = "تأیید شده";
+    if (e.status === "rejected") statusText = "رد شده";
+    else if (e.status === "pending") statusText = "در انتظار تأیید";
+    return {
+      "ردیف": index + 1,
+      "عنوان هزینه": e.title || "بدون عنوان",
+      "مبلغ (تومان)": Number(e.amount || 0),
+      "دسته‌بندی": catName,
+      "پروژه مربوطه": projName,
+      "تاریخ": e.date || "—",
+      "وضعیت": statusText,
+      "کد پیگیری / سند": e.tracking_code || e.invoice_number || e.receipt_id || "—",
+      "ثبت‌کننده / پرداخت‌کننده": e.payer || e.user_name || e.created_by_name || "—",
+      "توضیحات و یادداشت": e.notes || e.description || "—",
+      "شناسه هزینه": String(e.id ?? ""),
+    };
+  });
+}
+
+function buildIncomeColumns() {
+  return [
+    { header: "ردیف", minWidth: 8 },
+    { header: "عنوان درآمد", minWidth: 26 },
+    { header: "مبلغ (تومان)", minWidth: 16 },
+    { header: "دسته‌بندی", minWidth: 18 },
+    { header: "پروژه مربوطه", minWidth: 20 },
+    { header: "تاریخ", minWidth: 16 },
+    { header: "وضعیت", minWidth: 14 },
+    { header: "کد پیگیری / سند", minWidth: 18 },
+    { header: "ثبت‌کننده / گیرنده", minWidth: 22 },
+    { header: "توضیحات و یادداشت", minWidth: 35 },
+    { header: "شناسه درآمد", minWidth: 14 },
+  ];
+}
+
+function buildIncomeRows(incomeList, projMap) {
+  return incomeList.map((i, index) => {
+    const projName = projMap.get(String(i.project_id)) || i.project_name || "—";
+    const catName = CATEGORY_LABELS[i.category] || i.category || "سایر";
+    let statusText = "تأیید شده";
+    if (i.status === "rejected") statusText = "رد شده";
+    else if (i.status === "pending") statusText = "در انتظار تأیید";
+    return {
+      "ردیف": index + 1,
+      "عنوان درآمد": i.title || "بدون عنوان",
+      "مبلغ (تومان)": Number(i.amount || 0),
+      "دسته‌بندی": catName,
+      "پروژه مربوطه": projName,
+      "تاریخ": i.date || "—",
+      "وضعیت": statusText,
+      "کد پیگیری / سند": i.tracking_code || i.invoice_number || i.receipt_id || "—",
+      "ثبت‌کننده / گیرنده": i.payer || i.user_name || i.created_by_name || "—",
+      "توضیحات و یادداشت": i.notes || i.description || "—",
+      "شناسه درآمد": String(i.id ?? ""),
+    };
+  });
+}

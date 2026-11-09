@@ -10,7 +10,7 @@ import EmployeeProfile from "@/components/EmployeeProfile";
 import { MODULES } from "@/lib/permissions";
 import { useDeleteUndo } from "@/hooks/useDeleteUndo.jsx";
 import { formatPersianNumber as formatFaNum } from "@/lib/number-format";
-import { buildUsersWorkbook, buildTasksWorkbook, buildExpensesWorkbook, downloadWorkbook } from "@/lib/excelExport";
+import { buildUsersWorkbook, buildTasksWorkbook, buildExpensesAndIncomesWorkbook, downloadWorkbook } from "@/lib/excelExport";
 
 const faNum = (n) => Number(n || 0).toLocaleString("fa-IR");
 
@@ -242,17 +242,18 @@ export default function Admin() {
 
   const exportExpensesExcel = async () => {
     try {
-      setRestoreMsg("در حال دریافت اطلاعات و آماده‌سازی فایل اکسل هزینه‌ها...");
-      const [expList, projectList] = await Promise.all([
+      setRestoreMsg("در حال دریافت اطلاعات و آماده‌سازی فایل اکسل هزینه و درآمد...");
+      const [expList, incList, projectList] = await Promise.all([
         studio.entities.Expense.list("-date").catch(() => expenses),
+        studio.entities.Income.list("-date").catch(() => incomes),
         studio.entities.Project.list().catch(() => []),
       ]);
-      const wb = buildExpensesWorkbook(expList, projectList);
+      const wb = buildExpensesAndIncomesWorkbook(expList, incList, projectList);
       const dateStr = new Date().toISOString().slice(0, 10);
-      downloadWorkbook(wb, `flowsee-expenses-${dateStr}.xlsx`);
-      setRestoreMsg("✅ فایل اکسل هزینه‌ها با موفقیت دانلود شد.");
+      downloadWorkbook(wb, `flowsee-expenses-incomes-${dateStr}.xlsx`);
+      setRestoreMsg("✅ فایل اکسل هزینه و درآمد با موفقیت دانلود شد.");
     } catch (err) {
-      setRestoreMsg("❌ خطا در خروجی اکسل هزینه‌ها: " + err.message);
+      setRestoreMsg("❌ خطا در خروجی اکسل هزینه و درآمد: " + err.message);
     }
   };
 
@@ -609,7 +610,7 @@ export default function Admin() {
             onClick={exportExpensesExcel}
             className="bg-amber-600 text-white px-5 py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity flex items-center gap-2 cursor-pointer shadow-sm"
           >
-            <FileSpreadsheet className="w-5 h-5" /> اکسپورت هزینه‌ها (Excel)
+            <FileSpreadsheet className="w-5 h-5" /> اکسپورت هزینه و درآمد (Excel)
           </button>
         </div>
       </div>

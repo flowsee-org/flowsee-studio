@@ -5,6 +5,8 @@ import {
   buildUsersWorkbook,
   buildTasksWorkbook,
   buildExpensesWorkbook,
+  buildIncomesWorkbook,
+  buildExpensesAndIncomesWorkbook,
 } from "./excelExport.js";
 
 test("buildUsersWorkbook creates valid RTL sheet with Persian headers and mapped roles", () => {
@@ -101,4 +103,45 @@ test("buildExpensesWorkbook maps categories, statuses and amounts correctly", ()
   assert.equal(json[0]["مبلغ (تومان)"], 15000000);
   assert.equal(json[0]["دسته‌بندی"], "اینترنت و سرور");
   assert.equal(json[0]["وضعیت"], "تأیید شده");
+});
+
+test("buildIncomesWorkbook creates valid RTL sheet with Persian headers", () => {
+  const incomes = [
+    {
+      id: "inc-1",
+      title: "پروژه وب‌سایت",
+      amount: 50000000,
+      category: "سایر",
+      status: "approved",
+      date: "1403/08/20",
+    },
+  ];
+
+  const wb = buildIncomesWorkbook(incomes, []);
+  assert.ok(wb.Sheets["درآمدها"]);
+  assert.equal(wb.Sheets["درآمدها"]["!views"][0].rightToLeft, true);
+
+  const json = XLSX.utils.sheet_to_json(wb.Sheets["درآمدها"]);
+  assert.equal(json.length, 1);
+  assert.equal(json[0]["عنوان درآمد"], "پروژه وب‌سایت");
+  assert.equal(json[0]["مبلغ (تومان)"], 50000000);
+  assert.equal(json[0]["وضعیت"], "تأیید شده");
+});
+
+test("buildExpensesAndIncomesWorkbook contains both expense and income sheets", () => {
+  const expenses = [{ id: "e1", title: "سرور", amount: 100000, category: "اینترنت", status: "approved", date: "1403/01/01" }];
+  const incomes = [{ id: "i1", title: "پروژه", amount: 500000, category: "سایر", status: "approved", date: "1403/01/02" }];
+
+  const wb = buildExpensesAndIncomesWorkbook(expenses, incomes, []);
+  assert.ok(wb.Sheets["هزینه‌ها"]);
+  assert.ok(wb.Sheets["درآمدها"]);
+  assert.equal(wb.Sheets["هزینه‌ها"]["!views"][0].rightToLeft, true);
+  assert.equal(wb.Sheets["درآمدها"]["!views"][0].rightToLeft, true);
+
+  const expJson = XLSX.utils.sheet_to_json(wb.Sheets["هزینه‌ها"]);
+  const incJson = XLSX.utils.sheet_to_json(wb.Sheets["درآمدها"]);
+  assert.equal(expJson.length, 1);
+  assert.equal(incJson.length, 1);
+  assert.equal(expJson[0]["عنوان هزینه"], "سرور");
+  assert.equal(incJson[0]["عنوان درآمد"], "پروژه");
 });
