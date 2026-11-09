@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
-import { Plus, Trash2, Key, FileText, X, Lock, Tag } from "lucide-react";
+import { Plus, Trash2, Key, FileText, X, Lock, Tag, Pencil } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import SelectControl from "@/components/ui/SelectControl";
 import { toast } from "@/components/ui/use-toast";
