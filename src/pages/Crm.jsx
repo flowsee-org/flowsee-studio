@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { studio } from "@/api/studioClient";
 import { useAuth } from "@/lib/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { Users, User, FolderKanban, Calendar, Plus } from "lucide-react";
 import { formatPersianNumber as faNum } from "@/lib/number-format";
 import { canAccessModule } from "@/lib/permissions";
@@ -14,6 +15,7 @@ const statCards = [
 
 export default function Crm() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState(statCards);
   const [loading, setLoading] = useState(true);
 
@@ -57,7 +59,7 @@ export default function Crm() {
         <div className="flex gap-2">
           {canAccessModule(user, "clients") && (
             <button
-              onClick={() => {}}
+              onClick={() => navigate("/clients")}
               className="rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium inline-flex items-center gap-2 hover:opacity-90 transition-opacity"
             >
               <Plus className="w-4 h-4" /> مشتری جدید
@@ -65,7 +67,7 @@ export default function Crm() {
           )}
           {canAccessModule(user, "deals") && (
             <button
-              onClick={() => {}}
+              onClick={() => navigate("/deals")}
               className="rounded-xl bg-indigo-600 text-white px-4 py-2.5 text-sm font-medium inline-flex items-center gap-2 hover:opacity-90 transition-opacity"
             >
               <Plus className="w-4 h-4" /> معامله جدید
@@ -96,7 +98,7 @@ export default function Crm() {
           <p className="text-sm text-muted-foreground mb-4">مشاهده و مدیریت معاملات در نمای کانبان قیف فروش.</p>
           <div className="flex gap-2">
             <button
-              onClick={() => {}}
+              onClick={() => navigate("/deals")}
               className="flex-1 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
             >
               ورود به پایپ‌لاین
@@ -111,7 +113,7 @@ export default function Crm() {
           <p className="text-sm text-muted-foreground mb-4">مدیریت شرکت‌های مشتری و افراد تماس وابسته به آن‌ها.</p>
           <div className="flex gap-2">
             <button
-              onClick={() => {}}
+              onClick={() => navigate("/clients")}
               className="flex-1 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors"
             >
               مدیریت مشتریان
