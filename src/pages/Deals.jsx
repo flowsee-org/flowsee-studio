@@ -253,15 +253,6 @@ export default function Deals() {
                         </div>
                         <div className="text-xs text-muted-foreground">{faNum(totalValue(col.id))} تومان</div>
                       </div>
-                      <SelectControl
-                        aria-label={`مرتب‌سازی ${col.label}`}
-                        value="priority_created"
-                        onChange={() => {}}
-                        className="h-9 w-full min-w-0 text-xs"
-                        disabled
-                      >
-                        <option value="priority_created">اولویت، جدیدترین</option>
-                      </SelectControl>
                     </div>
                     <div className="space-y-2 flex-1">
                       {colDeals.map((d, i) => (
