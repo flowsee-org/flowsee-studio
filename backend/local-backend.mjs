@@ -92,7 +92,10 @@ const OTP_INBOX = join(DATA_DIR, "otp-inbox.log");
 const KNOWN_ENTITIES = [
   "Announcement",
   "AppSettings",
+  "Client",
   "Comment",
+  "Contact",
+  "Deal",
   "ActivityLog",
   "AccountingPeriodLock",
   "BlogCategory",

@@ -16,6 +16,9 @@ export const MODULES = [
   { id: "site-content", label: "محتوای سایت", path: "/site-content", adminOnly: true },
   { id: "blog-content", label: "مقالات بلاگ", path: "/blog-content", adminOnly: true },
   { id: "crm", label: "CRM مشتریان", path: "/crm", adminOnly: false },
+  { id: "clients", label: "مشتریان", path: "/clients", adminOnly: false },
+  { id: "contacts", label: "مخاطبین", path: "/contacts", adminOnly: false },
+  { id: "deals", label: "معاملات", path: "/deals", adminOnly: false },
   { id: "passwords-documents", label: "رموز و اسناد", path: "/passwords-documents", adminOnly: false },
 ];
 
