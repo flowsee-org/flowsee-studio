@@ -151,7 +151,7 @@ export default function Contacts() {
               <tr>
                 <th className="p-3 font-medium">مخاطب</th>
                 <th className="p-3 font-medium">شرکت</th>
-                <th className="p-3 font-medium">شغ</th>
+                <th className="p-3 font-medium">شغل</th>
                 <th className="p-3 font-medium">ایمیل</th>
                 <th className="p-3 font-medium">تلفن</th>
                 <th className="p-3 font-medium">عملیات</th>
@@ -235,7 +235,7 @@ export default function Contacts() {
                   </SelectControl>
                 </div>
                 <div>
-                  <label className="text-sm font-medium block mb-1.5">شغ</label>
+                  <label className="text-sm font-medium block mb-1.5">شغل</label>
                   <input
                     type="text"
                     value={form.position}

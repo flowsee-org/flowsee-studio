@@ -19,7 +19,8 @@ export const MODULES = [
   { id: "clients", label: "مشتریان", path: "/clients", adminOnly: false },
   { id: "contacts", label: "مخاطبین", path: "/contacts", adminOnly: false },
   { id: "deals", label: "معاملات", path: "/deals", adminOnly: false },
-  { id: "passwords-documents", label: "رموز و اسناد", path: "/passwords-documents", adminOnly: false },
+  { id: "passwords", label: "رموز عبور", path: "/passwords", adminOnly: false },
+  { id: "documents", label: "اسناد", path: "/documents", adminOnly: false },
 ];
 
 export const DEFAULT_MODULE_ACCESS = MODULES.map(({ id }) => id);

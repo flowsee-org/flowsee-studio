@@ -24,7 +24,7 @@ const stageColors = {
 };
 const priorityLabels = { low: "کم", medium: "متوسط", high: "زیاد" };
 const priorityColors = { low: "bg-slate-100 text-slate-600", medium: "bg-amber-100 text-amber-700", high: "bg-red-100 text-red-700" };
-const sourceLabels = { referral: "مراجعه", instagram: "اینستاگرام", website: "وب‌سایت", inbound: "ورودی", cold_outreach: "تلفنтия" };
+const sourceLabels = { referral: "مراجعه", instagram: "اینستاگرام", website: "وب‌سایت", inbound: "ورودی", cold_outreach: "تماس سرد" };
 
 const stages = [
   { id: "lead", label: stageLabels.lead },

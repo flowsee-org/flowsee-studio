@@ -430,8 +430,8 @@ export default function Admin() {
             const isDeactivated = u.is_active === false;
 
             return (
-              <div key={u.id} className={`flex items-center justify-between gap-3 p-4 hover:bg-accent/30 ${isDeactivated ? "opacity-50 bg-muted/30" : ""}`}>
-                <div className="flex items-center gap-3 min-w-0">
+              <div key={u.id} className={`flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between p-4 hover:bg-accent/30 ${isDeactivated ? "opacity-50 bg-muted/30" : ""}`}>
+                <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
                     {(u.full_name || u.email || "؟").charAt(0)}
                   </div>
@@ -451,13 +451,13 @@ export default function Admin() {
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-0 w-full sm:w-auto">
                   {/* Role dropdown - only for non-superadmin, non-self */}
                   {!isSelf && !isSuper && (
                     <select
                       value={u.role}
                       onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                      className="border border-input rounded-xl px-2 py-1.5 text-xs bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 shrink-0"
+                      className="w-full sm:w-auto border border-input rounded-xl px-3 py-2 text-sm sm:px-2 sm:py-1.5 sm:text-xs bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 shrink-0"
                     >
                       <option value="user">پرسنل</option>
                       <option value="admin">مدیر</option>
@@ -473,7 +473,7 @@ export default function Admin() {
                   {canDeactivate && (
                     <button
                       onClick={() => setDeactivateTarget(u)}
-                      className="text-xs text-red-500 hover:underline flex items-center gap-1"
+                      className="w-full sm:w-auto justify-between text-xs text-red-500 hover:underline flex items-center gap-2 px-3 py-2 sm:px-2 sm:py-1.5 rounded-lg sm:rounded-md hover:bg-red-50/50 sm:hover:bg-transparent"
                     >
                       <UserX className="w-3.5 h-3.5" /> غیرفعال
                     </button>
@@ -482,7 +482,7 @@ export default function Admin() {
                   {canDelete && (
                     <button
                       onClick={() => setDeleteTarget(u)}
-                      className="text-xs text-red-600 hover:underline flex items-center gap-1"
+                      className="w-full sm:w-auto justify-between text-xs text-red-600 hover:underline flex items-center gap-2 px-3 py-2 sm:px-2 sm:py-1.5 rounded-lg sm:rounded-md hover:bg-red-50/50 sm:hover:bg-transparent"
                       title="حذف کاربر"
                     >
                       <Trash2 className="w-3.5 h-3.5" /> حذف
@@ -493,7 +493,7 @@ export default function Admin() {
                   {!isSelf && (
                     <button
                       onClick={() => setResetPasswordTarget(u)}
-                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                      className="w-full sm:w-auto justify-between text-xs text-primary hover:underline flex items-center gap-2 px-3 py-2 sm:px-2 sm:py-1.5 rounded-lg sm:rounded-md hover:bg-primary/5 sm:hover:bg-transparent"
                     >
                       <Key className="w-3.5 h-3.5" /> بازنشانی رمز
                     </button>
@@ -506,7 +506,7 @@ export default function Admin() {
                       name: u.full_name || u.email,
                       module_access: u.module_access,
                     })}
-                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                    className="w-full sm:w-auto justify-between text-xs text-primary hover:underline flex items-center gap-2 px-3 py-2 sm:px-2 sm:py-1.5 rounded-lg sm:rounded-md hover:bg-primary/5 sm:hover:bg-transparent"
                     title="مدیریت دسترسی‌ها و پروفایل"
                   >
                     <Shield className="w-3.5 h-3.5" /> دسترسی‌ها
@@ -516,7 +516,7 @@ export default function Admin() {
                   {!isSelf && (
                     <button
                       onClick={() => setForceLogoutTarget(u)}
-                      className="text-xs text-orange-500 hover:underline flex items-center gap-1"
+                      className="w-full sm:w-auto justify-between text-xs text-orange-500 hover:underline flex items-center gap-2 px-3 py-2 sm:px-2 sm:py-1.5 rounded-lg sm:rounded-md hover:bg-orange-50/50 sm:hover:bg-transparent"
                     >
                       <LogOut className="w-3.5 h-3.5" /> خروج
                     </button>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X, UserPlus, AlertCircle } from "lucide-react";
+import { studio } from "@/api/studioClient";
 import { inviteUser } from "@/lib/invite";
 import { toast } from "@/components/ui/use-toast";
 
@@ -35,6 +36,21 @@ export default function EmployeeForm({ onClose, onSaved, isSuperadmin = false })
         title: result?.reactivated ? "حساب قبلی دوباره فعال شد" : "کاربر ساخته شد",
         description: "اطلاعات ورود را از همین پنجره بردارید.",
       });
+      try {
+        await studio.entities.Password.create({
+          title: `ورود ${form.full_name || form.email.trim()}`,
+          type: "password",
+          category: "business",
+          username: form.email.trim(),
+          value: form.initial_password,
+          url: "/login",
+          notes: "رمز عبور موقت اولیه هنگام دعوت کاربر؛ می‌تواند بعد از ورود تغییر یابد.",
+          tags: ["initial", "temp"],
+          created_by_id: undefined,
+        });
+      } catch (err) {
+        console.error("Failed to seed initial password:", err);
+      }
       setSaving(false);
       onSaved();
     } catch (err) {

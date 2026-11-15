@@ -38,7 +38,8 @@ import Crm from '@/pages/Crm';
 import Clients from '@/pages/Clients';
 import Contacts from '@/pages/Contacts';
 import Deals from '@/pages/Deals';
-import PasswordsDocuments from '@/pages/PasswordsDocuments';
+import Passwords from '@/pages/Passwords';
+import Documents from '@/pages/Documents';
 import DailyReportReminder from '@/hooks/useDailyReportReminder.jsx';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
@@ -112,7 +113,8 @@ const AuthenticatedApp = () => {
             <Route path="/clients" element={<Clients />} />
             <Route path="/contacts" element={<Contacts />} />
             <Route path="/deals" element={<Deals />} />
-            <Route path="/passwords-documents" element={<PasswordsDocuments />} />
+            <Route path="/passwords" element={<Passwords />} />
+            <Route path="/documents" element={<Documents />} />
             <Route element={<AdminRoute />}>
               <Route path="/admin" element={<Admin />} />
             </Route>

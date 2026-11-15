@@ -29,15 +29,17 @@ const allNavItems = [
   { to: "/clients", label: "مشتریان", icon: Building, adminOnly: false, module: "clients" },
   { to: "/contacts", label: "مخاطبین", icon: User, adminOnly: false, module: "contacts" },
   { to: "/deals", label: "معاملات", icon: FolderKanban, adminOnly: false, module: "deals" },
-  { to: "/passwords-documents", label: "رموز و اسناد", icon: Key, adminOnly: false, module: "passwords-documents" },
+  { to: "/passwords", label: "رمز عبور", icon: Key, adminOnly: false, module: "passwords" },
+  { to: "/documents", label: "اسناد", icon: FileText, adminOnly: false, module: "documents" },
 ];
 
 const navGroups = [
+  { label: "رموز و اسناد", routes: ["/passwords", "/documents"] },
   { label: "محتوا و وب‌سایت", routes: ["/site-content", "/blog-content", "/website-messages", "/announcements"] },
   { label: "پروژه و برنامه‌ریزی", routes: ["/projects", "/tasks", "/sprints", "/meetings", "/work-reports"] },
   { label: "مالی و گزارش‌ها", routes: ["/accounting", "/reports"] },
   { label: "مدیریت و تیم", routes: ["/employees", "/leave-requests", "/admin", "/settings"] },
-  { label: "ارتباطات و امنیت", routes: ["/crm", "/passwords-documents"] },
+  { label: "ارتباطات و CRM", routes: ["/crm", "/clients", "/contacts", "/deals"] },
 ];
 function NavigationGroup({ group, items, pathname, onNavigate }) {
   const active = items.some(item => pathname === item.to || pathname.startsWith(item.to + "/"));
