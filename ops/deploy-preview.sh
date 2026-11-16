@@ -56,4 +56,3 @@ if ! curl --noproxy '*' --fail --silent --show-error --max-time 15 --resolve "$D
 fi
 curl --noproxy '*' --fail --silent --show-error --max-time 15 --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/login" >/dev/null
 printf 'Studio frontend and API published: %s\n' "$SHA"
-
