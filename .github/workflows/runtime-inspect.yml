@@ -36,4 +36,3 @@ jobs:
             if test -f "$path"; then stat --format='%n owner=%U mode=%a bytes=%s' "$path"; fi
           done
           REMOTE
-
