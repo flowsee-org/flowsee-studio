@@ -31,7 +31,7 @@ jobs:
       - name: Run unit tests
         run: npm test
       - name: Check deployment scripts
-        run: bash -n ops/deploy-preview.sh ops/ensure-api.sh
+        run: for script in ops/*.sh; do bash -n "$script"; done
       - name: Test local backend
         run: npm run test:backend
       - name: Check lint
@@ -40,3 +40,4 @@ jobs:
         env:
           VITE_MAIN_API_URL: https://flowsee.ir
         run: npm run build
+

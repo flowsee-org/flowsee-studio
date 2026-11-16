@@ -5,7 +5,7 @@ STATE=/var/lib/flowsee-studio-preview
 [[ $EUID -eq 0 ]] || { echo 'Run as root.' >&2; exit 1; }
 NODE=$(command -v node)
 [[ $NODE != /root/* ]] || { echo 'Studio needs a system Node 22+ executable accessible to its service user.' >&2; exit 1; }
-"$NODE" -e 'if(Number(process.versions.node.split(".")[0])<22) process.exit(1)'
+"$NODE" -e 'if(Number(process.versions.node.split(".")[0])<22) throw Error("Studio requires Node 22+. Run the production deployment script.")'
 cd "$APP"
 DATA_DIR=$("$NODE" --env-file-if-exists=.env --input-type=module -e 'import {resolve} from "node:path"; console.log(resolve(process.env.STUDIO_DATA_DIR || ".local"))')
 [[ $DATA_DIR == "$APP/.local" || $DATA_DIR == /var/lib/flowsee-studio || $DATA_DIR == "$STATE/.local" ]] || { echo 'Unrecognized data directory; refusing to change it.' >&2; exit 1; }
@@ -55,3 +55,4 @@ for attempt in $(seq 1 20); do
 done
 echo 'Studio API did not become healthy. Check journalctl -u flowsee-studio-api.service.' >&2
 exit 1
+
