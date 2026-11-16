@@ -1,0 +1,39 @@
+name: Inspect Studio runtime
+on:
+  push:
+    branches: [fix/studio-runtime]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read runtime status without changing data or configuration
+        env:
+          DEPLOY_KEY: ${{ secrets.STUDIO_DEPLOY_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.STUDIO_DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_PORT: ${{ vars.STUDIO_DEPLOY_PORT || '22' }}
+        run: |
+          set -Eeuo pipefail
+          install -d -m 700 "$RUNNER_TEMP/studio-ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$RUNNER_TEMP/studio-ssh/key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$RUNNER_TEMP/studio-ssh/hosts"
+          chmod 600 "$RUNNER_TEMP/studio-ssh/key" "$RUNNER_TEMP/studio-ssh/hosts"
+          ssh -i "$RUNNER_TEMP/studio-ssh/key" -p "$DEPLOY_PORT" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/studio-ssh/hosts" root@46.34.163.250 'bash -s' <<'REMOTE'
+          set -u
+          systemctl list-units --all --type=service --no-legend | grep -Ei 'studio|node|pm2' || true
+          ss -lntp | grep -E ':3000|:4173|:5173|:4180' || true
+          for unit in flowsee-studio.service flowsee-studio-api.service flowsee-studio-backend.service; do
+            systemctl show "$unit" -p ActiveState -p SubState -p WorkingDirectory -p ExecStart -p EnvironmentFiles 2>/dev/null || true
+          done
+          for port in 3000 4173 5173; do
+            curl --max-time 3 --silent -o /dev/null -w "localhost:$port API health: %{http_code}\n" "http://127.0.0.1:$port/api/health" || true
+          done
+          nginx -T 2>&1 | grep -E 'configuration file|server_name|proxy_pass|location |root ' || true
+          for path in /var/www/flowsee-studio/.local/db.json /var/lib/flowsee-studio/db.json /var/lib/flowsee-studio-preview/.local/db.json /etc/flowsee-studio.env /var/www/flowsee-studio/.env; do
+            if test -f "$path"; then stat --format='%n owner=%U mode=%a bytes=%s' "$path"; fi
+          done
+          REMOTE
+
