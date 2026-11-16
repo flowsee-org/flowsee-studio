@@ -6,11 +6,19 @@ export async function request(path, method = 'GET', body) {
   const multipart = body instanceof FormData;
   const res = await fetch(path, {
     method,
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(!multipart && body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
     body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
   });
-  const data = await res.json();
+  let data;
+  try {
+    if (!res.headers.get('content-type')?.includes('application/json')) throw new Error('Invalid response type');
+    data = await res.json();
+  } catch {
+    throw Object.assign(new Error('ارتباط با سرویس استودیو برقرار نیست. کمی بعد دوباره تلاش کنید؛ اگر مشکل ادامه داشت با مدیر سیستم تماس بگیرید.'), {
+      status: res.status, code: 'STUDIO_INVALID_RESPONSE',
+    });
+  }
   if (!res.ok) throw Object.assign(new Error(data.message || 'Request failed'), { status: res.status, data });
   return data;
 }

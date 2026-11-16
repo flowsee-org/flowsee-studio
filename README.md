@@ -24,7 +24,9 @@ The administrator is created only when the database is empty. Registration is di
 
 Build and run the standalone server behind your HTTPS reverse proxy. Proxy the entire Studio origin to `127.0.0.1:3000` (including `/api`). Set `STUDIO_PUBLIC_URL` to the public origin for reset links and use a persistent `STUDIO_DATA_DIR` outside release directories. Restrict permissions on that directory and `.env` to the service account.
 
-The existing deploy-preview script publishes static assets only. It does not install or start this new server. Do not switch production to this build until the API process and reverse proxy are configured. No production deployment or data migration is performed by pushing this branch.
+The production workflow runs `ops/deploy-preview.sh`. It builds a release, ensures the persistent `flowsee-studio-api.service` is listening on localhost:3000, then verifies the public `/api/health` endpoint before accepting the release. Nginx must proxy `/api/` to that port. A static HTML health check alone does not verify login.
+
+`ops/ensure-api.sh` requires the existing user database and backs up its directory before configuring the service. It preserves accounts, passwords and the session secret; it refuses to create a blank replacement. It uses `STUDIO_DATA_DIR` from the existing `.env`, defaulting to `/var/www/flowsee-studio/.local`. The dedicated service user owns only its data directory. This deploy does not delete other applications' releases, clear Laravel caches, restart PHP, or clean shared temporary files.
 
 Existing data is not fetched automatically. Back up the old service, export its entities, and use the administrator restore endpoint to import an `{ "entities": { "Task": [], ... } }` JSON document. Admin backups can be restored for application entities; the accompanying user directory is informational only, and user accounts, passwords, and the signing secret are not restored. Create local accounts and remap user IDs in imported records. Test imports on an isolated data directory first. Never import an old development database containing demo users into production.
 

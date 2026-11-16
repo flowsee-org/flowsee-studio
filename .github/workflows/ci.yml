@@ -30,6 +30,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Run unit tests
         run: npm test
+      - name: Check deployment scripts
+        run: bash -n ops/deploy-preview.sh ops/ensure-api.sh
       - name: Test local backend
         run: npm run test:backend
       - name: Check lint
