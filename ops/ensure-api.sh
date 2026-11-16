@@ -55,4 +55,3 @@ for attempt in $(seq 1 20); do
 done
 echo 'Studio API did not become healthy. Check journalctl -u flowsee-studio-api.service.' >&2
 exit 1
-

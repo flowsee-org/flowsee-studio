@@ -17,4 +17,3 @@ printf '%s  %s\n' "$CHECKSUM" "$WORK/$ARCHIVE" | sha256sum --check --status
 tar -xJf "$WORK/$ARCHIVE" -C "$WORK"
 mv "$WORK/node-v$VERSION-linux-x64" "$TARGET"
 printf '%s\n' "$TARGET/bin"
-
