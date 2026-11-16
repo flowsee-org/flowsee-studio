@@ -6,6 +6,8 @@ STATE=/var/lib/flowsee-studio-preview
 DOMAIN=studio.flowsee.ir
 [[ $EUID -eq 0 ]] || { echo 'Run this script as root on the Flowsee server.' >&2; exit 1; }
 [[ -d "$APP/.git" ]] || { echo 'Studio checkout is missing.' >&2; exit 1; }
+RUNTIME_BIN=$(bash "$APP/ops/ensure-node.sh")
+export PATH="$RUNTIME_BIN:$PATH"
 for tool in git tar node npm curl; do command -v "$tool" >/dev/null || { echo "Missing: $tool" >&2; exit 1; }; done
 SHA=$(git -C "$APP" rev-parse HEAD)
 [[ $SHA =~ ^[0-9a-f]{40}$ ]] || exit 1
@@ -54,3 +56,4 @@ if ! curl --noproxy '*' --fail --silent --show-error --max-time 15 --resolve "$D
 fi
 curl --noproxy '*' --fail --silent --show-error --max-time 15 --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/login" >/dev/null
 printf 'Studio frontend and API published: %s\n' "$SHA"
+
