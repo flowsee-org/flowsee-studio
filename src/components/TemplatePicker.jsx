@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { studio } from "@/api/studioClient";
-import { X, Plus, Pencil, Trash2, FileText, CheckCircle } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
+import { X, Plus, Pencil, Trash2, FileText, CheckCircle, Building2 } from "lucide-react";
 import TaskTemplateModal from "@/components/TaskTemplateModal";
 import { formatPersianNumber as faNum } from "@/lib/number-format";
 
@@ -15,6 +16,8 @@ const defaultTemplates = [
 ];
 
 export default function TemplatePicker({ onClose, onUse }) {
+  const { user } = useAuth();
+  const userDepartment = user?.department || "";
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -24,7 +27,9 @@ export default function TemplatePicker({ onClose, onUse }) {
 
   const load = async () => {
     const data = await studio.entities.TaskTemplate.list("-created_date");
-    setTemplates([...defaultTemplates, ...data]);
+    const all = [...defaultTemplates, ...data];
+    // نمایش قالب‌های принадлежа به دپارتمان کاربر و قالب‌های عمومی (بدون دپارتمان)
+    setTemplates(all.filter((t) => !t.department || t.department === userDepartment));
     setLoading(false);
   };
 
@@ -48,7 +53,10 @@ export default function TemplatePicker({ onClose, onUse }) {
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4" onClick={onClose}>
         <div className="flex h-[min(calc(100dvh-1.5rem),52rem)] max-h-[min(calc(100dvh-1.5rem),52rem)] w-full max-w-3xl flex-col overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-overlay sm:p-6" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between mb-5">
-            <h2 className="font-bold text-lg">قالب‌های تسک</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-bold text-lg">قالب‌های تسک</h2>
+              {userDepartment && <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">دپارتمان {userDepartment}</span>}
+            </div>
             <button onClick={onClose} className="p-2 hover:bg-accent rounded-lg">
               <X className="w-5 h-5" />
             </button>
@@ -75,8 +83,12 @@ export default function TemplatePicker({ onClose, onUse }) {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="font-bold text-sm leading-6">{t.title}</h3>
+                      {t.department && <p className="mt-1 text-xs text-primary flex items-center gap-1"><Building2 className="w-3 h-3 shrink-0" /> دپارتمان {t.department}</p>}
                       {t.project_name && <p className="mt-1 text-xs text-primary">پروژه: {t.project_name}</p>}
                     </div>
+                    {t.department && !t.id?.startsWith("builtin:") && (
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0">{t.department}</span>
+                    )}
                     <div className="flex gap-1 shrink-0">
                       {t.id?.startsWith("builtin:") ? <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] text-primary">پیش‌فرض</span> : <>
                         <button onClick={() => handleEdit(t)} className="p-1.5 text-muted-foreground hover:text-primary rounded-lg hover:bg-accent" aria-label="ویرایش قالب">

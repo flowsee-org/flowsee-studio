@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { studio } from '@/api/studioClient';
-import { X, Clock, ArrowUpRight, MessageSquare, FileText, Tag, Plus, Check } from 'lucide-react';
+import { X, Clock, ArrowUpRight, MessageSquare, FileText, Tag, Plus, Check, Share2, Copy } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import SubtaskList from './SubtaskList';
 import TaskComments from './TaskComments';
@@ -51,6 +51,8 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
   const [activities, setActivities] = useState([]);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('details'); // details, comments, activity
+  const [shareLink, setShareLink] = useState('');
+  const [sharing, setSharing] = useState(false);
   const [availableTags, setAvailableTags] = useState(() => getCachedTags());
   const [newTagInput, setNewTagInput] = useState('');
   const [showTagPicker, setShowTagPicker] = useState(false);
@@ -118,6 +120,9 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
       };
       setForm(initialForm);
       initialTaskRef.current = { ...initialForm };
+      if (task.share_token) {
+        setShareLink(`${window.location.origin}/tasks/shared/${task.share_token}`);
+      }
     }
     setActivities([]);
     let cancelled = false;
@@ -175,6 +180,34 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
 
   const handleSubtaskChange = (newSubtasks) => {
     setForm((current) => ({ ...current, subtasks: newSubtasks }));
+  };
+
+  const copyLink = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title: "لینک کپی شد", description: "لینک به اشتراک‌گذاری در کلیپ‌بورد کپی شد." });
+    } catch {
+      toast({ title: "کپی انجام نشد", description: "لطفاً لینک را به‌صورت دستی کپی کنید.", variant: "destructive" });
+    }
+  };
+
+  const handleShare = async () => {
+    if (form.share_token) {
+      setShareLink(`${window.location.origin}/tasks/shared/${form.share_token}`);
+      return;
+    }
+    setSharing(true);
+    try {
+      const token = Math.random().toString(36).slice(2, 14) + Math.random().toString(36).slice(2, 14);
+      await studio.entities.Task.update(task.id, { share_token: token });
+      setForm((current) => ({ ...current, share_token: token }));
+      setShareLink(`${window.location.origin}/tasks/shared/${token}`);
+      toast({ title: "لینک به‌اشتراک‌گذاری ساخت", description: "این لینک را با همکاران به‌اشتراک بگذارید." });
+    } catch (err) {
+      toast({ title: "ساخت لینک ناموفق بود", description: err.message, variant: "destructive" });
+    } finally {
+      setSharing(false);
+    }
   };
 
   const handleConvertToTask = async (subtask, index) => {
@@ -289,11 +322,38 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
             ))}
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={handleShare} disabled={sharing} aria-label="اشتراک‌گذاری تسک" title="اشتراک‌گذاری تسک" className="p-2 rounded-lg hover:bg-accent transition-colors">
+              {sharing ? <Share2 className="w-5 h-5 animate-spin" /> : <Share2 className="w-5 h-5" />}
+            </button>
             <button onClick={handleClose} aria-label="بستن پنجره" className="p-2 hover:bg-accent rounded-lg">
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
+
+        {shareLink && (
+          <div className="border-b border-border p-4 bg-amber-50">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-amber-800">لینک به‌اشتراک‌گذاری</span>
+              <div className="flex-1 min-w-0">
+                <input
+                  type="text"
+                  value={shareLink}
+                  readOnly
+                  dir="ltr"
+                  className="w-full border border-input rounded-xl px-3 py-2 text-xs text-right bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+              <button
+                onClick={() => copyLink(shareLink)}
+                className="p-2 rounded-lg text-amber-600 hover:bg-amber-100 hover:text-amber-700 transition-colors"
+                title="کپی لینک"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="border-b border-border">
@@ -339,17 +399,42 @@ export default function TaskDetail({ task, onClose, onSaved, projects }) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium block mb-1.5">پروژه</label>
-                  <select
-                    value={form.project_id}
-                    onChange={(e) => setForm({ ...form, project_id: e.target.value })}
-                    className="w-full border border-input rounded-xl px-4 py-2.5 text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  >
-                    <option value="">بدون پروژه</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
+                  <label className="text-sm font-medium block mb-1.5">پروژه(ها)</label>
+                  <div className="border border-input rounded-xl p-2.5 bg-card max-h-40 overflow-y-auto space-y-1.5">
+                    {projects.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">پروژه‌ای ثبت نشده</p>}
+                    {projects.map((p) => {
+                      const checked = Array.isArray(form.project_ids) ? form.project_ids.includes(p.id) : String(form.project_id) === String(p.id);
+                      return (
+                        <label
+                          key={p.id}
+                          className="flex items-center gap-2 cursor-pointer select-none transition rounded-lg p-1 hover:bg-accent"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const current = Array.isArray(form.project_ids) ? [...form.project_ids] : (form.project_id ? [form.project_id] : []);
+                              const updated = current.includes(p.id)
+                                ? current.filter((id) => id !== p.id)
+                                : [...current, p.id];
+                              const projNames = updated.map((id) => {
+                                const pp = projects.find((pr) => String(pr.id) === String(id));
+                                return pp ? pp.name : "";
+                              }).filter(Boolean);
+                              setForm((current) => ({
+                                ...current,
+                                project_ids: updated,
+                                project_id: updated[0] || "",
+                                project_name: projNames.join("، "),
+                              }));
+                            }}
+                            className="w-3.5 h-3.5 accent-primary shrink-0"
+                          />
+                          <span className="truncate text-sm">{p.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium block mb-1.5">وضعیت</label>

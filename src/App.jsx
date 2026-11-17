@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, Outlet, useParams } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { NotificationProvider } from '@/lib/NotificationContext';
@@ -30,6 +30,7 @@ import WorkReports from '@/pages/WorkReports';
 import Employees from '@/pages/Employees';
 import Profile from '@/pages/Profile';
 import ProjectDetail from '@/pages/ProjectDetail';
+import SharedTaskView from '@/components/SharedTaskView';
 import Announcements from '@/pages/Announcements';
 import Sprints from '@/pages/Sprints';
 import LeaveRequests from '@/pages/LeaveRequests';
@@ -100,6 +101,7 @@ const AuthenticatedApp = () => {
             <Route path="/reports" element={<Reports />} />
             <Route path="/meetings" element={<Meetings />} />
             <Route path="/tasks" element={<Tasks />} />
+            <Route path="/tasks/shared/:token" element={<SharedTaskView />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/work-reports" element={<WorkReports />} />
             <Route path="/employees" element={<Employees />} />

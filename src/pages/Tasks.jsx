@@ -37,7 +37,7 @@ const sortOptions = [
 const viewModes = [
   { id: "assigned", label: "اختصاص داده شده به من", shortLabel: "اختصاصی من", Icon: UserRound },
   { id: "created", label: "ساخته شده توسط من", shortLabel: "توسط من", Icon: SquarePen },
-  { id: "all", label: "همه تسک‌ها", shortLabel: "همه", Icon: UsersRound, adminOnly: true },
+  { id: "all", label: "همه تسک‌ها", shortLabel: "همه", Icon: UsersRound },
 ];
 
 const layoutModes = [
@@ -120,7 +120,8 @@ function matchesCustomFilters(task, { projectFilter, employeeFilter, tagFilter, 
     const matchesProj =
       String(task.project_id ?? "") === projId ||
       String(task.project?.id ?? "") === projId ||
-      String(task.project_name ?? "") === projId;
+      String(task.project_name ?? "") === projId ||
+      (Array.isArray(task.project_ids) && task.project_ids.includes(projId));
     if (!matchesProj) return false;
   }
 
@@ -469,6 +470,7 @@ export default function Tasks() {
       description: checklistText,
       subtasks: checklistItems.map((item) => ({ title: item, done: false })),
       project_id: template.project_id || "",
+      project_ids: template.project_ids ? [...template.project_ids] : (template.project_id ? [template.project_id] : []),
       project_name: template.project_name || "",
       priority: template.priority || "medium",
       assignees: template.default_assignees || [userName],

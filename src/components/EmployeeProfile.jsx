@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MODULES } from "@/lib/permissions";
+import { MODULES, defaultModuleAccessForRole, defaultModuleSubAccess, moduleSections, hasModuleSections } from "@/lib/permissions";
 import { X, User, Calendar, Briefcase, BookOpen, CircleDot, Camera } from "lucide-react";
 import { studio } from "@/api/studioClient";
 import PersianDatePicker from "@/components/PersianDatePicker";
@@ -23,9 +23,10 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
     role: employee.role || "user",
     module_access: Array.isArray(employee.module_access)
       ? employee.module_access
-      : (employee.role === "admin" || employee.role === "superadmin"
-          ? MODULES.map((m) => m.id)
-          : MODULES.filter((m) => !m.adminOnly).map((m) => m.id)),
+      : defaultModuleAccessForRole(employee.role),
+    module_sub_access: typeof employee.module_sub_access === "object" && employee.module_sub_access !== null
+      ? employee.module_sub_access
+      : defaultModuleSubAccess(employee.role),
     phone: employee.phone || "",
     profile_image: employee.profile_image || "",
     department: employee.department || "",
@@ -47,6 +48,7 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
         full_name: form.full_name.trim(),
         role: form.role,
         module_access: form.module_access,
+        module_sub_access: form.module_sub_access,
         phone: form.phone.trim(),
         profile_image: form.profile_image,
         department: form.department.trim(),
@@ -215,10 +217,7 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
                   value={form.role}
                   onChange={(e) => {
                     const newRole = e.target.value;
-                    const defaultMods = newRole === "superadmin" || newRole === "admin"
-                      ? MODULES.map((m) => m.id)
-                      : MODULES.filter((m) => !m.adminOnly).map((m) => m.id);
-                    setForm({ ...form, role: newRole, module_access: defaultMods });
+                    setForm({ ...form, role: newRole, module_access: defaultModuleAccessForRole(newRole) });
                   }}
                   className="w-full border border-input rounded-xl px-4 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
                 >
@@ -234,7 +233,7 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
                   <div className="flex gap-2 text-xs">
                     <button
                       type="button"
-                      onClick={() => setForm({ ...form, module_access: MODULES.map((m) => m.id) })}
+                      onClick={() => setForm({ ...form, module_access: MODULES.map((m) => m.id), module_sub_access: {} })}
                       className="text-primary hover:underline"
                     >
                       انتخاب همه
@@ -242,7 +241,7 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
                     <span className="text-muted-foreground">·</span>
                     <button
                       type="button"
-                      onClick={() => setForm({ ...form, module_access: ["dashboard"] })}
+                      onClick={() => setForm({ ...form, module_access: ["dashboard"], module_sub_access: {} })}
                       className="text-destructive hover:underline"
                     >
                       حذف همه
@@ -251,33 +250,77 @@ export default function EmployeeProfile({ employee, canEdit, onClose, onSaved })
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 rounded-xl border border-border bg-accent/20">
                   {MODULES.map((mod) => {
-                    const isChecked = (form.module_access || []).includes(mod.id);
+                    const sections = hasModuleSections(mod.id) ? moduleSections(mod.id) : [];
+                    const isFullChecked = (form.module_access || []).includes(mod.id);
+                    const subAccess = form.module_sub_access?.[mod.id] || [];
+                    const anySubChecked = sections.length > 0 && subAccess.length > 0;
                     return (
-                      <label
-                        key={mod.id}
-                        className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer select-none transition ${
-                          isChecked
+                      <label key={mod.id} className="flex flex-col gap-1 p-2 rounded-lg border text-xs cursor-pointer select-none transition">
+                        <div className={`flex items-center gap-2 w-full ${
+                          isFullChecked
                             ? "bg-primary/10 border-primary/40 text-primary font-medium"
                             : "bg-card border-border/70 text-muted-foreground hover:bg-accent/50"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {
-                            const current = form.module_access || [];
-                            const updated = current.includes(mod.id)
-                              ? current.filter((id) => id !== mod.id)
-                              : [...current, mod.id];
-                            setForm({ ...form, module_access: updated });
-                          }}
-                          className="w-3.5 h-3.5 accent-primary cursor-pointer"
-                        />
-                        <span className="truncate">{mod.label}</span>
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={isFullChecked}
+                            onChange={() => {
+                              const current = form.module_access || [];
+                              const updated = current.includes(mod.id)
+                                ? current.filter((id) => id !== mod.id)
+                                : [...current, mod.id];
+                              setForm({ ...form, module_access: updated });
+                            }}
+                            className="w-3.5 h-3.5 accent-primary cursor-pointer shrink-0"
+                          />
+                          <span className="truncate flex-1">{mod.label}</span>
+                          {sections.length > 0 && (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isFullChecked ? "bg-primary/20 text-primary" : "bg-accent text-muted-foreground"}`}>
+                              {subAccess.length} بخش فعال
+                            </span>
+                          )}
+                        </div>
+                        {sections.length > 0 && !isFullChecked && (
+                          <div className="pl-7 space-y-0.5">
+                            {sections.map((sec) => {
+                              const secChecked = subAccess.includes(sec.key);
+                              return (
+                                <label
+                                  key={sec.key}
+                                  className="flex items-center gap-2 w-full cursor-pointer select-none transition"
+                                  onClick={(e) => { e.stopPropagation(); }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={secChecked}
+                                    onChange={() => {
+                                      const current = form.module_sub_access?.[mod.id] || [];
+                                      const updated = current.includes(sec.key)
+                                        ? current.filter((k) => k !== sec.key)
+                                        : [...current, sec.key];
+                                      setForm({
+                                        ...form,
+                                        module_sub_access: {
+                                          ...form.module_sub_access,
+                                          [mod.id]: updated.length > 0 ? updated : undefined,
+                                        },
+                                      });
+                                    }}
+                                    className="w-3.5 h-3.5 accent-primary cursor-pointer shrink-0"
+                                  />
+                                  <span className={`truncate flex-1 ${secChecked ? "text-primary font-medium" : "text-muted-foreground"}`}>{sec.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
                       </label>
                     );
                   })}
                 </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  علامت «دسترسی کامل» کل ماژول را باز می‌کند. بدون آن، می‌توانید فقط بخش‌های selectively انتخاب شده را فعال کنید.
+                </p>
               </div>
             </div>
           )}

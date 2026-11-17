@@ -29,6 +29,7 @@ const TASK_DRAFT_KEY = "flowsee_task_form_draft";
 const blankTaskForm = () => ({
   title: "",
   project_id: "",
+  project_ids: [],
   project_name: "",
   status: "todo",
   priority: "medium",
@@ -73,6 +74,7 @@ function createEmptyTaskForm() {
   return {
     title: "",
     project_id: "",
+    project_ids: [],
     project_name: "",
     status: "todo",
     priority: "medium",
@@ -406,6 +408,7 @@ export default function TaskForm({ projects, editTask, isOpen = true, onClose, o
   const selectedAssignees = form.assignees || [];
   const availableProjects = [...projects, ...createdProjects];
   const selectedProject = availableProjects.find((project) => String(project.id) === String(form.project_id));
+  const selectedProjectIds = Array.isArray(form.project_ids) ? form.project_ids : (form.project_id ? [form.project_id] : []);
   const selectedStatus = statusOptions.find((option) => option.value === form.status) || statusOptions[0];
   const selectedPriority = priorityOptions.find((option) => option.value === form.priority) || priorityOptions[1];
   const normalizedEmployees = [...new Map(
@@ -482,8 +485,72 @@ export default function TaskForm({ projects, editTask, isOpen = true, onClose, o
               <PropertyChip open={openProperty === "assignee"} onOpenChange={(open) => setPropertyOpen("assignee", open)} icon={UserRound} label="مسئول" value={selectedAssignees.length ? (selectedAssignees.length === 1 ? selectedAssignees[0] : `${selectedAssignees[0]} و ${selectedAssignees.length - 1} نفر`) : "بدون مسئول"}>
                 <Command dir="rtl" filter={(value, search) => value.toLocaleLowerCase("fa-IR").includes(search.toLocaleLowerCase("fa-IR")) ? 1 : 0}><CommandInput placeholder="جست‌وجوی اعضا…" /><CommandList className="max-h-none overflow-visible">{membersLoading ? <div className="py-6 text-center text-sm text-muted-foreground">در حال بارگذاری اعضا…</div> : normalizedEmployees.length === 0 ? <div className="py-6 text-center text-sm text-muted-foreground">عضوی برای انتخاب در دسترس نیست</div> : <><CommandEmpty>عضوی با این عبارت پیدا نشد</CommandEmpty><CommandGroup>{normalizedEmployees.map((employee) => <CommandItem key={employee.id || employee.name} value={`${employee.name} ${employee.email || ""}`} onSelect={() => toggleAssignee(employee.name)}><span className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-medium">{employee.name.slice(0, 1)}{employee.profile_image && <img src={employee.profile_image} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />}</span><span className="min-w-0 flex-1 truncate">{employee.name}</span>{selectedAssignees.includes(employee.name) && <Check className="h-4 w-4 text-primary" />}</CommandItem>)}</CommandGroup></>}</CommandList></Command>
               </PropertyChip>
-              <PropertyChip open={openProperty === "project"} onOpenChange={(open) => setPropertyOpen("project", open)} icon={FolderKanban} label="پروژه" value={selectedProject?.name || "بدون پروژه"}>
-                <Command dir="rtl"><CommandInput placeholder="جست‌وجوی پروژه…" /><CommandList><CommandEmpty>پروژه‌ای پیدا نشد</CommandEmpty><CommandGroup><CommandItem value="بدون پروژه" onSelect={() => setForm((current) => ({ ...current, project_id: "", project_name: "" }))}><FolderKanban className="h-4 w-4 text-muted-foreground" /><span className="flex-1">بدون پروژه</span>{!form.project_id && <Check className="h-4 w-4 text-primary" />}</CommandItem>{availableProjects.map((project) => <CommandItem key={project.id} value={project.name} onSelect={() => { setForm((current) => ({ ...current, project_id: project.id, project_name: project.name })); setPropertyOpen("project", false); }}><FolderKanban className="h-4 w-4 text-muted-foreground" /><span className="min-w-0 flex-1 truncate">{project.name}</span>{String(form.project_id) === String(project.id) && <Check className="h-4 w-4 text-primary" />}</CommandItem>)}</CommandGroup><div className="border-t border-border p-2"><form onSubmit={(event) => { event.preventDefault(); createProjectFromPicker(); }} className="flex gap-2"><Input value={projectInput} onChange={(event) => setProjectInput(event.target.value)} placeholder="نام پروژه جدید" className="h-9 min-w-0" /><Button type="submit" size="sm" disabled={!projectInput.trim() || creatingProject}>{creatingProject ? "در حال ساخت…" : "ساخت پروژه"}</Button></form></div></CommandList></Command>
+              <PropertyChip open={openProperty === "project"} onOpenChange={(open) => setPropertyOpen("project", open)} icon={FolderKanban} label="پروژه(ها)" value={selectedProjectIds.length ? `${selectedProjectIds.length} پروژه` : "بدون پروژه"}>
+                <div className="space-y-2 p-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={projectInput}
+                      onChange={(event) => setProjectInput(event.target.value)}
+                      placeholder="جست‌وجوی پروژه…"
+                      className="flex-1 border border-input rounded-xl px-3 py-1.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm((current) => ({ ...current, project_ids: [], project_id: "", project_name: "" }))}
+                      disabled={selectedProjectIds.length === 0}
+                      className="text-xs text-destructive hover:text-red-600 underline"
+                    >
+                      پاک کردن همه
+                    </button>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto space-y-1">
+                    {availableProjects
+                      .filter((p) => !projectInput || p.name.toLocaleLowerCase("fa-IR").includes(projectInput.toLocaleLowerCase("fa-IR")))
+                      .map((project) => {
+                        const checked = selectedProjectIds.includes(project.id);
+                        return (
+                          <label
+                            key={project.id}
+                            onClick={(e) => { e.stopPropagation(); }}
+                            className="flex items-center gap-2 w-full cursor-pointer select-none transition rounded-lg p-1.5 hover:bg-accent"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                const current = form.project_ids || [];
+                                const updated = current.includes(project.id)
+                                  ? current.filter((id) => id !== project.id)
+                                  : [...current, project.id];
+                                const first = updated[0] || "";
+                                const projNames = updated.map((id) => {
+                                  const p = availableProjects.find((pp) => String(pp.id) === String(id));
+                                  return p ? p.name : "";
+                                }).filter(Boolean);
+                                setForm((current) => ({
+                                  ...current,
+                                  project_ids: updated,
+                                  project_id: first,
+                                  project_name: projNames.join("، "),
+                                }));
+                              }}
+                              className="w-3.5 h-3.5 accent-primary cursor-pointer shrink-0"
+                            />
+                            <span className="min-w-0 flex-1 truncate">{project.name}</span>
+                            {checked && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                          </label>
+                        );
+                      })}
+                  </div>
+                  {availableProjects.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">پروژه‌ای ثبت نشده</p>}
+                  <div className="border-t border-border pt-2">
+                    <form onSubmit={(event) => { event.preventDefault(); createProjectFromPicker(); }} className="flex gap-2">
+                      <Input value={projectInput} onChange={(event) => setProjectInput(event.target.value)} placeholder="نام پروژه جدید" className="flex-1 h-9 min-w-0" />
+                      <Button type="submit" size="sm" disabled={!projectInput.trim() || creatingProject}>{creatingProject ? "در حال ساخت…" : "ساخت پروژه"}</Button>
+                    </form>
+                  </div>
+                </div>
               </PropertyChip>
               <PropertyChip open={openProperty === "tags"} onOpenChange={(open) => setPropertyOpen("tags", open)} icon={Tag} label="برچسب" value={selectedTags.length ? `${selectedTags.length} برچسب` : "برچسب‌ها"}>
                 <div className="space-y-2 p-2">

@@ -30,7 +30,7 @@ export default function ProjectDetail() {
         studio.entities.Income.list(),
       ]);
       setProject(allProjects.find((p) => p.id === id));
-      setTasks(allTasks.filter((t) => t.project_id === id));
+      setTasks(allTasks.filter((t) => t.project_id === id || (Array.isArray(t.project_ids) && t.project_ids.includes(id))));
       setExpenses(allExpenses.filter((e) => e.project_id === id));
       setIncomes(allIncomes.filter((i) => i.project_id === id));
       setLoading(false);
@@ -437,7 +437,7 @@ export default function ProjectDetail() {
         onClose={() => setSelectedTask(null)}
         onSaved={async () => {
           const updatedTasks = await studio.entities.Task.list();
-          setTasks((updatedTasks || []).filter((task) => String(task.project_id) === String(id)));
+          setTasks((updatedTasks || []).filter((task) => String(task.project_id) === String(id) || (Array.isArray(task.project_ids) && task.project_ids.includes(id))));
         }}
       />}
 

@@ -772,7 +772,7 @@ export async function handleRequest(req, res) {
             if (!manager || rec.id === u.id || rec.role === 'superadmin' || (body.role === 'superadmin' && u.role !== 'superadmin')) return error(res, 403, 'Cannot change role');
             if (!['user', 'admin', 'superadmin'].includes(body.role)) return error(res, 400, 'Invalid role');
           }
-          const allowed = manager ? ['full_name', 'phone', 'profile_image', 'role', 'is_active', 'module_access', 'force_logout'] : ['full_name', 'phone', 'profile_image'];
+          const allowed = manager ? ['full_name', 'phone', 'profile_image', 'role', 'is_active', 'module_access', 'module_sub_access', 'force_logout'] : ['full_name', 'phone', 'profile_image'];
           for (const key of Object.keys(rest)) if (!allowed.includes(key)) delete rest[key];
           if (rest.force_logout) rec.session_version = (rec.session_version || 0) + 1;
         }

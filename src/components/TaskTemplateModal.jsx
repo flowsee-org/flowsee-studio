@@ -10,6 +10,7 @@ export default function TaskTemplateModal({ editTemplate, onClose, onSaved }) {
     editTemplate || {
       title: "",
       description: "",
+      department: "",
       checklist: [],
       priority: "medium",
       project_id: "",
@@ -82,6 +83,16 @@ export default function TaskTemplateModal({ editTemplate, onClose, onSaved }) {
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="مثلاً: راه‌اندازی سرور جدید"
+              className="w-full border border-input rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1.5">دپارتمان <span className="text-muted-foreground text-xs">(اختیاری — خالی برای همه دپارتمان‌ها)</span></label>
+            <input
+              type="text"
+              value={form.department || ""}
+              onChange={(e) => setForm({ ...form, department: e.target.value })}
+              placeholder="مثلاً: توسعه، محتوا، طراحی"
               className="w-full border border-input rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>

@@ -194,7 +194,23 @@ export default function PasswordsDocuments({ type = "password" } = {}) {
                       </div>
                     </td>
                     {isPassword ? (
-                      <td className="p-3">{item.username ? item.username : <span className="text-muted-foreground">—</span>}</td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-1">
+                          {item.username ? (
+                            <span className="font-mono text-xs text-foreground break-all truncate max-w-[140px]">{item.username}</span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); copyValue(item.username || "", "نام کاربری"); }}
+                            disabled={!item.username}
+                            className="p-1 text-muted-foreground hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="کپی نام کاربری"
+                          >
+                            <ClipboardCopy className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
                     ) : null}
                     <td className="p-3"><span className="text-xs text-muted-foreground">{categoryLabels[item.category] || item.category}</span></td>
                     <td className="p-3">
