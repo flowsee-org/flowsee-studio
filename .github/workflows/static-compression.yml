@@ -1,0 +1,27 @@
+name: Configure static asset compression
+on:
+  push:
+    branches: [ops/static-compression]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  configure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate configuration transform
+        run: python3 -m unittest discover -s ops -p 'test_static_compression.py'
+      - name: Apply and validate static compression with rollback
+        env:
+          DEPLOY_KEY: ${{ secrets.STUDIO_DEPLOY_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.STUDIO_DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_PORT: ${{ vars.STUDIO_DEPLOY_PORT || '22' }}
+        run: |
+          set -Eeuo pipefail
+          install -d -m 700 "$RUNNER_TEMP/studio-ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$RUNNER_TEMP/studio-ssh/key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$RUNNER_TEMP/studio-ssh/hosts"
+          chmod 600 "$RUNNER_TEMP/studio-ssh/key" "$RUNNER_TEMP/studio-ssh/hosts"
+          ssh -i "$RUNNER_TEMP/studio-ssh/key" -p "$DEPLOY_PORT" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/studio-ssh/hosts" root@46.34.163.250 python3 - < ops/static_compression.py
